@@ -1,0 +1,155 @@
+--- a/osfmk/arm64/sweet_early.c
++++ b/osfmk/arm64/sweet_early.c
+@@ -6,16 +6,17 @@
+  * retain this console until the normal framebuffer serial console is ready.
+  */
+ #include <arm64/sweet_early.h>
++#include <arm64/sweet_bootstrap.h>
+ 
+ #if defined(SWEET)
+ #include <stdint.h>
+ #include <kern/misc_protos.h>
+ 
+-static volatile uint32_t *early_fb = (volatile uint32_t *)(uintptr_t)0x9c000000;
++static volatile uint32_t *early_fb = (volatile uint32_t *)(uintptr_t)SWEET_BOOT_FB_BASE;
+ #define EARLY_FB early_fb
+-#define EARLY_WIDTH 1080u
+-#define EARLY_HEIGHT 2400u
+-#define EARLY_STRIDE (4320u / 4)
++#define EARLY_WIDTH SWEET_BOOT_FB_WIDTH
++#define EARLY_HEIGHT SWEET_BOOT_FB_HEIGHT
++#define EARLY_STRIDE (SWEET_BOOT_FB_STRIDE / 4)
+ #define EARLY_SCALE 2u
+ #define EARLY_CELL_W (8u * EARLY_SCALE)
+ #define EARLY_CELL_H (16u * EARLY_SCALE)
+--- a/osfmk/arm64/start.s
++++ b/osfmk/arm64/start.s
+@@ -28,6 +28,7 @@
+ #include <arm64/proc_reg.h>
+ #include <arm64/asm.h>
+ #include <arm64/machine_machdep.h>
++#include <arm64/sweet_bootstrap.h>
+ #include <arm64/proc_reg.h>
+ #include <pexpert/arm64/board_config.h>
+ #include <mach_assert.h>
+@@ -515,10 +516,10 @@
+ 
+ #if defined(SWEET)
+ 	/* Stage 0: white 64x32 band, no stack or page tables needed. */
+-	MOV64	x0, (0x9c000000 + 2368 * 4320)
++	MOV64	x0, (SWEET_BOOT_FB_BASE + (SWEET_BOOT_FB_HEIGHT - 32) * SWEET_BOOT_FB_STRIDE)
+ 	mov		w1, #-1
+ 	mov		x2, #32
+-	mov		x4, #4320
++	mov		x4, #SWEET_BOOT_FB_STRIDE
+ Lsweet_mark_row:
+ 	mov		x3, #64
+ 	mov		x5, x0
+@@ -686,7 +687,7 @@
+ 	 * SWEET uses 16K pages and all bring-up RAM is below 4GB, so the first
+ 	 * V=P L2 page is bootstrap_pagetables + 2*PGBYTES.
+ 	 */
+-	MOV64	x10, 0x9c000000
++	MOV64	x10, SWEET_BOOT_FB_BLOCK_BASE
+ 	MOV64	x11, (ARM_TTE_TYPE_BLOCK | ARM_TTE_VALID | ARM_TTE_BLOCK_SH(SH_OUTER_MEMORY) | ARM_TTE_BLOCK_ATTRINDX(CACHE_ATTRINDX_WRITECOMB) | ARM_TTE_BLOCK_AF | ARM_TTE_BLOCK_PNX | ARM_TTE_BLOCK_NX)
+ 	orr		x11, x11, x10
+ 	and		x12, x10, #(ARM_TT_L2_INDEX_MASK)
+--- a/osfmk/arm64/arm_vm_init.c
++++ b/osfmk/arm64/arm_vm_init.c
+@@ -42,6 +42,7 @@
+ #include <arm64/proc_reg.h>
+ #include <arm64/lowglobals.h>
+ #include <arm64/sweet_early.h>
++#include <arm64/sweet_bootstrap.h>
+ #include <arm/cpu_data_internal.h>
+ #include <arm/misc_protos.h>
+ #include <pexpert/arm64/boot.h>
+@@ -1831,19 +1832,20 @@
+  * Use the otherwise empty 32MB block above low globals and below gVirtBase
+  * for a Normal-NC framebuffer alias that survives bootstrap TTBR0 teardown.
+  */
+-#define SWEET_EARLY_FB_VA (VM_MIN_KERNEL_ADDRESS + ARM_TT_L2_SIZE)
++#define SWEET_EARLY_FB_BLOCK_VA (VM_MIN_KERNEL_ADDRESS + ARM_TT_L2_SIZE)
++#define SWEET_EARLY_FB_VA (SWEET_EARLY_FB_BLOCK_VA + SWEET_BOOT_FB_OFFSET)
+ 
+ static void
+ sweet_early_map_final(void)
+ {
+-	const vm_map_address_t va = SWEET_EARLY_FB_VA;
++	const vm_map_address_t va = SWEET_EARLY_FB_BLOCK_VA;
+ 	assert(va + ARM_TT_L2_SIZE <= gVirtBase);
+ 	tt_entry_t l1 = cpu_tte[(va & ARM_TT_L1_INDEX_MASK) >> ARM_TT_L1_SHIFT];
+ 	assert((l1 & (ARM_TTE_VALID | ARM_TTE_TYPE_MASK)) == (ARM_TTE_VALID | ARM_TTE_TYPE_TABLE));
+ 	tt_entry_t *l2 = (tt_entry_t *)phystokv(l1 & ARM_TTE_TABLE_MASK);
+ 	tt_entry_t *slot = &l2[(va & ARM_TT_L2_INDEX_MASK) >> ARM_TT_L2_SHIFT];
+ 	assert(*slot == ARM_TTE_EMPTY);
+-	*slot = 0x9c000000ULL | ARM_TTE_VALID | ARM_TTE_TYPE_BLOCK |
++	*slot = (uint64_t)SWEET_BOOT_FB_BLOCK_BASE | ARM_TTE_VALID | ARM_TTE_TYPE_BLOCK |
+ 	    ARM_TTE_BLOCK_SH(SH_OUTER_MEMORY) |
+ 	    ARM_TTE_BLOCK_ATTRINDX(CACHE_ATTRINDX_WRITECOMB) |
+ 	    ARM_TTE_BLOCK_AF | ARM_TTE_BLOCK_PNX | ARM_TTE_BLOCK_NX;
+--- /dev/null
++++ b/osfmk/arm64/sweet_bootstrap.h
+@@ -0,0 +1,30 @@
++/* Bootstrap framebuffer geometry, shared by C and assembly.
++ * DUCHAMP is an experimental console-only variant of the SWEET configuration.
++ * This header does not port interrupts, memory allocation, storage, or input.
++ */
++#ifndef SWEET_BOOTSTRAP_GEOMETRY_H
++#define SWEET_BOOTSTRAP_GEOMETRY_H
++#if defined(DUCHAMP) && !defined(SWEET)
++#error DUCHAMP bootstrap currently requires the SWEET source configuration
++#endif
++#if defined(DUCHAMP)
++#define SWEET_BOOT_FB_BASE 0xfcc2f000
++#define SWEET_BOOT_FB_WIDTH 1220
++#define SWEET_BOOT_FB_HEIGHT 2712
++#define SWEET_BOOT_FB_STRIDE 4992
++#else
++#define SWEET_BOOT_FB_BASE 0x9c000000
++#define SWEET_BOOT_FB_WIDTH 1080
++#define SWEET_BOOT_FB_HEIGHT 2400
++#define SWEET_BOOT_FB_STRIDE 4320
++#endif
++#define SWEET_BOOT_FB_BLOCK_SIZE 0x02000000
++#define SWEET_BOOT_FB_BLOCK_BASE (SWEET_BOOT_FB_BASE & ~(SWEET_BOOT_FB_BLOCK_SIZE - 1))
++#define SWEET_BOOT_FB_OFFSET (SWEET_BOOT_FB_BASE - SWEET_BOOT_FB_BLOCK_BASE)
++#if SWEET_BOOT_FB_OFFSET + SWEET_BOOT_FB_HEIGHT * SWEET_BOOT_FB_STRIDE > SWEET_BOOT_FB_BLOCK_SIZE
++#error Bootstrap framebuffer crosses the single mapped L2 block
++#endif
++#if SWEET_BOOT_FB_STRIDE < SWEET_BOOT_FB_WIDTH * 4 || SWEET_BOOT_FB_STRIDE % 4
++#error Invalid bootstrap framebuffer stride
++#endif
++#endif
+--- a/osfmk/arm/arm_init.c
++++ b/osfmk/arm/arm_init.c
+@@ -524,6 +524,15 @@
+ 	sweet_early_mark(7, "entering arm_vm_init");
+ 	arm_vm_init(xmaxmem, args);
+ 	sweet_early_mark(15, "arm_vm_init returned");
++#if defined(DUCHAMP)
++	/* First MT6897 experiment: stop before serial/IRQ/IOKit/BSD startup. */
++	sweet_early_mark(15, "DUCHAMP XNU MEMORY READY");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
++
+ 
+ 	if (debug_boot_arg) {
+ 		patch_low_glo();
+--- a/makedefs/MakeInc.def
++++ b/makedefs/MakeInc.def
+@@ -340,6 +340,11 @@
+ 
+ CFLAGS_ARM64	= -Darm64 -DARM64 -D__ARM64__ -DLP64 -DPAGE_SIZE_FIXED -DVM_KERNEL_LINK_ADDRESS=$(ARM64_LINK_ADDR) \
+ 			$(LARGE_MEMORY_DEFINE) -momit-leaf-frame-pointer -fno-strict-aliasing -D__API__=v4 -mkernel
++
++# This fork's SWEET build is an MT6897 early-memory diagnostic only.
++ifeq ($(CURRENT_MACHINE_CONFIG),SWEET)
++CFLAGS_ARM64 += -DDUCHAMP=1
++endif
+ 
+ CFLAGS_RELEASEX86_64 = -O2
+ CFLAGS_DEVELOPMENTX86_64 = -O2
