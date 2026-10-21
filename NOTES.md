@@ -1,3 +1,15 @@
+# DUCHAMP bootstrap handoff — 2026-10-21
+
+This branch is a POCO X6 Pro (MT6897) early-memory experiment, separate from the Redmi/SWEET results below. Patch 0082 replaces bootstrap framebuffer geometry and forces the SWEET build to define DUCHAMP. It deliberately halts after arm_vm_init, before serial_init, PE_init_platform(TRUE), IOKit and BSD. Expected marker: DUCHAMP XNU MEMORY READY.
+
+Physical POCO evidence so far: standalone diagnostic entered EL1, CNTFRQ=13000000, reported TGran16 support, then passed ten actual 16KB alias read/write checks with MMU enabled and restored it off. Android boot_a was restored and independently hash-verified after that trial. XNU and iOS have NOT executed on this POCO.
+
+Local checks: all four changed XNU source files compile individually for SWEET and DUCHAMP (eight objects); geometry and clean patch application checks pass. A minimal single-CPU ADT candidate uses MT6897 GICD 0x0c400000, GICR 0x0c440000, virtual timer INTID 27, and no Qualcomm storage/input/USB nodes. Candidate RAM 0xa0000000..0xbe000000 comes only from a captured map; a future loader must validate the live FDT and every reserved range before writing it. No device dumps or Apple artifacts are committed.
+
+Kernel CI on this branch is the next validation. Even a successful build is not a phone boot image: it still needs QEMU validation and an MT6897 loader with live memory-range checks. Preserve Android and the original boot image.
+
+---
+
 # iOS 16 on sweet (Redmi Note 10 Pro, SM7150) - working notes
 
 ## Agent handoff / active work (2026-10-15, latest)
