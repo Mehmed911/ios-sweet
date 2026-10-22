@@ -34,9 +34,8 @@ env:
 
 jobs:
   build:
-    # macos-14 still ships Xcode 15.x: its iig matches the xnu-8796 IORPC ABI
-    # (Xcode 16's iig emits IORPC.kernelContent, which this xnu lacks)
-    runs-on: macos-14
+    # Preserve verified Xcode-15 generated IIG sources on the newer runner.
+    runs-on: macos-15
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
@@ -61,11 +60,20 @@ jobs:
           sudo chmod +x /usr/local/bin/xcodes
           sw_vers
           ls -d /Applications/Xcode*.app
-          XC=$(ls -d /Applications/Xcode_*.app | sort -V | head -1)
+          XC=/Applications/Xcode_16.4.app
+          test -d "$XC"
           echo "DEVELOPER_DIR=$XC/Contents/Developer" >> "$GITHUB_ENV"
           sudo xcode-select -s "$XC"
           xcodebuild -version
           xcrun --find iig
+
+      - name: Stage pinned IIG source outputs
+        run: |
+          curl --fail --location --retry 3 https://nightly.link/dipa-studio/ios-sweet/actions/artifacts/12147962438.zip -o "$RUNNER_TEMP/iig-buildtree.zip"
+          python3 tools/duchamp-frozen-iig.py stage --archive "$RUNNER_TEMP/iig-buildtree.zip" --out "$RUNNER_TEMP/duchamp-iig-cache"
+          chmod +x "$GITHUB_WORKSPACE/tools/duchamp-frozen-iig.py"
+          echo "IIG=$GITHUB_WORKSPACE/tools/duchamp-frozen-iig.py" >> "$GITHUB_ENV"
+          echo "DUCHAMP_IIG_CACHE=$RUNNER_TEMP/duchamp-iig-cache" >> "$GITHUB_ENV"
 
       - name: Build
         working-directory: dxb
