@@ -1,3 +1,15 @@
+# DUCHAMP update — 2026-10-22
+
+Build dispatched: https://github.com/Mehmed911/ios-sweet/actions/runs/39828208185 at source f22878076d156c246bd0605e173e181b0982ddcc. GitHub currently reports queued (no runner/steps started yet); do not claim a linked kernel or a phone XNU boot. Patch commit: 1cadc81582597a05a49d03d219b23a3c2504f5a5. Expected compile-time stop: DUCHAMP XNU MEMORY READY after arm_vm_init.
+
+The low RAM candidate in the previous handoff is superseded. The captured FDT contains dynamic allocation requests whose allowed ranges overlap low RAM. The revised planner excludes each entire alloc-ranges region as well as 52 fixed reservations and nested iomem exclusions. New hardware candidate: physical 0x1c0000000 + 0x20000000 (512 MiB). It has no fixed or dynamic conflicts in that captured tree. It remains a candidate: a loader must repeat checks on the actual boot FDT and check overlap with its Image, DTB, payload and framebuffer before any writes.
+
+Minimal ADTs for one CPU pass serialization/contract tests and reject Qualcomm UFS, wrong timer/GIC and unsafe memory. Candidate hardware timebase is 13MHz and virtual timer INTID 27. QEMU control tests use QEMU GIC addresses/timebase, not MTK emulation. The earlier reference kernel reached arm_vm_init return at both low RAM and the new high RAM base in QEMU, then hit the expected missing DUCHAMPBOOT platform driver panic later in IOKit. That later panic is NOT a successful boot, and the new compile-time stop precedes it. The geometry/stop-patched kernel still needs successful CI and its own QEMU test.
+
+No phone changes in this phase. The POCO still has restored Android; only the standalone 16KB MMU diagnostic has run on its hardware.
+
+---
+
 # DUCHAMP bootstrap handoff — 2026-10-21
 
 This branch is a POCO X6 Pro (MT6897) early-memory experiment, separate from the Redmi/SWEET results below. Patch 0082 replaces bootstrap framebuffer geometry and forces the SWEET build to define DUCHAMP. It deliberately halts after arm_vm_init, before serial_init, PE_init_platform(TRUE), IOKit and BSD. Expected marker: DUCHAMP XNU MEMORY READY.
