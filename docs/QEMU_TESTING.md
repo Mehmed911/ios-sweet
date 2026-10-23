@@ -65,6 +65,33 @@ If dependencies are missing, install them:
 python3 tools/qemu-sweet.py /tmp/payload-qemu.bin /tmp/qemu_run --secs 20
 ```
 
+For a kernel built with the DUCHAMP bootstrap geometry, select the matching
+framebuffer for both `boot_args` and the post-run capture:
+
+```bash
+python3 tools/qemu-sweet.py /tmp/payload-duchamp.bin /tmp/qemu_duchamp \
+  --framebuffer duchamp --secs 20
+```
+
+This uses the evidence-backed candidate geometry `0xfcc2f000`, 1220x2712,
+stride 4992. It only fixes the QEMU harness mismatch; QEMU `virt` does not
+emulate the MT6897 display controller or prove that bootloader scanout survives.
+
+Before an MT6897 loader copies a payload, its host-side equivalent can validate
+the payload window against an FDT from the same boot and every range occupied by
+the loader, FDT, stack, and payload source:
+
+```bash
+python3 tools/duchamp-loader-guard.py \
+  --fdt live.dtb --payload payload.bin \
+  --occupied 0x48080000:0x10000 \
+  --occupied 0x7ffff000:0x1000
+```
+
+The command only emits a load plan. It rejects non-MT6897 trees, unsupported
+cell layouts, fixed reservations, dynamic allocation ranges, malformed payloads,
+and overlaps. It never copies the kernel or transfers control.
+
 ### Live Console Streaming
 Stream serial kernel printf output live to your terminal:
 ```sh

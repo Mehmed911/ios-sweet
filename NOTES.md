@@ -1,5 +1,94 @@
 # DUCHAMP update — 2026-10-22
 
+QEMU handoff check (2026-10-23): the C materializer output was compared with
+`tools/qemu-sweet.py`'s host image using the same payload and Duchamp profile.
+Both images were 38,666,240 bytes with SHA256
+`098ba6d9bcc62ec3cd437713a416ef17fd53d145b907c1b0cae035696505b62b` and zero
+byte differences; entry `0x1c1480488` and boot_args `0x1c24dc000` also matched.
+The subsequent QEMU run was not completed in this Windows environment:
+Unix QMP sockets are unavailable, and the TCP fallback is blocked by
+`WinError 10013` before QMP can connect. The QEMU command was also made
+`-nodefaults` so it does not request unrelated `efi-virtio.rom` firmware. This
+is an environment limitation, not evidence of an XNU or payload failure.
+
+QEMU controlled jump completed (2026-10-23): the local QEMU process was
+allowed to bind its monitoring endpoint and `qemu-sweet.py --framebuffer
+duchamp` ran the verified payload for 10 seconds. The framebuffer decoder showed
+every marker from `SWEET EARLY 1` through `SWEET EARLY 15`, followed by
+`DUCHAMP XNU MEMORY READY`; no panic text appeared and QEMU produced a register
+snapshot. The decoder still reports 3 unknown cells from the intentional bottom
+stage band, so the status is `incomplete_decode`/snapshot-only rather than a
+clean decode. This is a QEMU `virt` result, not MT6897 hardware validation.
+
+Bounded materialization (2026-10-23): added `duchamp/loader/materialize.c` and
+`materialize.h`. This stage applies the validated dry-run plan only to a
+caller-provided byte window: it copies 10 payload segments, zero-fills their
+tails, places the ADT, and creates revision-2 `boot_args`. It contains no raw
+physical-memory access, cache/MMU transition, or XNU branch. Strict bare-AArch64
+compilation and execution under Unicorn passed. The first segment and ADT were
+byte-identical to the payload, boot args reported revision/version 2/2,
+physBase `0x1c0000000`, top `0x1c24e0000`, and the exact Duchamp framebuffer.
+Reducing the required `0x24e0000`-byte window by one byte returned
+`DUCHAMP_GUARD_PLATFORM`, left the destination marker unchanged, and zeroed the
+result plan before any copy.
+
+Dry-run loader plan (2026-10-23): added `duchamp/loader/plan.c` and `plan.h`.
+After the guard succeeds, this freestanding layer emits the segment source
+offsets, physical destinations, copy/zero lengths, ADT placement, revision-2
+boot-args values, entry address, and Duchamp framebuffer contract. It contains
+no destination-memory writes and no branch to XNU. Strict bare-AArch64
+compilation passed. The actual ARM64 function was executed under Unicorn with
+the captured MT6897 FDT and verified payload: it returned 10 segments, entry
+`0x1c1480488`, ADT `0x1c24d8000`, boot_args `0x1c24dc000`, framebuffer
+`0xfcc2f000`/4992/1220x2712x32, and the expected virtual ADT address. A bad
+framebuffer stride returned `DUCHAMP_GUARD_PLATFORM` and a fully zeroed plan.
+
+Freestanding loader guard (2026-10-23): added `duchamp/loader/guard.c` and
+`guard.h`. The allocation-free ARM64 core validates SWEETXNU v1 payload bounds,
+entry placement, a version-17 MT6897 FDT, live RAM containment, fixed and dynamic
+reservations, and caller-supplied occupied ranges. It only returns a placement
+plan; it contains no payload copy, cache/MMU transition, exception-level change,
+or jump to XNU. It compiled with strict freestanding AArch64 warnings enabled and
+was executed under Unicorn against the captured MT6897 FDT and real payload.
+The valid case returned physical base `0x1c0000000`, entry `0x1c1480488`, ADT
+`0x1c24d8000`, boot_args `0x1c24dc000`, and top `0x1c24e0000`. Negative cases
+rejected an occupied-range collision, bad payload magic, and truncated FDT, and
+left the output plan zeroed. This is host/emulator validation only.
+
+QEMU framebuffer harness update (2026-10-23): `tools/qemu-sweet.py` now accepts
+`--framebuffer duchamp`. It consistently uses base 0xfcc2f000, 1220x2712 and
+stride 4992 in XNU boot_args, framebuffer capture, PNG conversion and console
+decoding. The old hard-coded Sweet geometry remains the default. This repairs
+the host harness mismatch only; it does not validate the MT6897 display path.
+
+Full DUCHAMP kernel/QEMU verification (2026-10-23): GitHub Actions run
+`39830616234` completed successfully at `9939a0e`; the downloaded artifact ZIP
+matched GitHub SHA256 `5cb02f0323e17679ab47a431e039a07a29143d2de45cb12c22ff57f375195f53`,
+and `kernel.development.sweet` matched its included SHA256
+`4ce45cc4ec6fb7bd6f7db075fffca90816b586022b1f3e00d937a3dedc9116c6`.
+An isolated QEMU `virt` run used the 0x1c0000000 + 512 MiB high-memory window,
+the minimal one-CPU QEMU ADT, and the Duchamp framebuffer geometry. The screen
+reached `arm_vm_init returned` followed by the intentional
+`DUCHAMP XNU MEMORY READY` stop, with no panic. The decoder reported three
+unknown glyph cells because its final sampled text row overlaps the deliberate
+64x32 Stage-0 color band at the physical bottom of the screen; visual inspection
+confirmed the text itself is intact. This proves the compiled early-memory path
+in QEMU only, not MT6897 hardware execution or display-controller compatibility.
+
+Loader planning guard (2026-10-23): added `tools/duchamp-loader-guard.py`. It
+parses a version-17 MT6897 FDT and SWEETXNU v1 payload, requires 2/2 address
+cells and identity-mapped reserved-memory, checks the payload window is inside
+live RAM, rejects fixed reservations and every overlapping dynamic
+`alloc-ranges`, validates all Mach-O payload segment/file bounds and the entry,
+and rejects caller-supplied loader/DTB/stack/source ranges. It emits addresses
+only and never copies or jumps. Against the captured FDT and verified kernel it
+accepted the high-window plan (`phys_base=0x1c0000000`, entry `0x1c1480488`,
+ADT `0x1c24d8000`, boot_args `0x1c24dc000`) after checking 52 fixed, four
+dynamic and three occupied ranges. Negative checks rejected an occupied-range
+collision, bad magic, bad version and a truncated FDT. This remains an offline
+snapshot check; a future loader must invoke equivalent checks on the FDT from
+the same boot.
+
 Build dispatched: https://github.com/Mehmed911/ios-sweet/actions/runs/39828208185 at source f22878076d156c246bd0605e173e181b0982ddcc. GitHub currently reports queued (no runner/steps started yet); do not claim a linked kernel or a phone XNU boot. Patch commit: 1cadc81582597a05a49d03d219b23a3c2504f5a5. Expected compile-time stop: DUCHAMP XNU MEMORY READY after arm_vm_init.
 
 The low RAM candidate in the previous handoff is superseded. The captured FDT contains dynamic allocation requests whose allowed ranges overlap low RAM. The revised planner excludes each entire alloc-ranges region as well as 52 fixed reservations and nested iomem exclusions. New hardware candidate: physical 0x1c0000000 + 0x20000000 (512 MiB). It has no fixed or dynamic conflicts in that captured tree. It remains a candidate: a loader must repeat checks on the actual boot FDT and check overlap with its Image, DTB, payload and framebuffer before any writes.

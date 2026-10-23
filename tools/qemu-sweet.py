@@ -2,6 +2,7 @@
 """Boot a SWEETXNU payload (tools/mkpayload.py) in QEMU's virt board.
 
   qemu-sweet.py PAYLOAD OUTDIR [--secs N] [--gdb] [--live-serial]
+                [--framebuffer sweet|duchamp]
 
 Does what shim/loader.c does on the phone, but on the host: places the
 kernel segments, ADT and boot_args at their physical addresses and starts
@@ -22,8 +23,10 @@ An undecodable or blank screen returns 3 with --fail-on-panic.
 """
 import argparse, json, os, shutil, socket, struct, subprocess, sys, time, zlib
 
-FB_BASE, FB_W, FB_H = 0x9c000000, 1080, 2400
-FB_STRIDE = FB_W * 4
+FRAMEBUFFERS = {
+    'sweet': {'base': 0x9c000000, 'width': 1080, 'height': 2400, 'stride': 4320},
+    'duchamp': {'base': 0xfcc2f000, 'width': 1220, 'height': 2712, 'stride': 4992},
+}
 PAGE = 0x4000
 STUB_PA = 0x40200000	# above the dtb QEMU places at RAM base
 BOOT_LINE_LENGTH = 608
@@ -74,7 +77,7 @@ def check_kernel_tools(kernel_path):
     return True
 
 
-def build_image(payload):
+def build_image(payload, framebuffer):
     """Return (phys_base, ram_image, boot_args_pa, entry_pa)."""
     magic, ver, nsegs = struct.unpack_from('<8sII', payload, 0)
     assert magic == b'SWEETXNU' and ver == 1, 'not a SWEETXNU v1 payload'
@@ -92,7 +95,8 @@ def build_image(payload):
         img[o:o + fsize] = payload[foff:foff + fsize]
     img[adt_pa - phys_base:adt_pa - phys_base + adt_size] = payload[adt_off:adt_off + adt_size]
     ba = struct.pack('<HH4x4Q6QI4xQI', 2, 2, virt_base, phys_base, mem_size, top,
-                     FB_BASE, 1, FB_STRIDE, FB_W, FB_H, 32, 0, adt_pa - delta, adt_size)
+                     framebuffer['base'], 1, framebuffer['stride'], framebuffer['width'],
+                     framebuffer['height'], 32, 0, adt_pa - delta, adt_size)
     ba += cmdline + b'\0' * 4 + struct.pack('<QQ', 0, mem_size)
     assert len(ba) == 736
     img[ba_pa - phys_base:ba_pa - phys_base + len(ba)] = ba
@@ -104,15 +108,18 @@ def stub(ba_pa, entry_pa):
     return struct.pack('<4I2Q', 0x58000080, 0x580000a1, 0xd61f0020, 0xd503201f, ba_pa, entry_pa)
 
 
-def write_png(path, raw):
+def write_png(path, raw, framebuffer):
+    width = framebuffer['width']
+    height = framebuffer['height']
+    stride = framebuffer['stride']
     rows = []
-    for y in range(FB_H):
-        line = raw[y * FB_STRIDE:(y + 1) * FB_STRIDE]
-        rgb = bytearray(FB_W * 3)	# a8r8g8b8 little endian = B G R A in memory
+    for y in range(height):
+        line = raw[y * stride:y * stride + width * 4]
+        rgb = bytearray(width * 3)	# a8r8g8b8 little endian = B G R A in memory
         rgb[0::3], rgb[1::3], rgb[2::3] = line[2::4], line[1::4], line[0::4]
         rows.append(b'\0' + bytes(rgb))
     chunk = lambda t, d: struct.pack('>I', len(d)) + t + d + struct.pack('>I', zlib.crc32(t + d))
-    png = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', FB_W, FB_H, 8, 2, 0, 0, 0))
+    png = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 2, 0, 0, 0))
     png += chunk(b'IDAT', zlib.compress(b''.join(rows), 6)) + chunk(b'IEND', b'')
     open(path, 'wb').write(png)
 
@@ -128,16 +135,19 @@ def payload_data(payload, va, size):
     raise ValueError(f'VA {va:#x}+{size:#x} not in initialized payload segments')
 
 
-def decode_screen(raw, font):
+def decode_screen(raw, font, framebuffer):
     """Exact glyph matching for pe_serial.c's 2x, white-on-black fbcon."""
+    width = framebuffer['width']
+    height = framebuffer['height']
+    stride = framebuffer['stride']
     glyphs = {font[c * 16:(c + 1) * 16]: chr(c) for c in range(32, 127)}
     rows, unknown = [], 0
-    for row in range(FB_H // 32):
+    for row in range(height // 32):
         chars = []
-        for col in range(FB_W // 16):
+        for col in range(width // 16):
             glyph = bytearray(16)
             for y in range(16):
-                offset = (row * 32 + y * 2) * FB_STRIDE + col * 16 * 4
+                offset = (row * 32 + y * 2) * stride + col * 16 * 4
                 for x in range(8):
                     if raw[offset + x * 8:offset + x * 8 + 4] == b'\xff' * 4:
                         glyph[y] |= 1 << x
@@ -161,10 +171,10 @@ def screen_result(screen, unknown):
     return {'status': status, 'unknown_glyphs': unknown, 'snapshot_only': True}
 
 
-def qmp(sock_path, *cmds, pmemsave=None):
+def qmp(endpoint, *cmds, pmemsave=None):
     """Run QEMU human-monitor commands over QMP (synchronous, unlike the echoing HMP socket)."""
-    s = socket.socket(socket.AF_UNIX)
-    s.connect(sock_path)
+    s = socket.socket(socket.AF_INET if isinstance(endpoint, tuple) else socket.AF_UNIX)
+    s.connect(endpoint)
     f = s.makefile('rw')
     f.readline()
 
@@ -214,6 +224,7 @@ def main():
         epilog="Examples:\n"
                "  qemu-sweet.py payload.bin out/\n"
                "  qemu-sweet.py payload.bin out/ --live-serial\n"
+               "  qemu-sweet.py payload.bin out/ --framebuffer duchamp\n"
                "  qemu-sweet.py payload.bin out/ --kernel kernel.macho --fail-on-panic\n"
                "  qemu-sweet.py --check-env\n",
         formatter_class=argparse.RawDescriptionHelpFormatter
@@ -224,6 +235,8 @@ def main():
     ap.add_argument('--gdb', action='store_true', help='start halted, gdb stub on :1234, no timeout')
     ap.add_argument('--hmp', action='append', default=[], help='extra monitor command run after stop (repeatable), e.g. "x /8gx 0xfffffe..."')
     ap.add_argument('--cpu', default='cortex-a76', help='QEMU CPU model (default: cortex-a76)')
+    ap.add_argument('--framebuffer', choices=FRAMEBUFFERS, default='sweet',
+                    help='framebuffer geometry passed to XNU and captured after the run (default: sweet)')
     ap.add_argument('--kernel', help='matching unstripped kernel, for exact framebuffer text decoding (uses llvm-nm)')
     ap.add_argument('--fail-on-panic', action='store_true', help='exit 2 for a visible panic, 3 for incomplete/blank decoding; requires --kernel')
     ap.add_argument('--live-serial', action='store_true', help='stream serial console output to stdout in real time')
@@ -262,19 +275,25 @@ def main():
     os.makedirs(a.outdir, exist_ok=True)
     out = os.path.abspath(a.outdir)
 
-    phys_base, img, ba_pa, entry_pa = build_image(payload)
+    framebuffer = FRAMEBUFFERS[a.framebuffer]
+    phys_base, img, ba_pa, entry_pa = build_image(payload, framebuffer)
     open(f'{out}/ram.bin', 'wb').write(img)
     open(f'{out}/stub.bin', 'wb').write(stub(ba_pa, entry_pa))
     print(f'phys_base={phys_base:#x} boot_args={ba_pa:#x} entry={entry_pa:#x}', file=sys.stderr)
 
-    mon = f'{out}/mon.sock'
-    if os.path.exists(mon):
-        os.unlink(mon)
+    if os.name == 'nt':
+        mon = ('127.0.0.1', 45555)
+        qmp_arg = f'tcp:{mon[0]}:{mon[1]},server,nowait'
+    else:
+        mon = f'{out}/mon.sock'
+        if os.path.exists(mon):
+            os.unlink(mon)
+        qmp_arg = f'unix:{mon},server,nowait'
     # virt RAM starts at 0x40000000: cover the payload's RAM (mkadt.py --highmem needs 8G).
     mem_size = struct.unpack_from('<Q', payload, 0x40)[0]
     ram_gib = max(4, -(-(phys_base + mem_size - 0x40000000) // (1 << 30)))
     cmd = ['qemu-system-aarch64', '-M', 'virt,gic-version=3', '-cpu', a.cpu, '-smp', '1', '-m', f'{ram_gib}G',
-           '-nographic', '-serial', f'file:{out}/serial.txt', '-qmp', f'unix:{mon},server,nowait',
+           '-nodefaults', '-nographic', '-serial', f'file:{out}/serial.txt', '-qmp', qmp_arg,
            '-d', 'int,guest_errors,unimp', '-D', f'{out}/qemu.log', '-no-reboot',
            '-device', f'loader,file={out}/ram.bin,addr={phys_base:#x},force-raw=on',
            '-device', f'loader,file={out}/stub.bin,addr={STUB_PA:#x},force-raw=on',
@@ -289,7 +308,7 @@ def main():
     try:
         p = subprocess.Popen(cmd, stdin=subprocess.DEVNULL)
         if a.gdb:
-            print('gdb stub on :1234; QMP socket:', mon, file=sys.stderr)
+            print('gdb stub on :1234; QMP endpoint:', mon, file=sys.stderr)
             p.wait()
             return 0
 
@@ -304,15 +323,17 @@ def main():
 
         result = {'status': 'qemu_exited', 'qemu_returncode': p.returncode}
         if p.poll() is None:
-            _, regs, *extra = qmp(mon, 'stop', 'info registers', *a.hmp, pmemsave=(FB_BASE, FB_STRIDE * FB_H, f'{out}/fb.raw'))
+            _, regs, *extra = qmp(
+                mon, 'stop', 'info registers', *a.hmp,
+                pmemsave=(framebuffer['base'], framebuffer['stride'] * framebuffer['height'], f'{out}/fb.raw'))
             open(f'{out}/regs.txt', 'w').write(regs + ''.join(f'\n(qemu) {c}\n{r}' for c, r in zip(a.hmp, extra)))
             p.kill()
             p.wait()
             raw = open(f'{out}/fb.raw', 'rb').read()
-            write_png(f'{out}/fb.png', raw)
+            write_png(f'{out}/fb.png', raw, framebuffer)
             result = {'status': 'not_decoded'}
             if font is not None:
-                screen, unknown = decode_screen(raw, font)
+                screen, unknown = decode_screen(raw, font, framebuffer)
                 open(f'{out}/fb.txt', 'w').write(screen)
                 result = screen_result(screen, unknown)
             os.unlink(f'{out}/fb.raw')
