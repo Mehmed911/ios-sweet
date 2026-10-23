@@ -128,8 +128,11 @@
  	arm_vm_init(xmaxmem, args);
  	sweet_early_mark(15, "arm_vm_init returned");
 +#if defined(DUCHAMP)
-+	/* First MT6897 experiment: stop before serial/IRQ/IOKit/BSD startup. */
-+	sweet_early_mark(15, "DUCHAMP XNU MEMORY READY");
++	/* Timer-only experiment: arm one virtual-timer IRQ, then stop in WFE. */
++	sweet_early_mark(15, "DUCHAMP TIMER TEST ARMED");
++	__builtin_arm_wsr64("CNTV_TVAL_EL0", 1000000);
++	__builtin_arm_wsr64("CNTV_CTL_EL0", 1);
++	__asm__ volatile("msr daifclr, #2; isb" ::: "memory");
 +	__asm__ volatile("dsb sy; isb" ::: "memory");
 +	for (;;) {
 +		__asm__ volatile("wfe" ::: "memory");
@@ -150,6 +153,16 @@
 +ifeq ($(CURRENT_MACHINE_CONFIG),SWEET)
 +CFLAGS_ARM64 += -DDUCHAMP=1
 +endif
+
+--- a/osfmk/arm64/sleh.c
++++ b/osfmk/arm64/sleh.c
+@@ -1880,6 +1880,9 @@ sleh_irq(arm_saved_state_t *state)
+ 	if (intid == sweet_vtimer_intid) {
+ 		sleh_interrupt_handler_prologue(state, DBG_INTR_TYPE_TIMER);
++#if defined(DUCHAMP)
++		sweet_early_mark(16, "DUCHAMP TIMER IRQ");
++#endif
+ 		cdp->cpu_decrementer = -1; /* Large */
  
  CFLAGS_RELEASEX86_64 = -O2
  CFLAGS_DEVELOPMENTX86_64 = -O2
