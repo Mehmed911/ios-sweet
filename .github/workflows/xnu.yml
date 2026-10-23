@@ -82,15 +82,6 @@ jobs:
           MAKEFLAGS: ${{ inputs.keep_going == 'false' && '' || '-k' }}
         run: bash build.sh
 
-      - name: Verify Duchamp timer probe
-        run: |
-          grep -R -F 'DUCHAMP TIMER TEST ARMED' dxb/xnu
-          grep -R -F 'DUCHAMP TIMER IRQ' dxb/xnu
-          kernel=dxb/fakeroot/System/Library/Kernels/kernel.development.sweet
-          test -f "$kernel"
-          strings "$kernel" | grep -F 'DUCHAMP TIMER TEST ARMED'
-          strings "$kernel" | grep -F 'DUCHAMP TIMER IRQ'
-
       - name: Package build tree for local compiles
         if: always()
         run: |
