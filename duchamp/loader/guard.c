@@ -187,7 +187,7 @@ duchamp_fdt_window_check(const void *fdt_pointer, size_t fdt_size,
 	const unsigned char *fdt = fdt_pointer;
 	uint32_t total, structure_offset, strings_offset, reserve_offset, strings_size, structure_size;
 	uint32_t position, structure_end, token, depth = 0;
-	int root_board = 0, root_cells = 0, reserved_cells = 0, reserved_ranges_identity = 1;
+	int root_board = 0, root_model = 0, root_cells = 0, reserved_cells = 0, reserved_ranges_identity = 1;
 	int window_in_memory = 0, in_memory = 0, in_reserved = 0, in_reserved_child = 0;
 	int child_reg = 0, child_size = 0, child_alloc_ranges = 0, child_alloc_overlap = 0;
 	unsigned index;
@@ -292,6 +292,8 @@ duchamp_fdt_window_check(const void *fdt_pointer, size_t fdt_size,
 			value = fdt + value_offset;
 			if (depth == 1 && bytes_equal(name, name_end - (strings_offset + name_offset) + 1, "compatible")) {
 				root_board = string_list_contains(value, size, "mediatek,MT6897");
+			} else if (depth == 1 && bytes_equal(name, name_end - (strings_offset + name_offset) + 1, "model")) {
+				root_model = bytes_equal(value, size, "MT6897");
 			} else if (depth == 1 && size == 4 &&
 			    (bytes_equal(name, name_end - (strings_offset + name_offset) + 1, "#address-cells") ||
 			    bytes_equal(name, name_end - (strings_offset + name_offset) + 1, "#size-cells"))) {
@@ -339,7 +341,7 @@ duchamp_fdt_window_check(const void *fdt_pointer, size_t fdt_size,
 			return DUCHAMP_GUARD_FDT_STRUCTURE;
 		}
 	}
-	if (token != FDT_END || !root_board) return DUCHAMP_GUARD_FDT_BOARD;
+	if (token != FDT_END || (!root_board && !root_model)) return DUCHAMP_GUARD_FDT_BOARD;
 	if (root_cells != 2 || reserved_cells != 2 || !reserved_ranges_identity) return DUCHAMP_GUARD_FDT_STRUCTURE;
 	if (!window_in_memory) return DUCHAMP_GUARD_FDT_MEMORY;
 	return DUCHAMP_GUARD_OK;

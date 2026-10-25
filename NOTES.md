@@ -1,5 +1,71 @@
 # DUCHAMP update — 2026-10-22
 
+Direct device read (2026-10-24): ADB/root reports Linux
+`6.1.57-android14-11` on aarch64 and the expected ARM feature set. Android's
+`dmesg` exposes no usable EL or PSCI diagnostic, so the current EL cannot be
+confirmed from userspace. Do not add a guessed SMC path; the handoff backend
+must remain rejected until EL/firmware entry state is measured or documented.
+
+Live platform contract (2026-10-24): the decompiled live FDT declares
+`arm,psci-1.0` with `method = "smc"`, CPU nodes with `enable-method =
+"psci"`, `arm,gic-v3`, and an ARMv8 timer plus MediaTek MT6897 system-timer
+nodes. This is concrete platform data for the future backend; it does not
+prove that an arbitrary loader may invoke PSCI from its current exception
+level, so no SMC or hardware handoff was attempted.
+
+DTB memory comparison (2026-10-24): `vendor_boot`'s embedded DTB describes
+only `0x40000000`..`0x80000000` (1 GiB), while the live FDT describes RAM up to
+`0x300000000` and includes the high range used by the payload at
+`0x1c0000000`. The guard accepts the live FDT and rejects the embedded DTB as
+`payload window is outside live RAM`. This rejection is now documented as a
+required safety property for future loader tests.
+
+Vendor DT table extraction (2026-10-24): `vendor_boot_a` contains an Android
+DT table with magic `0xd7b7ab1e`, total size `396071`, one entry, and entry
+DTB size `396007` at table offset `64`. The extracted embedded DTB has SHA256
+`8aeadd5306b84193384c0f14dea51c1ba23afd7419c7150c1ea1eb2566c49022`, which
+differs from the live `/sys/firmware/fdt` SHA256
+`9c49589f70044127be8941a9ea5537977f440ccd5ac15cfd24e120c8a1181d29`.
+Running the guard against the embedded DTB rejects the current payload as
+`payload window is outside live RAM`; the live FDT remains authoritative for
+the current boot. This demonstrates that boot-time DT selection/overlay or
+memory description changes the handoff contract; no image was modified.
+
+Handoff bounds hardening (2026-10-24): `mt6897_handoff_run` now checks
+window-end overflow and requires the complete 0x4000-byte boot-args page to
+fit inside the validated window, not merely its starting address. Mock success
+and translation-failure tests still pass (`MDTIX` and `MDT`); object size is
+372 bytes.
+
+Read-only MT6897 boot-chain observations (2026-10-24): the live device is
+`duchamp`, `mt6897`, slot `_a`, with root through Magisk. The by-name links
+resolve to `boot_a -> sdc38`, `vendor_boot_a -> sdc39`, and `dtbo_a -> sdc41`.
+`/proc/cmdline` identifies the MediaTek Android boot path and `hwid.project_name`
+is `duchamp`. `/proc/iomem` reports system RAM beginning at `0x40000000` and a
+high range beginning at `0x1c0000000`; it also reports the reserved framebuffer
+range `0xfcc2f000-0x100000000`, matching the loader framebuffer base
+`0xfcc2f000`. These observations do not prove that XNU can reuse Android's
+memory map or that a handoff is safe; no partition was read or written.
+
+MT6897 handoff contract (2026-10-24): added `duchamp/loader/mt6897_handoff.c`
+and `.h`. It validates aligned in-window entry/boot-args and enforces the
+order disable-MMU, clean data cache, install translation, invalidate I-cache,
+then enter-XNU through explicit callbacks. Freestanding Clang compilation
+passed; object size is 348 bytes. This is a guarded contract/mock boundary,
+not a register-level MT6897 backend: no hardware callback or physical handoff
+was executed.
+
+MT6897 local loader wrapper (2026-10-24): added `duchamp/loader/mt6897_loader.c`
+and `.h`. The wrapper calls the existing bounded materializer and emits a
+small handoff manifest with entry, boot-args, memory window, and Duchamp
+framebuffer geometry. WSL Clang build passed; the wrapper object is 161 bytes.
+With the extracted phone FDT and verified Duchamp payload, the harness returned
+`mt6897_prepare=0`, 10 segments, entry `0x1c1480488`, boot args
+`0x1c24dc000`, framebuffer `0xfcc2f000` at `1220x2712`. A `0x1000` window was
+rejected with result 4. This remains a local bounded-memory test: no physical
+RAM mapping, MediaTek DRAM/MMU/cache setup, exception-level change, or XNU
+branch exists, and no phone boot was attempted.
+
 QEMU handoff check (2026-10-23): the C materializer output was compared with
 `tools/qemu-sweet.py`'s host image using the same payload and Duchamp profile.
 Both images were 38,666,240 bytes with SHA256
@@ -544,3 +610,11 @@ What it took today (in order): 0058 HID services (Apple IOHIDFamily-1915 user cl
      cpu_init, before arm_vm_init.
   5. panic hook at top of panic_trap_to_debugger: va_copy + _doprnt(fmt, &copy, sweet_early_putc, 16).
   Verify with tools/xnu-cc.py (compile+symbols) and patch-order simulation before the single CI run.
+## 2026-10-25: fail-closed MT6897 LK entry contract
+
+Added `duchamp/loader/mt6897_entry.c` after comparing the MT8167 LK bootshim
+reference with the Duchamp firmware evidence. The gate accepts only EL1
+(`CurrentEL=4`), requires `SCTLR_EL1.M/C/I` clear, and bounds the aligned FDT
+pointer received in `x0` to a caller-provided live-memory range. EL2 and
+MMU/cache-on entry fail closed. This is host-tested metadata validation, not a
+phone boot or proof that LK supplies the same register contract.

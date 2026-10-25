@@ -2,6 +2,18 @@
 # Build the shim and wrap it in a boot.img v2 that mirrors the stock PixelOS header.
 set -euo pipefail
 cd "$(dirname "$0")"
+TARGET="${TARGET:-qualcomm}"
+if [ "$TARGET" = "duchamp" ] || [ "$TARGET" = "mt6897" ]; then
+	cat >&2 <<'EOF'
+error: the legacy shim is Qualcomm-specific and is not a Duchamp loader
+refusing to build it for MT6897 until the MediaTek entry contract is implemented
+EOF
+	exit 2
+fi
+if [ "$TARGET" != "qualcomm" ]; then
+	echo "error: unsupported shim target: $TARGET" >&2
+	exit 2
+fi
 CC=aarch64-linux-gnu-gcc
 OBJCOPY=aarch64-linux-gnu-objcopy
 CFLAGS="-O2 -ffreestanding -nostdlib -fno-pic -mgeneral-regs-only -mstrict-align -fno-stack-protector -Wall -Wextra"

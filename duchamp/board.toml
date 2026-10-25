@@ -1,0 +1,36 @@
+[board]
+name = "POCO X6 Pro 5G"
+codename = "duchamp"
+soc = "MediaTek MT6897"
+architecture = "aarch64"
+status = "preflight-only"
+
+[memory]
+payload_base = "0x1c0000000"
+payload_size = "0x20000000"
+source = "live-fdt"
+
+[interrupts]
+gicd_base = "0x0c400000"
+gicr_base = "0x0c440000"
+gicr_size = "0x200000"
+source = "live-fdt"
+
+[timer]
+frequency = "0x00c65d40"
+psci_method = "smc"
+source = "live-fdt"
+
+[framebuffer]
+base = "0xfcc2f000"
+stride = 4992
+width = 1220
+height = 2712
+depth = 32
+source = "live-fdt-and-android-display-state"
+
+[boot]
+entry_contract = "unverified"
+uefi = "not-implemented"
+ram_only = false
+flash_allowed = false
