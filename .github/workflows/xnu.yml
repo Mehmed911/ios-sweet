@@ -68,8 +68,14 @@ jobs:
           xcrun --find iig
 
       - name: Stage pinned IIG source outputs
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          curl --fail --location --retry 3 https://nightly.link/dipa-studio/ios-sweet/actions/artifacts/12147962438.zip -o "$RUNNER_TEMP/iig-buildtree.zip"
+          curl --fail --location --retry 3 \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/Mehmed911/ios-sweet/actions/artifacts/12611236385/zip \
+            -o "$RUNNER_TEMP/iig-buildtree.zip"
           python3 tools/duchamp-frozen-iig.py stage --archive "$RUNNER_TEMP/iig-buildtree.zip" --out "$RUNNER_TEMP/duchamp-iig-cache"
           chmod +x "$GITHUB_WORKSPACE/tools/duchamp-frozen-iig.py"
           echo "IIG=$GITHUB_WORKSPACE/tools/duchamp-frozen-iig.py" >> "$GITHUB_ENV"
