@@ -1,0 +1,12 @@
+--- a/osfmk/arm/arm_init.c
++++ b/osfmk/arm/arm_init.c
+@@ -543,7 +543,9 @@ arm_init(
+ 	kprintf("kprintf initialized\n");
+ 	sweet_early_mark(20, "kprintf startup complete");
+ 	if (serial_exists) {
++#if !defined(DUCHAMP)
+ 		sweet_early_disable();
++#endif
+ 	}
+ 
+ 	serialmode = 0;
