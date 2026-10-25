@@ -1,0 +1,34 @@
+--- a/osfmk/arm/arm_init.c
++++ b/osfmk/arm/arm_init.c
+@@ -542,14 +542,5 @@ arm_init(
+ 	kprintf("kprintf initialized\n");
+ 	sweet_early_mark(20, "kprintf startup complete");
+-#if defined(DUCHAMP)
+-	/* Second MT6897 experiment: framebuffer serial and kprintf only. */
+-	kprintf("DUCHAMP KPRINTF READY\n");
+-	sweet_early_mark(20, "DUCHAMP KPRINTF READY");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+-#endif
+ 	if (serial_exists) {
+ 		sweet_early_disable();
+ 	}
+@@ -593,6 +584,16 @@ arm_init(
+ 	/* setup console output */
+ 	PE_init_printf(FALSE);
+ 
++#if defined(DUCHAMP)
++	/* Third MT6897 experiment: stop before idle, GIC and timer setup. */
++	kprintf("DUCHAMP CONSOLE READY\n");
++	sweet_early_mark(21, "DUCHAMP CONSOLE READY");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
++
+ #if __arm64__
+ #if DEBUG
+ 	dump_kva_space();
