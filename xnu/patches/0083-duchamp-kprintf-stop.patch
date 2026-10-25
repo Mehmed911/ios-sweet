@@ -1,0 +1,35 @@
+--- a/osfmk/arm/arm_init.c
++++ b/osfmk/arm/arm_init.c
+@@ -525,15 +525,6 @@ arm_init(
+ 	arm_vm_init(xmaxmem, args);
+ 	sweet_early_mark(15, "arm_vm_init returned");
+-#if defined(DUCHAMP)
+-	/* First MT6897 experiment: stop before serial/IRQ/IOKit/BSD startup. */
+-	sweet_early_mark(15, "DUCHAMP XNU MEMORY READY");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+-#endif
+-
+ 
+ 	if (debug_boot_arg) {
+ 		patch_low_glo();
+ 	}
+@@ -551,6 +542,15 @@ arm_init(
+ 	kprintf("kprintf initialized\n");
+ 	sweet_early_mark(20, "kprintf startup complete");
++#if defined(DUCHAMP)
++	/* Second MT6897 experiment: framebuffer serial and kprintf only. */
++	kprintf("DUCHAMP KPRINTF READY\n");
++	sweet_early_mark(20, "DUCHAMP KPRINTF READY");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 	if (serial_exists) {
+ 		sweet_early_disable();
+ 	}
+ 
+ 	serialmode = 0;
