@@ -1,0 +1,28 @@
+--- a/pexpert/arm/pe_fiq.c
++++ b/pexpert/arm/pe_fiq.c
+@@ -202,19 +202,19 @@ pe_init_fiq()
+ 	// Enable system register access
+ 	uint64_t icc_sre = __builtin_arm_rsr64("ICC_SRE_EL1");
+ 	icc_sre |= ICC_SRE_SRE;
++	__builtin_arm_wsr64("ICC_SRE_EL1", icc_sre);
+ #if defined(DUCHAMP)
+-	/* Thirteenth gate: the local SRE bit is set; ICC_SRE_EL1 is still unwritten. */
++	/* Fourteenth gate: ICC_SRE_EL1 was written once; no ISB/other ICC access. */
+ 	static const char sre_hex[] = "0123456789abcdef";
+-	char sre_label[] = "DUCHAMP ICC_SRE_LOCAL=0x0000000000000000";
++	char sre_label[] = "DUCHAMP ICC_SRE_WRITE=0x0000000000000000";
+ 	for (unsigned int i = 0; i < 16; i++) {
+ 		sre_label[24 + i] = sre_hex[(icc_sre >> ((15 - i) * 4)) & 0xf];
+ 	}
+-	kprintf("DUCHAMP ICC_SRE LOCAL 0x%llx\n", (unsigned long long)icc_sre);
+-	sweet_early_mark(37, sre_label);
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
++	kprintf("DUCHAMP ICC_SRE WRITE 0x%llx\n", (unsigned long long)icc_sre);
++	sweet_early_mark(38, sre_label);
++	__asm__ volatile("dsb sy" ::: "memory");
+ 	for (;;) {
+ 		__asm__ volatile("wfe" ::: "memory");
+ 	}
+ #endif
+-	__builtin_arm_wsr64("ICC_SRE_EL1", icc_sre);
+ 	__builtin_arm_isb(ISB_SY);
