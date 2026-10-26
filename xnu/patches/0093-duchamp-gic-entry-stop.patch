@@ -1,0 +1,46 @@
+--- a/osfmk/arm/arm_init.c
++++ b/osfmk/arm/arm_init.c
+@@ -617,15 +617,5 @@ arm_init(
+ 
+ #endif
+ 
+-#if defined(DUCHAMP)
+-	/* Sixth MT6897 experiment: stop before timebase and GIC programming. */
+-	kprintf("DUCHAMP CPU PIO READY\n");
+-	sweet_early_mark(24, "DUCHAMP CPU PIO READY");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+-#endif
+-
+ 	cpu_timebase_init(TRUE);
+ 
+ #if KPERF
+--- a/pexpert/arm/pe_fiq.c
++++ b/pexpert/arm/pe_fiq.c
+@@ -10,6 +10,7 @@
+ #include <machine/machine_routines.h>
+ #include <pexpert/device_tree.h>
+ #include <pexpert/arm64/board_config.h>
++#include <arm64/sweet_early.h>
+ 
+ 
+ #if HAS_GIC_V3
+@@ -79,6 +80,16 @@ pe_init_fiq()
+ 	int error;
+ 	DTEntry entry;
+ 
++#if defined(DUCHAMP)
++	/* First GIC isolation gate: no GICD/GICR access has occurred yet. */
++	kprintf("DUCHAMP GIC ENTRY READY\n");
++	sweet_early_mark(25, "DUCHAMP GIC ENTRY READY");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
++
+ 	// gicd_base is 0x0 only before it's initialized by the boot processor.
+ 	// Avoid calling SecureDT* routines on secondary processors to avoid
+ 	// race conditions because they are not thread-safe.
