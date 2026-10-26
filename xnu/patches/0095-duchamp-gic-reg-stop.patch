@@ -1,0 +1,44 @@
+--- a/pexpert/arm/pe_fiq.c
++++ b/pexpert/arm/pe_fiq.c
+@@ -80,16 +80,6 @@ pe_init_fiq()
+ 	int error;
+ 	DTEntry entry;
+ 
+-#if defined(DUCHAMP)
+-	/* First GIC isolation gate: no GICD/GICR access has occurred yet. */
+-	kprintf("DUCHAMP GIC ENTRY READY\n");
+-	sweet_early_mark(25, "DUCHAMP GIC ENTRY READY");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+-#endif
+-
+ 	// gicd_base is 0x0 only before it's initialized by the boot processor.
+ 	// Avoid calling SecureDT* routines on secondary processors to avoid
+ 	// race conditions because they are not thread-safe.
+@@ -134,6 +124,24 @@ pe_init_fiq()
+ 		uint64_t const gicr_base_prop = ((uint64_t const *) prop)[2];
+ 		uint64_t const gicr_size_prop = ((uint64_t const *) prop)[3];
+ 
++#if defined(DUCHAMP)
++		/*
++		 * Second GIC isolation gate.  The DT node and its four mandatory reg
++		 * cells are valid, but neither region has been mapped or accessed.
++		 */
++		if (gicd_size_prop == 0 || gicr_size_prop == 0 ||
++		    gicd_base_prop > UINT64_MAX - soc_base_phys ||
++		    gicr_base_prop > UINT64_MAX - soc_base_phys) {
++			panic("%s: invalid GIC reg ranges", __func__);
++		}
++		kprintf("DUCHAMP GIC REG READY\n");
++		sweet_early_mark(26, "DUCHAMP GIC REG READY");
++		__asm__ volatile("dsb sy; isb" ::: "memory");
++		for (;;) {
++			__asm__ volatile("wfe" ::: "memory");
++		}
++#endif
++
+ 		// Find GICD base address
+ 		gicd_base = ml_io_map(soc_base_phys + gicd_base_prop, gicd_size_prop);
+ 
