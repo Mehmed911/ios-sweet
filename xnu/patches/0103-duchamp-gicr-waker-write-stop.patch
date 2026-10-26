@@ -1,0 +1,39 @@
+--- a/pexpert/arm/pe_fiq.c
++++ b/pexpert/arm/pe_fiq.c
+@@ -164,19 +164,6 @@ pe_init_fiq()
+ 	// Mark this PE to be awake
+ 	uint32_t gicr_waker = gicr_read32(GICR_WAKER);
+ 
+-#if defined(DUCHAMP)
+-	/* Fifth gate: one WAKER read is complete; no GICR write has occurred. */
+-	kprintf("DUCHAMP GICR WAKER %#x PROCESSORSLEEP=%u CHILDRENASLEEP=%u\n",
+-	    gicr_waker,
+-	    !!(gicr_waker & GICR_WAKER_PROCESSORSLEEP),
+-	    !!(gicr_waker & GICR_WAKER_CHILDRENASLEEP));
+-	sweet_early_mark(29, "DUCHAMP GICR WAKER READ READY");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+-#endif
+-
+ 	if (gicr_waker & GICR_WAKER_CHILDRENASLEEP) {
+ 		gicr_waker &= ~GICR_WAKER_PROCESSORSLEEP;
+ 
+@@ -185,6 +172,16 @@ pe_init_fiq()
+ 
+ 		gicr_write32(GICR_WAKER, gicr_waker);
+ 
++#if defined(DUCHAMP)
++		/* Sixth gate: the wake write completed; no polling read has run. */
++		kprintf("DUCHAMP GICR WAKER WRITE %#x\n", gicr_waker);
++		sweet_early_mark(30, "DUCHAMP GICR WAKER WRITE READY");
++		__asm__ volatile("dsb sy; isb" ::: "memory");
++		for (;;) {
++			__asm__ volatile("wfe" ::: "memory");
++		}
++#endif
++
+ 		uint64_t gicr_wake_deadline;
+ 		nanoseconds_to_deadline(os_atomic_load(&gicr_wake_timeout_ns, relaxed), &gicr_wake_deadline);
+ 		while (gicr_read32(GICR_WAKER) & GICR_WAKER_CHILDRENASLEEP) {
