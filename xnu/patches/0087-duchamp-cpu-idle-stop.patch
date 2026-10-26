@@ -1,0 +1,36 @@
+--- a/osfmk/arm/arm_init.c
++++ b/osfmk/arm/arm_init.c
+@@ -584,16 +584,6 @@ arm_init(
+ 	/* setup console output */
+ 	PE_init_printf(FALSE);
+ 
+-#if defined(DUCHAMP)
+-	/* Third MT6897 experiment: stop before idle, GIC and timer setup. */
+-	kprintf("DUCHAMP CONSOLE READY\n");
+-	sweet_early_mark(21, "DUCHAMP CONSOLE READY");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+-#endif
+-
+ #if __arm64__
+ #if DEBUG
+ 	dump_kva_space();
+@@ -602,6 +592,16 @@ arm_init(
+ 
+ 	cpu_machine_idle_init(TRUE);
+ 
++#if defined(DUCHAMP)
++	/* Fourth MT6897 experiment: stop before platform, GIC and timer setup. */
++	kprintf("DUCHAMP CPU IDLE READY\n");
++	sweet_early_mark(22, "DUCHAMP CPU IDLE READY");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
++
+ 	PE_init_platform(TRUE, &BootCpuData);
+ 
+ #if __arm64__
