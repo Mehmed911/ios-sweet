@@ -1,0 +1,34 @@
+--- a/pexpert/arm/pe_fiq.c
++++ b/pexpert/arm/pe_fiq.c
+@@ -212,17 +212,22 @@ pe_init_fiq()
+ #endif /* SWEET */
+ 	__builtin_arm_wsr64("ICC_PMR_EL1", 0xFF);
+-#if defined(DUCHAMP)
+-	/* Seventeenth gate: PMR was written once; CTLR and group enable untouched. */
+-	kprintf("DUCHAMP ICC_PMR WRITE READY\n");
+-	sweet_early_mark(41, "DUCHAMP ICC_PMR WRITE READY");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+-#endif
+ 
+ 	// Set EOI mode of this processor
+ 	uint64_t icc_ctlr = __builtin_arm_rsr64("ICC_CTLR_EL1");
++#if defined(DUCHAMP)
++	/* Eighteenth gate: CTLR was read only; EOIMODE and group enable untouched. */
++	static const char ctlr_hex[] = "0123456789abcdef";
++	char ctlr_label[] = "DUCHAMP ICC_CTLR_EL1=0x0000000000000000";
++	for (unsigned int i = 0; i < 16; i++) {
++		ctlr_label[23 + i] = ctlr_hex[(icc_ctlr >> ((15 - i) * 4)) & 0xf];
++	}
++	kprintf("DUCHAMP ICC_CTLR_EL1 READ 0x%llx\n", (unsigned long long)icc_ctlr);
++	sweet_early_mark(42, ctlr_label);
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 	icc_ctlr &= ~ICC_CTLR_EOIMODE;
+ 	__builtin_arm_wsr64("ICC_CTLR_EL1", icc_ctlr);
+ 
