@@ -2,7 +2,7 @@
 """Build the minimal Apple Device Tree that the SWEET xnu needs to boot.
 
 Only what the early boot path actually reads (see NOTES.md); every MMIO
-address comes from the sweet live FDT. Usage:  mkadt.py OUT.adt [--dump] [--qemu] [--highmem]
+address comes from the sweet live FDT. Usage:  mkadt.py OUT.adt [--dump] [--qemu] [--highmem] [--duchamp-window]
 """
 import hashlib, os, struct, sys
 
@@ -17,6 +17,10 @@ MEM_SIZE = 0x4d000000
 # carve-out is in the low bank and the dynamic pools are limited below 4G.
 HIGH_PHYS_BASE = 0x100000000
 HIGH_MEM_SIZE = 0xfcc00000
+# Diagnostic bootshim's measured MT6897 handoff window.  This is opt-in so
+# the established phone and generic QEMU ADTs remain byte-for-byte unchanged.
+DUCHAMP_PHYS_BASE = 0x1c0000000
+DUCHAMP_MEM_SIZE = 0x20000000
 # /arm-io children are relative to this; it must not be 0 (serial_init bails)
 SOC_BASE = 0x01000000
 
@@ -68,9 +72,16 @@ def node(name, props=(), children=()):
     return n
 
 
-def build(seed=None, qemu=False, highmem=False):
+def build(seed=None, qemu=False, highmem=False, duchamp_window=False):
     """qemu=True: same tree, but with QEMU virt's GIC addresses and CNTFRQ (tools/qemu-sweet.py)."""
-    phys_base, mem_size = (HIGH_PHYS_BASE, HIGH_MEM_SIZE) if highmem else (PHYS_BASE, MEM_SIZE)
+    if highmem and duchamp_window:
+        raise ValueError('--highmem and --duchamp-window are mutually exclusive')
+    if duchamp_window:
+        phys_base, mem_size = DUCHAMP_PHYS_BASE, DUCHAMP_MEM_SIZE
+    elif highmem:
+        phys_base, mem_size = HIGH_PHYS_BASE, HIGH_MEM_SIZE
+    else:
+        phys_base, mem_size = PHYS_BASE, MEM_SIZE
     gicd, gicr, timebase = (QEMU_GICD, QEMU_GICR, QEMU_TIMEBASE) if qemu else (GICD, GICR, TIMEBASE)
     seed = seed if seed is not None else os.urandom(64)
     phandle = iter(range(1, 1000))
@@ -228,7 +239,8 @@ def build(seed=None, qemu=False, highmem=False):
 
 
 if __name__ == '__main__':
-    root = build(qemu='--qemu' in sys.argv, highmem='--highmem' in sys.argv)
+    root = build(qemu='--qemu' in sys.argv, highmem='--highmem' in sys.argv,
+                 duchamp_window='--duchamp-window' in sys.argv)
     blob = adt.serialize(root)
     open(sys.argv[1], 'wb').write(blob)
     if '--dump' in sys.argv:
