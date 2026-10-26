@@ -1,0 +1,32 @@
+--- a/pexpert/arm/pe_fiq.c
++++ b/pexpert/arm/pe_fiq.c
+@@ -208,14 +208,5 @@ pe_init_fiq()
+ #if defined(SWEET)
+ 	__builtin_arm_wsr64("ICC_BPR1_EL1", 0);
+-#if defined(DUCHAMP)
+-	/* Sixteenth gate: BPR1 was written once; PMR and group enable are untouched. */
+-	kprintf("DUCHAMP ICC_BPR1 WRITE READY\n");
+-	sweet_early_mark(40, "DUCHAMP ICC_BPR1 WRITE READY");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+-#endif
+ #else
+ 	// Set priority masks and binary point for group 0
+ 	__builtin_arm_wsr64("ICC_BPR0_EL1", 0);
+@@ -222,5 +213,14 @@ pe_init_fiq()
+ #endif /* SWEET */
+ 	__builtin_arm_wsr64("ICC_PMR_EL1", 0xFF);
++#if defined(DUCHAMP)
++	/* Seventeenth gate: PMR was written once; CTLR and group enable untouched. */
++	kprintf("DUCHAMP ICC_PMR WRITE READY\n");
++	sweet_early_mark(41, "DUCHAMP ICC_PMR WRITE READY");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 
+ 	// Set EOI mode of this processor
+ 	uint64_t icc_ctlr = __builtin_arm_rsr64("ICC_CTLR_EL1");
