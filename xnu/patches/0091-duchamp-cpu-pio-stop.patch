@@ -1,0 +1,35 @@
+--- a/osfmk/arm/arm_init.c
++++ b/osfmk/arm/arm_init.c
+@@ -602,15 +602,5 @@ arm_init(
+ 	PE_init_platform(TRUE, &BootCpuData);
+ 
+-#if defined(DUCHAMP)
+-	/* Fifth MT6897 experiment: stop before CPU PIO, GIC and timer setup. */
+-	kprintf("DUCHAMP PLATFORM READY\n");
+-	sweet_early_mark(23, "DUCHAMP PLATFORM READY");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+-#endif
+-
+ #if __arm64__
+ 	extern bool cpu_config_correct;
+ 	if (!cpu_config_correct) {
+@@ -625,6 +615,16 @@ arm_init(
+ 
+ #endif
+ 
++#if defined(DUCHAMP)
++	/* Sixth MT6897 experiment: stop before timebase and GIC programming. */
++	kprintf("DUCHAMP CPU PIO READY\n");
++	sweet_early_mark(24, "DUCHAMP CPU PIO READY");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
++
+ 	cpu_timebase_init(TRUE);
+ 
+ #if KPERF
