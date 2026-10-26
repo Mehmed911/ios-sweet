@@ -1,0 +1,31 @@
+--- a/osfmk/arm/arm_init.c
++++ b/osfmk/arm/arm_init.c
+@@ -599,18 +599,18 @@ arm_init(
+ 
+ 	cpu_machine_idle_init(TRUE);
+ 
+-#if defined(DUCHAMP)
+-	/* Fourth MT6897 experiment: stop before platform, GIC and timer setup. */
+-	kprintf("DUCHAMP CPU IDLE READY\n");
+-	sweet_early_mark(22, "DUCHAMP CPU IDLE READY");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+-#endif
+-
+ 	PE_init_platform(TRUE, &BootCpuData);
+ 
++#if defined(DUCHAMP)
++	/* Fifth MT6897 experiment: stop before CPU PIO, GIC and timer setup. */
++	kprintf("DUCHAMP PLATFORM READY\n");
++	sweet_early_mark(23, "DUCHAMP PLATFORM READY");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
++
+ #if __arm64__
+ 	extern bool cpu_config_correct;
+ 	if (!cpu_config_correct) {
