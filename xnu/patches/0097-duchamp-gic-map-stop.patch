@@ -1,0 +1,35 @@
+--- a/pexpert/arm/pe_fiq.c
++++ b/pexpert/arm/pe_fiq.c
+@@ -140,12 +140,6 @@ pe_init_fiq()
+ 		    gicr_base_prop > UINT64_MAX - soc_base_phys) {
+ 			panic("%s: invalid GIC reg ranges", __func__);
+ 		}
+-		kprintf("DUCHAMP GIC REG READY\n");
+-		sweet_early_mark(26, "DUCHAMP GIC REG READY");
+-		__asm__ volatile("dsb sy; isb" ::: "memory");
+-		for (;;) {
+-			__asm__ volatile("wfe" ::: "memory");
+-		}
+ #endif
+ 
+ 		// Find GICD base address
+@@ -166,6 +160,19 @@ pe_init_fiq()
+ 
+ 		gicr_size = gicr_size_prop;
+ 	}
++
++#if defined(DUCHAMP)
++	/*
++	 * Third GIC isolation gate.  GICD and GICR have virtual mappings, but
++	 * find_gicr_pe_base() has not read GICR_TYPER (or any other GIC MMIO).
++	 */
++	kprintf("DUCHAMP GIC MAP READY\n");
++	sweet_early_mark(27, "DUCHAMP GIC MAP READY");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 
+ 	// Find the redistributor for this processor
+ 	vm_offset_t gicr_pe_base = find_gicr_pe_base();
