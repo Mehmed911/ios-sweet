@@ -1,0 +1,38 @@
+--- a/pexpert/arm/pe_fiq.c
++++ b/pexpert/arm/pe_fiq.c
+@@ -163,21 +163,22 @@ pe_init_fiq()
+ 	// Find the redistributor for this processor
+ 	vm_offset_t gicr_pe_base = find_gicr_pe_base();
+ 
+-#if defined(DUCHAMP)
+-	/*
+-	 * Fourth GIC isolation gate.  GICR_TYPER was read and the matching
+-	 * redistributor was found, but GICR_WAKER has not been read or written.
+-	 */
+-	kprintf("DUCHAMP GICR TYPER READY\n");
+-	sweet_early_mark(28, "DUCHAMP GICR TYPER READY");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+-#endif
+-
+ 	// Mark this PE to be awake
+ 	uint32_t gicr_waker = gicr_read32(GICR_WAKER);
++
++#if defined(DUCHAMP)
++	/* Fifth gate: one WAKER read is complete; no GICR write has occurred. */
++	kprintf("DUCHAMP GICR WAKER %#x PROCESSORSLEEP=%u CHILDRENASLEEP=%u\n",
++	    gicr_waker,
++	    !!(gicr_waker & GICR_WAKER_PROCESSORSLEEP),
++	    !!(gicr_waker & GICR_WAKER_CHILDRENASLEEP));
++	sweet_early_mark(29, "DUCHAMP GICR WAKER READ READY");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
++
+ 	if (gicr_waker & GICR_WAKER_CHILDRENASLEEP) {
+ 		gicr_waker &= ~GICR_WAKER_PROCESSORSLEEP;
+ 
