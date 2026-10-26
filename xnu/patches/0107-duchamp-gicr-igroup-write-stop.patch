@@ -1,0 +1,35 @@
+--- a/pexpert/arm/pe_fiq.c
++++ b/pexpert/arm/pe_fiq.c
+@@ -178,16 +178,6 @@ pe_init_fiq()
+ 		}
+ 	}
+ 
+-#if defined(DUCHAMP)
+-	/* Seventh gate: redistributor wake polling completed; no group write. */
+-	kprintf("DUCHAMP GICR AWAKE READY\n");
+-	sweet_early_mark(31, "DUCHAMP GICR AWAKE READY");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+-#endif
+-
+ #if defined(SWEET)
+ 	/*
+ 	 * Real hardware with two security states: Group 0 is TrustZone's and
+@@ -196,6 +186,15 @@ pe_init_fiq()
+ 	 * from the non-secure side even after this write; delivery still works.
+ 	 */
+ 	gicr_write32(GICR_IGROUPR0, 0xFFFFFFFF);
++#if defined(DUCHAMP)
++	/* Eighth gate: the first IGROUPR0 write completed; no priority/enable write. */
++	kprintf("DUCHAMP GICR IGROUPR0 WRITE READY\n");
++	sweet_early_mark(32, "DUCHAMP GICR IGROUPR0 WRITE READY");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 	for (unsigned int i = 0; i < 32; i += 4) {
+ 		gicr_write32(GICR_IPRIORITYR0 + i, 0xA0A0A0A0);
+ 	}
