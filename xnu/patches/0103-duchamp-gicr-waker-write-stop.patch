@@ -1,6 +1,6 @@
 --- a/pexpert/arm/pe_fiq.c
 +++ b/pexpert/arm/pe_fiq.c
-@@ -164,19 +164,6 @@ pe_init_fiq()
+@@ -162,24 +162,21 @@ pe_init_fiq()
  	// Mark this PE to be awake
  	uint32_t gicr_waker = gicr_read32(GICR_WAKER);
  
@@ -19,8 +19,6 @@
 -
  	if (gicr_waker & GICR_WAKER_CHILDRENASLEEP) {
  		gicr_waker &= ~GICR_WAKER_PROCESSORSLEEP;
- 
-@@ -185,6 +172,16 @@ pe_init_fiq()
  
  		gicr_write32(GICR_WAKER, gicr_waker);
  
