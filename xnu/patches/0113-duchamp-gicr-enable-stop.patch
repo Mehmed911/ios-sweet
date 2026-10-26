@@ -1,0 +1,21 @@
+--- a/pexpert/arm/pe_fiq.c
++++ b/pexpert/arm/pe_fiq.c
+@@ -190,14 +190,14 @@ pe_init_fiq()
+ 	for (unsigned int i = 4; i < 32; i += 4) {
+ 		gicr_write32(GICR_IPRIORITYR0 + i, 0xA0A0A0A0);
+ 	}
++	gicr_write32(GICR_ISENABLER0, (1U << sweet_vtimer_intid) | (1U << SWEET_IPI_SGI));
+ #if defined(DUCHAMP)
+-	/* Tenth gate: all priority writes completed; no interrupt enable write. */
+-	kprintf("DUCHAMP GICR PRIORITIES READY\n");
+-	sweet_early_mark(34, "DUCHAMP GICR PRIORITIES READY");
++	/* Eleventh gate: the enable write completed; no CPU-interface access. */
++	kprintf("DUCHAMP GICR ENABLE WRITE READY\n");
++	sweet_early_mark(35, "DUCHAMP GICR ENABLE WRITE READY");
+ 	__asm__ volatile("dsb sy; isb" ::: "memory");
+ 	for (;;) {
+ 		__asm__ volatile("wfe" ::: "memory");
+ 	}
+ #endif
+-	gicr_write32(GICR_ISENABLER0, (1U << sweet_vtimer_intid) | (1U << SWEET_IPI_SGI));
+ #else
