@@ -1,0 +1,39 @@
+--- a/pexpert/arm/pe_fiq.c
++++ b/pexpert/arm/pe_fiq.c
+@@ -168,26 +168,26 @@ pe_init_fiq()
+ 		gicr_write32(GICR_WAKER, gicr_waker);
+ 
+-#if defined(DUCHAMP)
+-		/* Sixth gate: the wake write completed; no polling read has run. */
+-		kprintf("DUCHAMP GICR WAKER WRITE %#x\n", gicr_waker);
+-		sweet_early_mark(30, "DUCHAMP GICR WAKER WRITE READY");
+-		__asm__ volatile("dsb sy; isb" ::: "memory");
+-		for (;;) {
+-			__asm__ volatile("wfe" ::: "memory");
+-		}
+-#endif
+-
+ 		uint64_t gicr_wake_deadline;
+ 		nanoseconds_to_deadline(os_atomic_load(&gicr_wake_timeout_ns, relaxed), &gicr_wake_deadline);
+ 		while (gicr_read32(GICR_WAKER) & GICR_WAKER_CHILDRENASLEEP) {
+ 			// Spin
+ 			if (gicr_wake_timeout_ns > 0 && mach_absolute_time() > gicr_wake_deadline) {
+ 				panic("%s: core %u timed out waiting for redistributor to wake up",
+ 				    __func__, ml_get_cpu_number_local());
+ 			}
+ 		}
+ 	}
+ 
++#if defined(DUCHAMP)
++	/* Seventh gate: redistributor wake polling completed; no group write. */
++	kprintf("DUCHAMP GICR AWAKE READY\n");
++	sweet_early_mark(31, "DUCHAMP GICR AWAKE READY");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
++
+ #if defined(SWEET)
+ 	/*
+ 	 * Real hardware with two security states: Group 0 is TrustZone's and
