@@ -1,0 +1,22 @@
+diff --git a/osfmk/arm/arm_init.c b/osfmk/arm/arm_init.c
+--- a/osfmk/arm/arm_init.c
++++ b/osfmk/arm/arm_init.c
+@@ -623,15 +623,15 @@ arm_init(
+ #endif /* KPERF */
+ 
+ 	PE_init_cpu();
++	fiq_context_init(TRUE);
+ #if defined(DUCHAMP)
+-	kprintf("DUCHAMP ARM_INIT PE_INIT_CPU RETURNED\n");
+-	sweet_early_mark(53, "DUCHAMP PE_INIT_CPU RETURNED");
++	kprintf("DUCHAMP ARM_INIT FIQ CONTEXT RETURNED\n");
++	sweet_early_mark(54, "DUCHAMP FIQ CONTEXT RETURNED");
+ 	__asm__ volatile("dsb sy; isb" ::: "memory");
+ 	for (;;) {
+ 		__asm__ volatile("wfe" ::: "memory");
+ 	}
+ #endif
+-	fiq_context_init(TRUE);
+ 
+ 
+ #if HIBERNATION
