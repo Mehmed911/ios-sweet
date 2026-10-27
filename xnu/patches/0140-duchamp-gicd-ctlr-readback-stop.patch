@@ -1,0 +1,34 @@
+--- a/pexpert/arm/pe_fiq.c
++++ b/pexpert/arm/pe_fiq.c
+@@ -222,21 +222,24 @@ pe_init_fiq()
+ 	// ABL leaves only ARE_NS set; Linux writes ARE_NS | EnableGrp1A | EnableGrp1
+ 	uint32_t gicd_ctlr = gicd_read32(GICD_CTLR);
+ #if defined(DUCHAMP)
+-	/* Twenty-third gate: write GICD_CTLR once; stop before the RWP read. */
++	/* Twenty-fourth gate: read back GICD_CTLR once; stop before RWP polling. */
+ 	static const char gicd_hex[] = "0123456789abcdef";
+-	char gicd_label[] = "DUCHAMP GICD_WRITE=0x00000000";
+ 	gicd_ctlr |= GICD_CTLR_ARE_NS | GICD_CTLR_ENABLEGRP1A | GICD_CTLR_ENABLEGRP1;
+-	for (unsigned int i = 0; i < 8; i++) {
+-		gicd_label[21 + i] = gicd_hex[(gicd_ctlr >> ((7 - i) * 4)) & 0xf];
+-	}
+ #endif
+ #if !defined(DUCHAMP)
+ 	gicd_ctlr |= GICD_CTLR_ARE_NS | GICD_CTLR_ENABLEGRP1A | GICD_CTLR_ENABLEGRP1;
+ #endif
+ 	gicd_write32(GICD_CTLR, gicd_ctlr);
+ #if defined(DUCHAMP)
+-	kprintf("DUCHAMP GICD_CTLR WRITE 0x%x\n", gicd_ctlr);
+-	sweet_early_mark(47, gicd_label);
++	uint32_t gicd_after = gicd_read32(GICD_CTLR);
++	char gicd_label[] = "DUCHAMP GICD_AFTER=0x00000000 RWP=0";
++	for (unsigned int i = 0; i < 8; i++) {
++		gicd_label[21 + i] = gicd_hex[(gicd_after >> ((7 - i) * 4)) & 0xf];
++	}
++	gicd_label[34] = (gicd_after & GICD_CTLR_RWP) ? '1' : '0';
++	kprintf("DUCHAMP GICD_CTLR AFTER 0x%x RWP %u\n", gicd_after,
++	    (gicd_after & GICD_CTLR_RWP) != 0);
++	sweet_early_mark(48, gicd_label);
+ 	__asm__ volatile("dsb sy; isb" ::: "memory");
+ 	for (;;) {
+ 		__asm__ volatile("wfe" ::: "memory");
