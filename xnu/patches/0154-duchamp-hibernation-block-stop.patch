@@ -1,0 +1,31 @@
+diff --git a/osfmk/arm/arm_init.c b/osfmk/arm/arm_init.c
+--- a/osfmk/arm/arm_init.c
++++ b/osfmk/arm/arm_init.c
+@@ -624,20 +624,20 @@ arm_init(
+ 
+ 	PE_init_cpu();
+ 	fiq_context_init(TRUE);
++
++
++#if HIBERNATION
++	pal_hib_init();
++#endif /* HIBERNATION */
+ #if defined(DUCHAMP)
+-	kprintf("DUCHAMP ARM_INIT FIQ CONTEXT RETURNED\n");
+-	sweet_early_mark(54, "DUCHAMP FIQ CONTEXT RETURNED");
++	kprintf("DUCHAMP ARM_INIT HIB BLOCK PASSED\n");
++	sweet_early_mark(55, "DUCHAMP HIB BLOCK PASSED");
+ 	__asm__ volatile("dsb sy; isb" ::: "memory");
+ 	for (;;) {
+ 		__asm__ volatile("wfe" ::: "memory");
+ 	}
+ #endif
+ 
+-
+-#if HIBERNATION
+-	pal_hib_init();
+-#endif /* HIBERNATION */
+-
+ 	/*
+ 	 * gPhysBase/Size only represent kernel-managed memory. These globals represent
+ 	 * the actual DRAM base address and size as reported by iBoot through the
