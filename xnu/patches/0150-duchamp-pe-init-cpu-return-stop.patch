@@ -1,0 +1,61 @@
+diff --git a/pexpert/arm/pe_identify_machine.c b/pexpert/arm/pe_identify_machine.c
+--- a/pexpert/arm/pe_identify_machine.c
++++ b/pexpert/arm/pe_identify_machine.c
+@@ -8,9 +8,6 @@
+ #include <pexpert/device_tree.h>
+ 
+ #include <pexpert/arm64/board_config.h>
+-#if defined(DUCHAMP)
+-#include <arm64/sweet_early.h>
+-#endif
+ 
+ #include <kern/clock.h>
+ #include <machine/machine_routines.h>
+@@ -451,14 +448,6 @@ PE_init_cpu(void)
+ 	}
+ 
+ 	pe_init_fiq();
+-#if defined(DUCHAMP)
+-	kprintf("DUCHAMP PE_INIT_CPU GIC RETURNED\n");
+-	sweet_early_mark(52, "DUCHAMP GIC RETURNED");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+-#endif
+ }
+ 
+ #else
+@@ -469,14 +458,6 @@ void
+ PE_init_cpu(void)
+ {
+ 	pe_init_fiq();
+-#if defined(DUCHAMP)
+-	kprintf("DUCHAMP PE_INIT_CPU GIC RETURNED\n");
+-	sweet_early_mark(52, "DUCHAMP GIC RETURNED");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+-#endif
+ }
+ 
+ #endif  // DEVELOPMENT || DEBUG
+diff --git a/osfmk/arm/arm_init.c b/osfmk/arm/arm_init.c
+--- a/osfmk/arm/arm_init.c
++++ b/osfmk/arm/arm_init.c
+@@ -623,6 +623,14 @@ arm_init(
+ #endif /* KPERF */
+ 
+ 	PE_init_cpu();
++#if defined(DUCHAMP)
++	kprintf("DUCHAMP ARM_INIT PE_INIT_CPU RETURNED\n");
++	sweet_early_mark(53, "DUCHAMP PE_INIT_CPU RETURNED");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 	fiq_context_init(TRUE);
+ 
+ 
