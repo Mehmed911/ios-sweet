@@ -1,0 +1,43 @@
+diff --git a/osfmk/kern/startup.c b/osfmk/kern/startup.c
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -663,22 +663,35 @@ kernel_bootstrap_thread(void)
+ 	sched_startup();
+ #if defined(DUCHAMP)
+ 	sweet_early_mark(85, "DUCHAMP PRE THREAD DAEMON");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+ #endif
+ 
+ 	/*
+ 	 * Thread lifecycle maintenance (teardown, stack allocation)
+ 	 */
+ 	kernel_bootstrap_thread_log("thread_daemon_init");
++#if defined(DUCHAMP)
++	sweet_early_mark(86, "thread daemon init entering");
++#endif
+ 	thread_daemon_init();
++#if defined(DUCHAMP)
++	sweet_early_mark(87, "thread daemon init returned");
++#endif
+ 
+ 	/*
+ 	 * Thread callout service.
+ 	 */
++#if defined(DUCHAMP)
++	sweet_early_mark(88, "thread call startup entering");
++#endif
+ 	kernel_startup_initialize_upto(STARTUP_SUB_THREAD_CALL);
++#if defined(DUCHAMP)
++	sweet_early_mark(89, "thread call startup returned");
++	sweet_early_mark(90, "DUCHAMP PRE THREAD BIND");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 
+ 	/*
+ 	 * Remain on current processor as
