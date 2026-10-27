@@ -1,0 +1,14 @@
+diff --git a/osfmk/arm64/machine_routines.c b/osfmk/arm64/machine_routines.c
+--- a/osfmk/arm64/machine_routines.c
++++ b/osfmk/arm64/machine_routines.c
+@@ -496,10 +496,6 @@ machine_startup(__unused boot_args * args)
+ #if defined(DUCHAMP)
+ 	sweet_early_mark(62, "machine_conf returned");
+ 	sweet_early_mark(63, "DUCHAMP PRE KERNEL BOOTSTRAP");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+ #endif
+ 
+ 

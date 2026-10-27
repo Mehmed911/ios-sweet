@@ -1,0 +1,119 @@
+diff --git a/osfmk/kern/startup.c b/osfmk/kern/startup.c
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -68,6 +68,9 @@
+ 
+ #include <debug.h>
+ #include <mach_kdp.h>
++#if defined(DUCHAMP)
++#include <arm64/sweet_early.h>
++#endif
+ 
+ #include <mach/boolean.h>
+ #include <mach/machine.h>
+@@ -426,12 +429,22 @@ kernel_bootstrap(void)
+ 	thread_t        thread;
+ 	char            namep[16];
+ 
++#if defined(DUCHAMP)
++	sweet_early_mark(64, "kernel_bootstrap entered");
++#endif
++
+ 	printf("%s\n", version); /* log kernel version */
+ 
+ 	scale_setup();
++#if defined(DUCHAMP)
++	sweet_early_mark(65, "scale_setup returned");
++#endif
+ 
+ 	kernel_bootstrap_log("vm_mem_bootstrap");
+ 	vm_mem_bootstrap();
++#if defined(DUCHAMP)
++	sweet_early_mark(66, "vm_mem_bootstrap returned");
++#endif
+ 
+ 	machine_info.memory_size = (uint32_t)mem_size;
+ #if XNU_TARGET_OS_OSX
+@@ -448,6 +461,9 @@ kernel_bootstrap(void)
+ 	atm_init();
+ #endif
+ 	kernel_startup_initialize_upto(STARTUP_SUB_OSLOG);
++#if defined(DUCHAMP)
++	sweet_early_mark(67, "startup OSLOG returned");
++#endif
+ 
+ #if CONFIG_UBSAN_MINIMAL
+ 	kernel_bootstrap_log("UBSan minimal runtime init");
+@@ -476,12 +492,18 @@ kernel_bootstrap(void)
+ 
+ 	kernel_bootstrap_log("console_init");
+ 	console_init();
++#if defined(DUCHAMP)
++	sweet_early_mark(68, "console_init returned");
++#endif
+ 
+ 	kernel_bootstrap_log("stackshot_init");
+ 	stackshot_init();
+ 
+ 	kernel_bootstrap_log("sched_init");
+ 	sched_init();
++#if defined(DUCHAMP)
++	sweet_early_mark(69, "sched_init returned");
++#endif
+ 
+ #if CONFIG_MACF
+ 	kernel_bootstrap_log("mac_policy_init");
+@@ -489,6 +511,9 @@ kernel_bootstrap(void)
+ #endif
+ 
+ 	kernel_startup_initialize_upto(STARTUP_SUB_MACH_IPC);
++#if defined(DUCHAMP)
++	sweet_early_mark(70, "startup MACH IPC returned");
++#endif
+ 
+ 	/*
+ 	 * As soon as the virtual memory system is up, we record
+@@ -502,6 +527,9 @@ kernel_bootstrap(void)
+ 
+ 	kernel_bootstrap_log("machine_init");
+ 	machine_init();
++#if defined(DUCHAMP)
++	sweet_early_mark(71, "machine_init returned");
++#endif
+ 
+ 	kernel_bootstrap_log("thread_machine_init_template");
+ 	thread_machine_init_template();
+@@ -531,6 +559,9 @@ kernel_bootstrap(void)
+ 
+ 	kernel_bootstrap_log("thread_init");
+ 	thread_init();
++#if defined(DUCHAMP)
++	sweet_early_mark(72, "thread_init returned");
++#endif
+ 
+ 	kernel_bootstrap_log("restartable_init");
+ 	restartable_init();
+@@ -566,6 +597,9 @@ kernel_bootstrap(void)
+ 	if (result != KERN_SUCCESS) {
+ 		panic("kernel_bootstrap: result = %08X", result);
+ 	}
++#if defined(DUCHAMP)
++	sweet_early_mark(73, "bootstrap thread created");
++#endif
+ 
+ 	/* TODO: do a proper thread_start() (without the thread_setrun()) */
+ 	thread->state = TH_RUN;
+@@ -575,6 +609,13 @@ kernel_bootstrap(void)
+ 	thread_deallocate(thread);
+ 
+ 	kernel_bootstrap_log("load_context - done");
++#if defined(DUCHAMP)
++	sweet_early_mark(74, "DUCHAMP PRE LOAD CONTEXT");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 	load_context(thread);
+ 	/*NOTREACHED*/
+ }
