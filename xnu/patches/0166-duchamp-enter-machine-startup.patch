@@ -1,0 +1,14 @@
+diff --git a/osfmk/arm/arm_init.c b/osfmk/arm/arm_init.c
+--- a/osfmk/arm/arm_init.c
++++ b/osfmk/arm/arm_init.c
+@@ -668,10 +668,6 @@ arm_init(
+ 	kprintf("DUCHAMP ARM_INIT PRE MACHINE STARTUP BASE 0x%llx SIZE 0x%llx\n",
+ 	    (unsigned long long)gDramBase, (unsigned long long)gDramSize);
+ 	sweet_early_mark(59, "DUCHAMP PRE MACHINE STARTUP");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+ #endif
+ 	machine_startup(args);
+ }
