@@ -1,0 +1,54 @@
+diff --git a/osfmk/kern/startup.c b/osfmk/kern/startup.c
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -759,24 +759,46 @@ kernel_bootstrap_thread(void)
+ 
+ #if defined(DUCHAMP)
+ 	sweet_early_mark(107, "DUCHAMP PRE ALTERNATE DEBUGGER");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+ #endif
+ 
+ #if ALTERNATE_DEBUGGER
++#if defined(DUCHAMP)
++	sweet_early_mark(108, "alternate debugger entering");
++#endif
+ 	alternate_debugger_init();
++#if defined(DUCHAMP)
++	sweet_early_mark(109, "alternate debugger returned");
++#endif
+ #endif
+ 
+ #if HYPERVISOR
+ 	kernel_bootstrap_thread_log("hv_support_init");
++#if defined(DUCHAMP)
++	sweet_early_mark(110, "hypervisor support entering");
++#endif
+ 	hv_support_init();
++#if defined(DUCHAMP)
++	sweet_early_mark(111, "hypervisor support returned");
++#endif
+ #endif
+ 
+ #if CONFIG_TELEMETRY
+ 	kernel_bootstrap_log("bootprofile_init");
++#if defined(DUCHAMP)
++	sweet_early_mark(112, "bootprofile init entering");
++#endif
+ 	bootprofile_init();
++#if defined(DUCHAMP)
++	sweet_early_mark(113, "bootprofile init returned");
++#endif
+ #endif
+ 
++#if defined(DUCHAMP)
++	sweet_early_mark(114, "DUCHAMP PRE STARTUP SUB SYSCTL");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
++
+ 	kernel_startup_initialize_upto(STARTUP_SUB_SYSCTL);
