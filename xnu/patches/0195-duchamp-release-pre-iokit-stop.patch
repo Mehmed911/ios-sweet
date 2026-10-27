@@ -1,0 +1,15 @@
+diff --git a/osfmk/kern/startup.c b/osfmk/kern/startup.c
+index 6d90041..baab367 100644
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -844,10 +844,6 @@ kernel_bootstrap_thread(void)
+ 	}
+ 	sweet_early_mark(122, "addrperm values validated");
+ 	sweet_early_mark(123, "DUCHAMP PRE PE INIT IOKIT");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+ #endif
+ 
+ #ifdef  IOKIT

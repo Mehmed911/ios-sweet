@@ -1,0 +1,56 @@
+diff --git a/osfmk/arm64/sweet_early.c b/osfmk/arm64/sweet_early.c
+index a4e6e2d..3dcbe81 100644
+--- a/osfmk/arm64/sweet_early.c
++++ b/osfmk/arm64/sweet_early.c
+@@ -90,7 +90,7 @@ sweet_early_string(const char *s)
+ void
+ sweet_early_mark(unsigned int stage, const char *label)
+ {
+-	if (early_disabled || stage > 123) {
++	if (early_disabled || stage > 129) {
+ 		return;
+ 	}
+ 	uint32_t color = 0xff00ff00u | ((stage & 7u) * 32u << 16);
+diff --git a/pexpert/arm/pe_init.c b/pexpert/arm/pe_init.c
+index a3bc7de..4411fc3 100644
+--- a/pexpert/arm/pe_init.c
++++ b/pexpert/arm/pe_init.c
+@@ -20,5 +20,6 @@
+ 
+ #include <pexpert/arm64/board_config.h>
++#include <arm64/sweet_early.h>
+ 
+ 
+ /* extern references */
+@@ -247,2 +248,5 @@ PE_init_iokit(void)
+ 	uint32_t        populate_registry_time_value = 0;
++#if defined(DUCHAMP)
++	sweet_early_mark(124, "PE iokit entering");
++#endif
+ 
+@@ -254,2 +258,5 @@ PE_init_iokit(void)
+ #endif /* defined(TARGET_OS_OSX) && defined(__arm64__) */
++#if defined(DUCHAMP)
++	sweet_early_mark(125, "PE printf ready");
++#endif
+ 
+@@ -359,7 +366,19 @@ PE_init_iokit(void)
+ 		KDBG_RELEASE(IOKDBG_CODE(DBG_BOOTER, 0), start_time_value, debug_wait_start_value, load_kernel_start_value, populate_registry_time_value);
+ 	}
+ 
++#if defined(DUCHAMP)
++	sweet_early_mark(126, "PE pre InitIOKit");
++	sweet_early_mark(127, "InitIOKit entering");
++#endif
+ 	InitIOKit(PE_state.deviceTreeHead);
++#if defined(DUCHAMP)
++	sweet_early_mark(128, "InitIOKit returned");
++	sweet_early_mark(129, "DUCHAMP PRE CONFIGURE IOKIT");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 	ConfigureIOKit();
+ }
+ 
