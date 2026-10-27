@@ -1,0 +1,24 @@
+diff --git a/osfmk/kern/startup.c b/osfmk/kern/startup.c
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -738,14 +738,18 @@ kernel_bootstrap_thread(void)
+ #if defined(DUCHAMP)
+ 	sweet_early_mark(100, "device service returned");
+ 	sweet_early_mark(101, "DUCHAMP PRE PHYS CARVEOUT");
++#endif
++
++	phys_carveout_init();
++#if defined(DUCHAMP)
++	sweet_early_mark(103, "phys carveout returned");
++	sweet_early_mark(104, "DUCHAMP PRE KDP INIT");
+ 	__asm__ volatile("dsb sy; isb" ::: "memory");
+ 	for (;;) {
+ 		__asm__ volatile("wfe" ::: "memory");
+ 	}
+ #endif
+ 
+-	phys_carveout_init();
+-
+ #if MACH_KDP
+ 	kernel_bootstrap_log("kdp_init");
+ 	kdp_init();
