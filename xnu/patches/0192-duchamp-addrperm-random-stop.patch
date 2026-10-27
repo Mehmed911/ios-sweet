@@ -1,0 +1,35 @@
+diff --git a/osfmk/kern/startup.c b/osfmk/kern/startup.c
+index f91511b..9ed3ab9 100644
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -826,11 +826,30 @@ kernel_bootstrap_thread(void)
+ 	 * Force the random number to be odd to avoid mapping a non-zero
+ 	 * word-aligned address to zero via addition.
+ 	 */
++#if defined(DUCHAMP)
++	sweet_early_mark(120, "addrperm random entering");
++#endif
+ 	vm_kernel_addrperm = (vm_offset_t)(early_random() | 1);
+ 	buf_kernel_addrperm = (vm_offset_t)(early_random() | 1);
+ 	vm_kernel_addrperm_ext = (vm_offset_t)(early_random() | 1);
+ 	vm_kernel_addrhash_salt = early_random();
+ 	vm_kernel_addrhash_salt_ext = early_random();
++#if defined(DUCHAMP)
++	sweet_early_mark(121, "addrperm random generated");
++	if (vm_kernel_addrperm == 0 || buf_kernel_addrperm == 0 ||
++	    vm_kernel_addrperm_ext == 0 || vm_kernel_addrhash_salt == 0 ||
++	    vm_kernel_addrhash_salt_ext == 0 ||
++	    (vm_kernel_addrperm & 1) == 0 || (buf_kernel_addrperm & 1) == 0 ||
++	    (vm_kernel_addrperm_ext & 1) == 0) {
++		panic("DUCHAMP: invalid kernel address permutation values");
++	}
++	sweet_early_mark(122, "addrperm values validated");
++	sweet_early_mark(123, "DUCHAMP PRE PE INIT IOKIT");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 
+ #ifdef  IOKIT
+ 	kernel_bootstrap_log("PE_init_iokit");
