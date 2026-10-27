@@ -1,0 +1,45 @@
+--- a/pexpert/arm/pe_fiq.c
++++ b/pexpert/arm/pe_fiq.c
+@@ -222,7 +222,7 @@ pe_init_fiq()
+ 	// ABL leaves only ARE_NS set; Linux writes ARE_NS | EnableGrp1A | EnableGrp1
+ 	uint32_t gicd_ctlr = gicd_read32(GICD_CTLR);
+ #if defined(DUCHAMP)
+-	/* Twenty-fifth gate: bounded RWP polling; stop before group enable. */
++	/* Twenty-sixth gate: enable Group 1 once; stop before the following ISB. */
+ 	static const char gicd_hex[] = "0123456789abcdef";
+ 	gicd_ctlr |= GICD_CTLR_ARE_NS | GICD_CTLR_ENABLEGRP1A | GICD_CTLR_ENABLEGRP1;
+ #endif
+@@ -247,11 +247,18 @@ pe_init_fiq()
+ 	}
+ 	gicd_label[12] = (gicd_rwp_value & GICD_CTLR_RWP) ? '1' : '0';
+ 	gicd_label[17] = gicd_rwp_timeout ? '1' : '0';
+-	kprintf("DUCHAMP GICD RWP %u TIMEOUT %u SPINS %u\n",
+-	    (gicd_rwp_value & GICD_CTLR_RWP) != 0, gicd_rwp_timeout,
+-	    gicd_rwp_spins);
+-	sweet_early_mark(49, gicd_label);
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
++	if (gicd_rwp_timeout) {
++		kprintf("DUCHAMP GICD RWP TIMEOUT SPINS %u\n", gicd_rwp_spins);
++		sweet_early_mark(49, gicd_label);
++		__asm__ volatile("dsb sy; isb" ::: "memory");
++		for (;;) {
++			__asm__ volatile("wfe" ::: "memory");
++		}
++	}
++	__builtin_arm_wsr64("ICC_IGRPEN1_EL1", 1);
++	kprintf("DUCHAMP ICC_IGRPEN1 WRITE 1 SPINS %u\n", gicd_rwp_spins);
++	sweet_early_mark(50, "DUCHAMP ICC_IGRPEN1_WRITE=1");
++	__asm__ volatile("dsb sy" ::: "memory");
+ 	for (;;) {
+ 		__asm__ volatile("wfe" ::: "memory");
+ 	}
+@@ -259,8 +266,8 @@ pe_init_fiq()
+ 	while (gicd_read32(GICD_CTLR) & GICD_CTLR_RWP) {
+ 		;
+ 	}
+-#endif
+ 	__builtin_arm_wsr64("ICC_IGRPEN1_EL1", 1);
++#endif
+ 	__builtin_arm_isb(ISB_SY);
+ #else
+ 	// Enable the forwarding of the vtimer interrupt
