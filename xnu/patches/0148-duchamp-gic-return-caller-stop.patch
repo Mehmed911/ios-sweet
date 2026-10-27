@@ -1,0 +1,59 @@
+diff --git a/pexpert/arm/pe_fiq.c b/pexpert/arm/pe_fiq.c
+--- a/pexpert/arm/pe_fiq.c
++++ b/pexpert/arm/pe_fiq.c
+@@ -257,12 +257,6 @@ pe_init_fiq()
+ 	}
+ 	__builtin_arm_wsr64("ICC_IGRPEN1_EL1", 1);
+ 	__builtin_arm_isb(ISB_SY);
+-	kprintf("DUCHAMP ICC_IGRPEN1 ISB DONE SPINS %u\n", gicd_rwp_spins);
+-	sweet_early_mark(51, "DUCHAMP ICC_IGRPEN1_ISB_DONE");
+-	__asm__ volatile("dsb sy" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+ #else
+ 	while (gicd_read32(GICD_CTLR) & GICD_CTLR_RWP) {
+ 		;
+diff --git a/pexpert/arm/pe_identify_machine.c b/pexpert/arm/pe_identify_machine.c
+--- a/pexpert/arm/pe_identify_machine.c
++++ b/pexpert/arm/pe_identify_machine.c
+@@ -7,6 +7,9 @@
+ #include <pexpert/device_tree.h>
+ 
+ #include <pexpert/arm64/board_config.h>
++#if defined(DUCHAMP)
++#include <arm64/sweet_early.h>
++#endif
+ 
+ #include <kern/clock.h>
+ #include <machine/machine_routines.h>
+@@ -450,6 +453,14 @@ PE_init_cpu(void)
+ 	}
+ 
+ 	pe_init_fiq();
++#if defined(DUCHAMP)
++	kprintf("DUCHAMP PE_INIT_CPU GIC RETURNED\n");
++	sweet_early_mark(52, "DUCHAMP GIC RETURNED");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ }
+ 
+ #else
+@@ -461,6 +472,14 @@ void
+ PE_init_cpu(void)
+ {
+ 	pe_init_fiq();
++#if defined(DUCHAMP)
++	kprintf("DUCHAMP PE_INIT_CPU GIC RETURNED\n");
++	sweet_early_mark(52, "DUCHAMP GIC RETURNED");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ }
+ 
+ #endif  // DEVELOPMENT || DEBUG
