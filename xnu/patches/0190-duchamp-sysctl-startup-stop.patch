@@ -1,0 +1,51 @@
+diff --git a/osfmk/kern/startup.c b/osfmk/kern/startup.c
+index 5daf820..f91511b 100644
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -402,6 +402,12 @@ kernel_startup_initialize_upto(startup_subsystem_id_t upto)
+ 
+ 	assert(startup_phase < upto);
+ 
++#if defined(DUCHAMP)
++	if (upto == STARTUP_SUB_SYSCTL) {
++		sweet_early_mark(116, "sysctl callbacks entering");
++	}
++#endif
++
+ 	while (cur < startup_entries_end && cur->subsystem <= upto) {
+ 		if ((startup_debug & STARTUP_DEBUG_VERBOSE) &&
+ 		    startup_phase >= STARTUP_SUB_KPRINTF) {
+@@ -413,6 +419,11 @@ kernel_startup_initialize_upto(startup_subsystem_id_t upto)
+ 		cur->func(cur->arg);
+ 		startup_entry_cur = ++cur;
+ 	}
++#if defined(DUCHAMP)
++	if (upto == STARTUP_SUB_SYSCTL) {
++		sweet_early_mark(117, "sysctl callbacks returned");
++	}
++#endif
+ 	kernel_startup_log(upto);
+ 
+ 	if ((startup_debug & STARTUP_DEBUG_VERBOSE) &&
+@@ -795,14 +806,19 @@ kernel_bootstrap_thread(void)
+ 
+ #if defined(DUCHAMP)
+ 	sweet_early_mark(114, "DUCHAMP PRE STARTUP SUB SYSCTL");
++	sweet_early_mark(115, "startup sysctl entering");
++#endif
++
++	kernel_startup_initialize_upto(STARTUP_SUB_SYSCTL);
++#if defined(DUCHAMP)
++	sweet_early_mark(118, "startup sysctl returned");
++	sweet_early_mark(119, "DUCHAMP PRE ADDRPERM RANDOM");
+ 	__asm__ volatile("dsb sy; isb" ::: "memory");
+ 	for (;;) {
+ 		__asm__ volatile("wfe" ::: "memory");
+ 	}
+ #endif
+ 
+-	kernel_startup_initialize_upto(STARTUP_SUB_SYSCTL);
+-
+ 	/*
+ 	 * Initialize the globals used for permuting kernel
+ 	 * addresses that may be exported to userland as tokens
