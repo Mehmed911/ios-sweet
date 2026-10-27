@@ -1,0 +1,64 @@
+diff --git a/osfmk/kern/sched_prim.c b/osfmk/kern/sched_prim.c
+--- a/osfmk/kern/sched_prim.c
++++ b/osfmk/kern/sched_prim.c
+@@ -65,6 +65,9 @@
+  */
+ 
+ #include <debug.h>
++#if defined(DUCHAMP)
++#include <arm64/sweet_early.h>
++#endif
+ 
+ #include <mach/mach_types.h>
+ #include <mach/machine.h>
+@@ -6562,6 +6565,10 @@ sched_startup(void)
+ 	kern_return_t   result;
+ 	thread_t                thread;
+ 
++#if defined(DUCHAMP)
++	sweet_early_mark(79, "sched_startup entered");
++#endif
++
+ 	simple_lock_init(&sched_vm_group_list_lock, 0);
+ 
+ 	result = kernel_thread_start_priority((thread_continue_t)sched_init_thread,
+@@ -6569,6 +6576,9 @@ sched_startup(void)
+ 	if (result != KERN_SUCCESS) {
+ 		panic("sched_startup");
+ 	}
++#if defined(DUCHAMP)
++	sweet_early_mark(80, "sched init thread started");
++#endif
+ 
+ 	thread_deallocate(thread);
+ 
+@@ -6582,17 +6592,29 @@ sched_startup(void)
+ 	 * The current thread is the only other thread
+ 	 * active at this point.
+ 	 */
++#if defined(DUCHAMP)
++	sweet_early_mark(81, "pre scheduler thread block");
++#endif
+ 	thread_block(THREAD_CONTINUE_NULL);
++#if defined(DUCHAMP)
++	sweet_early_mark(82, "scheduler thread block returned");
++#endif
+ 
+ 	result = kernel_thread_start_priority((thread_continue_t)sched_update_powered_cores_continue,
+ 	    NULL, MAXPRI_KERNEL, &thread);
+ 	if (result != KERN_SUCCESS) {
+ 		panic("sched_startup");
+ 	}
++#if defined(DUCHAMP)
++	sweet_early_mark(83, "powered cores thread started");
++#endif
+ 
+ 	thread_deallocate(thread);
+ 
+ 	assert_thread_magic(thread);
++#if defined(DUCHAMP)
++	sweet_early_mark(84, "sched_startup returning");
++#endif
+ }
+ 
+ #if __arm64__

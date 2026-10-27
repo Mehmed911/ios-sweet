@@ -1,0 +1,20 @@
+diff --git a/osfmk/kern/startup.c b/osfmk/kern/startup.c
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -659,12 +659,15 @@ kernel_bootstrap_thread(void)
+ 	kernel_bootstrap_thread_log("sched_startup");
+ #if defined(DUCHAMP)
+ 	sweet_early_mark(78, "DUCHAMP PRE SCHED STARTUP");
++#endif
++	sched_startup();
++#if defined(DUCHAMP)
++	sweet_early_mark(85, "DUCHAMP PRE THREAD DAEMON");
+ 	__asm__ volatile("dsb sy; isb" ::: "memory");
+ 	for (;;) {
+ 		__asm__ volatile("wfe" ::: "memory");
+ 	}
+ #endif
+-	sched_startup();
+ 
+ 	/*
+ 	 * Thread lifecycle maintenance (teardown, stack allocation)
