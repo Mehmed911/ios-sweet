@@ -1,0 +1,39 @@
+diff --git a/osfmk/arm/arm_init.c b/osfmk/arm/arm_init.c
+--- a/osfmk/arm/arm_init.c
++++ b/osfmk/arm/arm_init.c
+@@ -645,25 +645,25 @@ arm_init(
+ 	if (SecureDTGetProperty(chosen, "dram-base", (void const **)&dram_base, &dt_entry_size) != kSuccess) {
+ 		panic("%s: Unable to find 'dram-base' entry in the 'chosen' DT node", __FUNCTION__);
+ 	}
++
++	if (SecureDTGetProperty(chosen, "dram-size", (void const **)&dram_size, &dt_entry_size) != kSuccess) {
++		panic("%s: Unable to find 'dram-size' entry in the 'chosen' DT node", __FUNCTION__);
++	}
+ #if defined(DUCHAMP)
+-	static const char dram_hex[] = "0123456789abcdef";
+-	char dram_label[] = "DUCHAMP DRAM_BASE=0x0000000000000000";
+-	uint64_t dram_base_value = (uint64_t)*dram_base;
++	static const char dram_size_hex[] = "0123456789abcdef";
++	char dram_size_label[] = "DUCHAMP DRAM_SIZE=0x0000000000000000";
++	uint64_t dram_size_value = (uint64_t)*dram_size;
+ 	for (unsigned int i = 0; i < 16; i++) {
+-		dram_label[20 + i] = dram_hex[(dram_base_value >> ((15 - i) * 4)) & 0xf];
++		dram_size_label[20 + i] = dram_size_hex[(dram_size_value >> ((15 - i) * 4)) & 0xf];
+ 	}
+-	kprintf("DUCHAMP ARM_INIT DRAM_BASE 0x%llx\n", (unsigned long long)dram_base_value);
+-	sweet_early_mark(57, dram_label);
++	kprintf("DUCHAMP ARM_INIT DRAM_SIZE 0x%llx\n", (unsigned long long)dram_size_value);
++	sweet_early_mark(58, dram_size_label);
+ 	__asm__ volatile("dsb sy; isb" ::: "memory");
+ 	for (;;) {
+ 		__asm__ volatile("wfe" ::: "memory");
+ 	}
+ #endif
+ 
+-	if (SecureDTGetProperty(chosen, "dram-size", (void const **)&dram_size, &dt_entry_size) != kSuccess) {
+-		panic("%s: Unable to find 'dram-size' entry in the 'chosen' DT node", __FUNCTION__);
+-	}
+-
+ 	gDramBase = *dram_base;
+ 	gDramSize = *dram_size;
+ 
