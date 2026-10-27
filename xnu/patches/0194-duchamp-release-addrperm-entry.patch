@@ -1,0 +1,15 @@
+diff --git a/osfmk/kern/startup.c b/osfmk/kern/startup.c
+index 9ed3ab9..6d90041 100644
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -813,10 +813,6 @@ kernel_bootstrap_thread(void)
+ #if defined(DUCHAMP)
+ 	sweet_early_mark(118, "startup sysctl returned");
+ 	sweet_early_mark(119, "DUCHAMP PRE ADDRPERM RANDOM");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+ #endif
+ 
+ 	/*
