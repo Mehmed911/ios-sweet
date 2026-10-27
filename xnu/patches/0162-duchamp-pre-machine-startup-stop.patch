@@ -1,0 +1,41 @@
+diff --git a/osfmk/arm/arm_init.c b/osfmk/arm/arm_init.c
+--- a/osfmk/arm/arm_init.c
++++ b/osfmk/arm/arm_init.c
+@@ -649,21 +649,6 @@ arm_init(
+ 	if (SecureDTGetProperty(chosen, "dram-size", (void const **)&dram_size, &dt_entry_size) != kSuccess) {
+ 		panic("%s: Unable to find 'dram-size' entry in the 'chosen' DT node", __FUNCTION__);
+ 	}
+-#if defined(DUCHAMP)
+-	static const char dram_size_hex[] = "0123456789abcdef";
+-	char dram_size_label[] = "DUCHAMP DRAM_SIZE=0x0000000000000000";
+-	uint64_t dram_size_value = (uint64_t)*dram_size;
+-	for (unsigned int i = 0; i < 16; i++) {
+-		dram_size_label[20 + i] = dram_size_hex[(dram_size_value >> ((15 - i) * 4)) & 0xf];
+-	}
+-	kprintf("DUCHAMP ARM_INIT DRAM_SIZE 0x%llx\n", (unsigned long long)dram_size_value);
+-	sweet_early_mark(58, dram_size_label);
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+-#endif
+-
+ 	gDramBase = *dram_base;
+ 	gDramSize = *dram_size;
+ 
+@@ -679,6 +664,15 @@ arm_init(
+ 	 * against string vulnerabilities
+ 	 */
+ 	__stack_chk_guard &= ~(0xFFULL << 8);
++#if defined(DUCHAMP)
++	kprintf("DUCHAMP ARM_INIT PRE MACHINE STARTUP BASE 0x%llx SIZE 0x%llx\n",
++	    (unsigned long long)gDramBase, (unsigned long long)gDramSize);
++	sweet_early_mark(59, "DUCHAMP PRE MACHINE STARTUP");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 	machine_startup(args);
+ }
+ 
