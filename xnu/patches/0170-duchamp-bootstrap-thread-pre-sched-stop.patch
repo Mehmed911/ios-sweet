@@ -1,0 +1,54 @@
+diff --git a/osfmk/kern/startup.c b/osfmk/kern/startup.c
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -611,10 +611,6 @@ kernel_bootstrap(void)
+ 	kernel_bootstrap_log("load_context - done");
+ #if defined(DUCHAMP)
+ 	sweet_early_mark(74, "DUCHAMP PRE LOAD CONTEXT");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+ #endif
+ 	load_context(thread);
+ 	/*NOTREACHED*/
+@@ -634,16 +630,25 @@ static void
+ kernel_bootstrap_thread(void)
+ {
+ 	processor_t processor = current_processor();
++#if defined(DUCHAMP)
++	sweet_early_mark(75, "bootstrap thread entered");
++#endif
+ 
+ #if (DEVELOPMENT || DEBUG)
+ 	platform_stall_panic_or_spin(PLATFORM_STALL_XNU_LOCATION_KERNEL_BOOTSTRAP);
+ #endif
++#if defined(DUCHAMP)
++	sweet_early_mark(76, "pre idle thread create");
++#endif
+ 
+ 	kernel_bootstrap_thread_log("idle_thread_create");
+ 	/*
+ 	 * Create the idle processor thread.
+ 	 */
+ 	idle_thread_create(processor);
++#if defined(DUCHAMP)
++	sweet_early_mark(77, "idle thread create returned");
++#endif
+ 
+ 	/*
+ 	 * N.B. Do not stick anything else
+@@ -652,6 +657,13 @@ kernel_bootstrap_thread(void)
+ 	 * Start up the scheduler services.
+ 	 */
+ 	kernel_bootstrap_thread_log("sched_startup");
++#if defined(DUCHAMP)
++	sweet_early_mark(78, "DUCHAMP PRE SCHED STARTUP");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 	sched_startup();
+ 
+ 	/*
