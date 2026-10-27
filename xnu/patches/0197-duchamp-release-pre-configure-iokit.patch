@@ -1,0 +1,15 @@
+diff --git a/pexpert/arm/pe_init.c b/pexpert/arm/pe_init.c
+index 4411fc3..938a720 100644
+--- a/pexpert/arm/pe_init.c
++++ b/pexpert/arm/pe_init.c
+@@ -374,10 +374,6 @@ PE_init_iokit(void)
+ #if defined(DUCHAMP)
+ 	sweet_early_mark(128, "InitIOKit returned");
+ 	sweet_early_mark(129, "DUCHAMP PRE CONFIGURE IOKIT");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+ #endif
+ 	ConfigureIOKit();
+ }
