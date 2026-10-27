@@ -1,0 +1,32 @@
+diff --git a/osfmk/kern/startup.c b/osfmk/kern/startup.c
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -713,17 +713,24 @@ kernel_bootstrap_thread(void)
+ #if defined(DUCHAMP)
+ 	sweet_early_mark(94, "mapping_adjust returned");
+ 	sweet_early_mark(95, "DUCHAMP PRE CLOCK SERVICE");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+ #endif
+ 
+ 	/*
+ 	 *	Create the clock service.
+ 	 */
+ 	kernel_bootstrap_thread_log("clock_service_create");
++#if defined(DUCHAMP)
++	sweet_early_mark(96, "clock service entering");
++#endif
+ 	clock_service_create();
++#if defined(DUCHAMP)
++	sweet_early_mark(97, "clock service returned");
++	sweet_early_mark(98, "DUCHAMP PRE DEVICE SERVICE");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 
+ 	/*
+ 	 *	Create the device service.
