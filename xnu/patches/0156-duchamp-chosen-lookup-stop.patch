@@ -1,0 +1,33 @@
+diff --git a/osfmk/arm/arm_init.c b/osfmk/arm/arm_init.c
+--- a/osfmk/arm/arm_init.c
++++ b/osfmk/arm/arm_init.c
+@@ -629,14 +629,6 @@ arm_init(
+ #if HIBERNATION
+ 	pal_hib_init();
+ #endif /* HIBERNATION */
+-#if defined(DUCHAMP)
+-	kprintf("DUCHAMP ARM_INIT HIB BLOCK PASSED\n");
+-	sweet_early_mark(55, "DUCHAMP HIB BLOCK PASSED");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+-#endif
+ 
+ 	/*
+ 	 * gPhysBase/Size only represent kernel-managed memory. These globals represent
+@@ -649,6 +641,14 @@ arm_init(
+ 	if (SecureDTLookupEntry(NULL, "/chosen", &chosen) != kSuccess) {
+ 		panic("%s: Unable to find 'chosen' DT node", __FUNCTION__);
+ 	}
++#if defined(DUCHAMP)
++	kprintf("DUCHAMP ARM_INIT CHOSEN FOUND\n");
++	sweet_early_mark(56, "DUCHAMP CHOSEN FOUND");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 
+ 	if (SecureDTGetProperty(chosen, "dram-base", (void const **)&dram_base, &dt_entry_size) != kSuccess) {
+ 		panic("%s: Unable to find 'dram-base' entry in the 'chosen' DT node", __FUNCTION__);
