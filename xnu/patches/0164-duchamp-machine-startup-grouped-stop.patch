@@ -1,0 +1,42 @@
+diff --git a/osfmk/arm64/machine_routines.c b/osfmk/arm64/machine_routines.c
+--- a/osfmk/arm64/machine_routines.c
++++ b/osfmk/arm64/machine_routines.c
+@@ -28,6 +28,9 @@
+ 
+ #include <arm64/machine_machdep.h>
+ #include <arm64/proc_reg.h>
++#if defined(DUCHAMP)
++#include <arm64/sweet_early.h>
++#endif
+ #include <arm/machine_cpu.h>
+ #include <arm/cpu_internal.h>
+ #include <arm/cpuid.h>
+@@ -476,14 +479,28 @@ user_timebase_type(void)
+ void
+ machine_startup(__unused boot_args * args)
+ {
++#if defined(DUCHAMP)
++	sweet_early_mark(60, "machine_startup entered");
++#endif
+ #if defined(HAS_IPI) && (DEVELOPMENT || DEBUG)
+ 	if (!PE_parse_boot_argn("fastipi", &gFastIPI, sizeof(gFastIPI))) {
+ 		gFastIPI = 1;
+ 	}
+ #endif /* defined(HAS_IPI) && (DEVELOPMENT || DEBUG)*/
++#if defined(DUCHAMP)
++	sweet_early_mark(61, "machine_startup boot args done");
++#endif
+ 
+ 
+ 	machine_conf();
++#if defined(DUCHAMP)
++	sweet_early_mark(62, "machine_conf returned");
++	sweet_early_mark(63, "DUCHAMP PRE KERNEL BOOTSTRAP");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 
+ 
+ 	/*
