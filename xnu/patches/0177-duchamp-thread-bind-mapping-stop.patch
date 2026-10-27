@@ -1,0 +1,45 @@
+diff --git a/osfmk/kern/startup.c b/osfmk/kern/startup.c
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -687,10 +687,6 @@ kernel_bootstrap_thread(void)
+ #if defined(DUCHAMP)
+ 	sweet_early_mark(89, "thread call startup returned");
+ 	sweet_early_mark(90, "DUCHAMP PRE THREAD BIND");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+ #endif
+ 
+ 	/*
+@@ -698,13 +694,30 @@ kernel_bootstrap_thread(void)
+ 	 * additional processors come online.
+ 	 */
+ 	kernel_bootstrap_thread_log("thread_bind");
++#if defined(DUCHAMP)
++	sweet_early_mark(91, "thread_bind entering");
++#endif
+ 	thread_bind(processor);
++#if defined(DUCHAMP)
++	sweet_early_mark(92, "thread_bind returned");
++#endif
+ 
+ 	/*
+ 	 * Kick off memory mapping adjustments.
+ 	 */
+ 	kernel_bootstrap_thread_log("mapping_adjust");
++#if defined(DUCHAMP)
++	sweet_early_mark(93, "mapping_adjust entering");
++#endif
+ 	mapping_adjust();
++#if defined(DUCHAMP)
++	sweet_early_mark(94, "mapping_adjust returned");
++	sweet_early_mark(95, "DUCHAMP PRE CLOCK SERVICE");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 
+ 	/*
+ 	 *	Create the clock service.
