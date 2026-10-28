@@ -15,7 +15,7 @@ diff --git a/osfmk/kern/startup.c b/osfmk/kern/startup.c
 index ef12747..c6a9142 100644
 --- a/osfmk/kern/startup.c
 +++ b/osfmk/kern/startup.c
-@@ -895,17 +895,21 @@ kernel_bootstrap_thread(void)
+@@ -895,16 +895,23 @@ kernel_bootstrap_thread(void)
  	}
  	sweet_early_mark(140, "interrupts enabled verified");
  	sweet_early_mark(141, "DUCHAMP PRE INITIALIZE SCREEN");
