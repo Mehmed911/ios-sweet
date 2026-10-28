@@ -23,6 +23,26 @@ early = early_path.read_text()
 early = replace_once(early, "stage > 154", "stage > 160", "stage ceiling")
 early_path.write_text(early)
 
+startup_path = root / "osfmk/kern/startup.c"
+startup = startup_path.read_text()
+startup = replace_once(
+    startup,
+    '''#if defined(DUCHAMP)
+	sweet_early_mark(154, "DUCHAMP PRE BSD INIT");
+	__asm__ volatile("dsb sy; isb" ::: "memory");
+	for (;;) {
+		__asm__ volatile("wfe" ::: "memory");
+	}
+#endif
+''',
+    '''#if defined(DUCHAMP)
+	sweet_early_mark(154, "DUCHAMP PRE BSD INIT");
+#endif
+''',
+    "stage 154 release",
+)
+startup_path.write_text(startup)
+
 bsd = bsd_path.read_text()
 edits = [
     (
