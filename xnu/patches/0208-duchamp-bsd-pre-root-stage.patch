@@ -7,7 +7,7 @@ index ada7fc9..2a4ba0e 100644
  sweet_early_mark(unsigned int stage, const char *label)
  {
 -	if (early_disabled || stage > 154) {
-+	if (early_disabled || stage > 160) {
++	if (early_disabled || stage > 162) {
  		return;
  	}
  	uint32_t color = 0xff00ff00u | ((stage & 7u) * 32u << 16);
@@ -76,17 +76,28 @@ index 2ab6bfa..ea26cd1 100644
  	bsd_init_kprintf("calling bsd_autoconf\n");
  	bsd_autoconf();
  
-@@ -867,6 +885,13 @@ bsd_init(void)
+@@ -867,6 +885,9 @@ bsd_init(void)
  
  	bsd_init_kprintf("calling inittodr\n");
  	inittodr(0);
 +#if defined(ARM64_BOARD_CONFIG_SWEET)
 +	sweet_early_mark(160, "DUCHAMP PRE ROOT SETCONF");
++#endif
+ 
+ 	/* Mount the root file system. */
+ 	while (TRUE) {
+@@ -1129,6 +1150,14 @@ setconf(void)
+ 	u_int32_t       flags;
+ 	kern_return_t   err;
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(161, "setconf entered");
++	sweet_early_mark(162, "PRE IOFindBSDRoot");
 +	__asm__ volatile("dsb sy; isb" ::: "memory");
 +	for (;;) {
 +		__asm__ volatile("wfe" ::: "memory");
 +	}
 +#endif
  
- 	/* Mount the root file system. */
- 	while (TRUE) {
+ 	err = IOFindBSDRoot(rootdevice, sizeof(rootdevice), &rootdev, &flags);
+ 	if (err) {

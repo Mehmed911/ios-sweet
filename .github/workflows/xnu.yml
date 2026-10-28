@@ -98,8 +98,8 @@ jobs:
           MAKEFLAGS: ${{ inputs.keep_going == 'false' && '' || '-k' }}
         run: |
           bash build.sh
-          grep -Fq 'stage > 160' xnu/osfmk/arm64/sweet_early.c
-          grep -Fq 'DUCHAMP PRE ROOT SETCONF' xnu/bsd/kern/bsd_init.c
+          grep -Fq 'stage > 162' xnu/osfmk/arm64/sweet_early.c
+          grep -Fq 'PRE IOFindBSDRoot' xnu/bsd/kern/bsd_init.c
 
       - name: Package build tree for local compiles
         if: always()

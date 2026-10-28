@@ -13,7 +13,7 @@ needle = '''        done
 }
 '''
 replacement = '''        done
-        if ! grep -Fq 'DUCHAMP PRE ROOT SETCONF' "${WORK_DIR}/xnu/bsd/kern/bsd_init.c"; then
+        if ! grep -Fq 'PRE IOFindBSDRoot' "${WORK_DIR}/xnu/bsd/kern/bsd_init.c"; then
             running "Applying mandatory semantic Duchamp BSD checkpoints"
             python3 "${WORK_DIR}/../tools/apply-duchamp-bsd-checkpoints.py" "${WORK_DIR}/xnu"
         fi

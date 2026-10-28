@@ -20,7 +20,7 @@ early_path = root / "osfmk/arm64/sweet_early.c"
 bsd_path = root / "bsd/kern/bsd_init.c"
 
 early = early_path.read_text()
-early = replace_once(early, "stage > 154", "stage > 160", "stage ceiling")
+early = replace_once(early, "stage > 154", "stage > 162", "stage ceiling")
 early_path.write_text(early)
 
 startup_path = root / "osfmk/kern/startup.c"
@@ -85,11 +85,21 @@ edits = [
     (
         "\tinittodr(0);\n\n\t/* Mount the root file system. */",
         "\tinittodr(0);\n#if defined(ARM64_BOARD_CONFIG_SWEET)\n"
-        "\tsweet_early_mark(160, \"DUCHAMP PRE ROOT SETCONF\");\n"
-        "\t__asm__ volatile(\"dsb sy; isb\" ::: \"memory\");\n\tfor (;;) {\n"
-        "\t\t__asm__ volatile(\"wfe\" ::: \"memory\");\n\t}\n#endif\n\n"
+        "\tsweet_early_mark(160, \"DUCHAMP PRE ROOT SETCONF\");\n#endif\n\n"
         "\t/* Mount the root file system. */",
         "pre-root barrier",
+    ),
+    (
+        "\terr = IOFindBSDRoot(rootdevice, sizeof(rootdevice), &rootdev, &flags);",
+        "#if defined(ARM64_BOARD_CONFIG_SWEET)\n"
+        "\tsweet_early_mark(161, \"setconf entered\");\n"
+        "\tsweet_early_mark(162, \"PRE IOFindBSDRoot\");\n"
+        "\t__asm__ volatile(\"dsb sy; isb\" ::: \"memory\");\n"
+        "\tfor (;;) {\n"
+        "\t\t__asm__ volatile(\"wfe\" ::: \"memory\");\n"
+        "\t}\n#endif\n\n"
+        "\terr = IOFindBSDRoot(rootdevice, sizeof(rootdevice), &rootdev, &flags);",
+        "setconf pre-root lookup barrier",
     ),
 ]
 
