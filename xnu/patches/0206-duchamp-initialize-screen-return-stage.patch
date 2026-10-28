@@ -1,0 +1,45 @@
+diff --git a/osfmk/arm64/sweet_early.c b/osfmk/arm64/sweet_early.c
+index aa70b43..9b7c6e1 100644
+--- a/osfmk/arm64/sweet_early.c
++++ b/osfmk/arm64/sweet_early.c
+@@ -90,7 +90,7 @@ sweet_early_string(const char *s)
+ void
+ sweet_early_mark(unsigned int stage, const char *label)
+ {
+-	if (early_disabled || stage > 141) {
++	if (early_disabled || stage > 144) {
+ 		return;
+ 	}
+ 	uint32_t color = 0xff00ff00u | ((stage & 7u) * 32u << 16);
+diff --git a/osfmk/kern/startup.c b/osfmk/kern/startup.c
+index ef12747..c6a9142 100644
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -895,17 +895,21 @@ kernel_bootstrap_thread(void)
+ 	}
+ 	sweet_early_mark(140, "interrupts enabled verified");
+ 	sweet_early_mark(141, "DUCHAMP PRE INITIALIZE SCREEN");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+ #endif
+ 
+ 	/*
+ 	 * This will start displaying progress to the user, start as early as possible
+ 	 */
++#if defined(DUCHAMP)
++	sweet_early_mark(142, "initialize_screen entering");
++#endif
+ 	initialize_screen(NULL, kPEAcquireScreen);
++#if defined(DUCHAMP)
++	sweet_early_mark(143, "initialize_screen returned");
++	sweet_early_mark(144, "DUCHAMP PRE VM COMMPAGE INIT");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 
+ 	/*
+ 	 *	Initialize the shared region module.
