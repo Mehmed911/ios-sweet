@@ -22,9 +22,9 @@ index 2ab6bfa..ea26cd1 100644
 +#if defined(ARM64_BOARD_CONFIG_SWEET)
 +#include <arm64/sweet_early.h>
 +#endif
- #include <sys/kdebug.h>
- #include <sys/sysctl.h>
  #include <sys/buf_internal.h>
+ #include <sys/user.h>
+ #include <sys/time.h>
 @@ -489,6 +492,9 @@ bsd_init(void)
  #if (DEVELOPMENT || DEBUG)
  	platform_stall_panic_or_spin(PLATFORM_STALL_XNU_LOCATION_BSD_INIT);
