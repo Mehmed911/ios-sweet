@@ -35,7 +35,9 @@ env:
 jobs:
   build:
     # Preserve verified Xcode-15 generated IIG sources on the newer runner.
-    runs-on: macos-15
+    # Intel runners have substantially more public capacity than macOS ARM.
+    # Xcode cross-compiles the SWEET arm64 kernel, so the host ISA is irrelevant.
+    runs-on: macos-15-intel
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
