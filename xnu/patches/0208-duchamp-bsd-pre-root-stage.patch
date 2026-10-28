@@ -1,0 +1,92 @@
+diff --git a/osfmk/arm64/sweet_early.c b/osfmk/arm64/sweet_early.c
+index ada7fc9..2a4ba0e 100644
+--- a/osfmk/arm64/sweet_early.c
++++ b/osfmk/arm64/sweet_early.c
+@@ -90,7 +90,7 @@ sweet_early_string(const char *s)
+ void
+ sweet_early_mark(unsigned int stage, const char *label)
+ {
+-	if (early_disabled || stage > 154) {
++	if (early_disabled || stage > 160) {
+ 		return;
+ 	}
+ 	uint32_t color = 0xff00ff00u | ((stage & 7u) * 32u << 16);
+diff --git a/bsd/kern/bsd_init.c b/bsd/kern/bsd_init.c
+index 2ab6bfa..ea26cd1 100644
+--- a/bsd/kern/bsd_init.c
++++ b/bsd/kern/bsd_init.c
+@@ -86,6 +86,9 @@
+ #include <sys/vnode_internal.h>
+ #include <sys/conf.h>
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++#include <arm64/sweet_early.h>
++#endif
+ #include <sys/kdebug.h>
+ #include <sys/sysctl.h>
+ #include <sys/buf_internal.h>
+@@ -489,6 +492,9 @@ bsd_init(void)
+ #if (DEVELOPMENT || DEBUG)
+ 	platform_stall_panic_or_spin(PLATFORM_STALL_XNU_LOCATION_BSD_INIT);
+ #endif
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(155, "BSD init entered");
++#endif
+ 
+ #define DEBUG_BSDINIT 0
+ 
+@@ -547,6 +553,9 @@ bsd_init(void)
+ 
+ 	/* Init the file descriptor table. */
+ 	fdt_init(kernproc);
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(156, "kernproc core ready");
++#endif
+ 	kernproc->p_fd.fd_cmask = (mode_t)cmask;
+ 
+ 	assert(bsd_simul_execs != 0);
+@@ -677,7 +686,10 @@ bsd_init(void)
+ 	 * SIDE EFFECT: Starts a thread for bcleanbuf_thread(), so must
+ 	 *		happen after a credential has been associated with
+ 	 *		the kernel task.
+ 	 */
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(157, "BSD services entering");
++#endif
+ 	bsd_init_kprintf("calling bsd_bufferinit\n");
+ 	bsd_bufferinit();
+ 
+@@ -690,6 +702,9 @@ bsd_init(void)
+ 	/* Initialize the file systems. */
+ 	bsd_init_kprintf("calling vfsinit\n");
+ 	vfsinit();
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(158, "VFS core ready");
++#endif
+ 
+ #if defined(ARM64_BOARD_CONFIG_SWEET)
+ 	/* AMFI's MAC policy is built in on SWEET (bsd/kern/sweet_amfi.c). */
+@@ -797,6 +812,9 @@ bsd_init(void)
+ 	bsd_init_kprintf("calling sysctl_mib_init\n");
+ 	sysctl_mib_init();
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(159, "BSD autoconf entering");
++#endif
+ 	bsd_init_kprintf("calling bsd_autoconf\n");
+ 	bsd_autoconf();
+ 
+@@ -867,6 +885,13 @@ bsd_init(void)
+ 
+ 	bsd_init_kprintf("calling inittodr\n");
+ 	inittodr(0);
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(160, "DUCHAMP PRE ROOT SETCONF");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 
+ 	/* Mount the root file system. */
+ 	while (TRUE) {
