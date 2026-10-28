@@ -13,11 +13,9 @@ needle = '''        done
 }
 '''
 replacement = '''        done
-        DUCHAMP_FINAL_PATCH="${PATCH_DIR}/zzzz-duchamp-bsd-pre-root-stage.patch"
         if ! grep -Fq 'DUCHAMP PRE ROOT SETCONF' "${WORK_DIR}/xnu/bsd/kern/bsd_init.c"; then
-            running "Applying mandatory final Duchamp patch: ${DUCHAMP_FINAL_PATCH}"
-            git apply --check "${DUCHAMP_FINAL_PATCH}"
-            git apply "${DUCHAMP_FINAL_PATCH}"
+            running "Applying mandatory semantic Duchamp BSD checkpoints"
+            python3 "${WORK_DIR}/../tools/apply-duchamp-bsd-checkpoints.py" "${WORK_DIR}/xnu"
         fi
         cd "${WORK_DIR}"
     fi
