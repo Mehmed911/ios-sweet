@@ -1,0 +1,88 @@
+diff --git a/osfmk/arm64/sweet_early.c b/osfmk/arm64/sweet_early.c
+index 9b7c6e1..ada7fc9 100644
+--- a/osfmk/arm64/sweet_early.c
++++ b/osfmk/arm64/sweet_early.c
+@@ -90,7 +90,7 @@ sweet_early_string(const char *s)
+ void
+ sweet_early_mark(unsigned int stage, const char *label)
+ {
+-	if (early_disabled || stage > 144) {
++	if (early_disabled || stage > 154) {
+ 		return;
+ 	}
+ 	uint32_t color = 0xff00ff00u | ((stage & 7u) * 32u << 16);
+diff --git a/osfmk/kern/startup.c b/osfmk/kern/startup.c
+index c6a9142..f1ab622 100644
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -906,17 +906,18 @@ kernel_bootstrap_thread(void)
+ #if defined(DUCHAMP)
+ 	sweet_early_mark(143, "initialize_screen returned");
+ 	sweet_early_mark(144, "DUCHAMP PRE VM COMMPAGE INIT");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
++	sweet_early_mark(145, "commpage group entering");
+ #endif
+ 
+ 	/*
+ 	 *	Initialize the shared region module.
+ 	 */
+ 	vm_commpage_init();
+ 	vm_commpage_text_init();
++#if defined(DUCHAMP)
++	sweet_early_mark(146, "commpage group returned");
++	sweet_early_mark(147, "security group entering");
++#endif
+ 
+ #if CONFIG_MACF
+ 	kernel_bootstrap_log("mac_policy_initmach");
+@@ -939,6 +940,10 @@ kernel_bootstrap_thread(void)
+ 	csm_initialize_provisioning_profiles();
+ #endif
+ 
++#if defined(DUCHAMP)
++	sweet_early_mark(148, "security group returned");
++	sweet_early_mark(149, "trust lockdown group entering");
++#endif
+ #ifndef BCM2837
+ 	kernel_bootstrap_log("trust_cache_init");
+ 
+@@ -951,6 +956,10 @@ kernel_bootstrap_thread(void)
+ #endif
+ 
+ 	kernel_startup_initialize_upto(STARTUP_SUB_LOCKDOWN);
++#if defined(DUCHAMP)
++	sweet_early_mark(150, "trust lockdown group returned");
++	sweet_early_mark(151, "kernel lockdown group entering");
++#endif
+ 
+ 	/*
+ 	 * Get rid of segments used to bootstrap kext loading. This removes
+@@ -967,6 +976,10 @@ kernel_bootstrap_thread(void)
+ 	kernel_bootstrap_log("machine_lockdown");
+ 	machine_lockdown();
+ 
++#if defined(DUCHAMP)
++	sweet_early_mark(152, "kernel lockdown group returned");
++	sweet_early_mark(153, "platform final group entering");
++#endif
+ #ifdef CONFIG_XNUPOST
+ 	kern_return_t result = kernel_list_tests();
+ 	result = kernel_do_post();
+@@ -990,7 +1003,14 @@ kernel_bootstrap_thread(void)
+ #if KPERF
+ 	kperf_init_early();
+ #endif
++#if defined(DUCHAMP)
++	sweet_early_mark(154, "DUCHAMP PRE BSD INIT");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 
+ 	/*
+ 	 *	Start the user bootstrap.
+ 	 */
