@@ -1,0 +1,12 @@
+diff --git a/osfmk/kern/startup.c b/osfmk/kern/startup.c
+index ef12747..8fab455 100644
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -68,5 +68,5 @@
+ #if defined(DUCHAMP)
+ #include <arm64/sweet_early.h>
+-#include <pexpert/arm/protos.h>
++extern uint32_t sweet_vtimer_intid;
+ #endif
+ 
+ #include <mach/boolean.h>
