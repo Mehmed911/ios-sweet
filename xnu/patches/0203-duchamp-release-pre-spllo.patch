@@ -1,0 +1,15 @@
+diff --git a/osfmk/kern/startup.c b/osfmk/kern/startup.c
+index e96ac5d..79db587 100644
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -873,10 +873,6 @@ kernel_bootstrap_thread(void)
+ #endif
+ #if defined(DUCHAMP)
+ 	sweet_early_mark(137, "DUCHAMP PRE SPLLO");
+-	__asm__ volatile("dsb sy; isb" ::: "memory");
+-	for (;;) {
+-		__asm__ volatile("wfe" ::: "memory");
+-	}
+ #endif
+ 	(void) spllo();         /* Allow interruptions */
+ 

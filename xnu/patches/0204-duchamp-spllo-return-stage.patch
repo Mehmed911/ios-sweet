@@ -1,0 +1,54 @@
+diff --git a/osfmk/arm64/sweet_early.c b/osfmk/arm64/sweet_early.c
+index 0577bf7..aa70b43 100644
+--- a/osfmk/arm64/sweet_early.c
++++ b/osfmk/arm64/sweet_early.c
+@@ -90,7 +90,7 @@ sweet_early_string(const char *s)
+ void
+ sweet_early_mark(unsigned int stage, const char *label)
+ {
+-	if (early_disabled || stage > 137) {
++	if (early_disabled || stage > 141) {
+ 		return;
+ 	}
+ 	uint32_t color = 0xff00ff00u | ((stage & 7u) * 32u << 16);
+diff --git a/osfmk/kern/startup.c b/osfmk/kern/startup.c
+index 79db587..ef12747 100644
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -67,5 +67,6 @@
+ #if defined(DUCHAMP)
+ #include <arm64/sweet_early.h>
++#include <pexpert/arm/protos.h>
+ #endif
+ 
+ #include <mach/boolean.h>
+@@ -874,7 +875,29 @@ kernel_bootstrap_thread(void)
+ #if defined(DUCHAMP)
+ 	sweet_early_mark(137, "DUCHAMP PRE SPLLO");
++	uint64_t cntv_ctl = __builtin_arm_rsr64("CNTV_CTL_EL0");
++	uint32_t pending_intid = (uint32_t)(__builtin_arm_rsr64("ICC_HPPIR1_EL1") & 0xFFFFFF);
++	if ((cntv_ctl & 1U) == 0) {
++		panic("DUCHAMP: virtual timer disabled before spllo");
++	}
++	if (!((pending_intid >= 1020 && pending_intid <= 1023) ||
++	    pending_intid == sweet_vtimer_intid || pending_intid < 16)) {
++		panic("DUCHAMP: unhandled pending INTID %u before spllo", pending_intid);
++	}
++	sweet_early_mark(138, "interrupt state validated");
+ #endif
+ 	(void) spllo();         /* Allow interruptions */
++#if defined(DUCHAMP)
++	sweet_early_mark(139, "spllo returned");
++	if (!ml_get_interrupts_enabled()) {
++		panic("DUCHAMP: interrupts remain disabled after spllo");
++	}
++	sweet_early_mark(140, "interrupts enabled verified");
++	sweet_early_mark(141, "DUCHAMP PRE INITIALIZE SCREEN");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 
+ 	/*
+ 	 * This will start displaying progress to the user, start as early as possible
