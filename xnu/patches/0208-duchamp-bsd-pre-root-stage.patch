@@ -7,7 +7,7 @@ index ada7fc9..2a4ba0e 100644
  sweet_early_mark(unsigned int stage, const char *label)
  {
 -	if (early_disabled || stage > 154) {
-+	if (early_disabled || stage > 162) {
++	if (early_disabled || stage > 167) {
  		return;
  	}
  	uint32_t color = 0xff00ff00u | ((stage & 7u) * 32u << 16);
@@ -86,18 +86,71 @@ index 2ab6bfa..ea26cd1 100644
  
  	/* Mount the root file system. */
  	while (TRUE) {
-@@ -1129,6 +1150,14 @@ setconf(void)
+@@ -1129,6 +1150,10 @@ setconf(void)
  	u_int32_t       flags;
  	kern_return_t   err;
  
 +#if defined(ARM64_BOARD_CONFIG_SWEET)
 +	sweet_early_mark(161, "setconf entered");
 +	sweet_early_mark(162, "PRE IOFindBSDRoot");
-+	__asm__ volatile("dsb sy; isb" ::: "memory");
-+	for (;;) {
-+		__asm__ volatile("wfe" ::: "memory");
-+	}
 +#endif
  
  	err = IOFindBSDRoot(rootdevice, sizeof(rootdevice), &rootdev, &flags);
  	if (err) {
+diff --git a/iokit/bsddev/IOKitBSDInit.cpp b/iokit/bsddev/IOKitBSDInit.cpp
+--- a/iokit/bsddev/IOKitBSDInit.cpp
++++ b/iokit/bsddev/IOKitBSDInit.cpp
+@@ -52,6 +52,9 @@ extern "C" {
+ #include <sys/vnode_internal.h>
+ #include <sys/mount.h>
+ #include <corecrypto/ccsha2.h>
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++extern "C" void sweet_early_mark(unsigned int stage, const char *label);
++#endif
+ 
+ // how long to wait for matching root device, secs
+ #if DEBUG
+@@ -676,6 +679,9 @@ IOFindBSDRoot( char * rootName, unsigned int rootNameSize,
+ 
+ 	static int          mountAttempts = 0;
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(163, "IOFindBSDRoot entered");
++#endif
+ 	int xchar, dchar;
+ 
+ 	// stall here for anyone matching on the IOBSD resource to finish (filesystems)
+@@ -691,6 +697,9 @@ IOFindBSDRoot( char * rootName, unsigned int rootNameSize,
+ 	matching->release();
+ 	matching = NULL;
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(164, "IOBSD resource ready");
++#endif
+ 	if (mountAttempts++) {
+ 		IOLog("mount(%d) failed\n", mountAttempts);
+ 		IOSleep( 5 * 1000 );
+@@ -706,6 +715,9 @@ IOFindBSDRoot( char * rootName, unsigned int rootNameSize,
+ 	    && !PE_parse_boot_argn("rootdev", rdBootVar, kMaxBootVar )) {
+ 		rdBootVar[0] = 0;
+ 	}
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(165, "root boot arg parsed");
++#endif
+ 
+ 	if ((regEntry = IORegistryEntry::fromPath( "/chosen", gIODTPlane ))) {
+ 		do {
+@@ -770,7 +782,13 @@ IOFindBSDRoot( char * rootName, unsigned int rootNameSize,
+ //	SWEET: root on a GPT partition of the internal UFS (bsd/dev/sweet_ufs.c)
+ //
++	sweet_early_mark(166, "root selection ready");
+ 	if (strcmp(rdBootVar, "ufsroot0") == 0) {
++		sweet_early_mark(167, "PRE UFS BACKEND");
++		__asm__ volatile("dsb sy; isb" ::: "memory");
++		for (;;) {
++			__asm__ volatile("wfe" ::: "memory");
++		}
+ 		extern int sweet_ufs_rootdev(dev_t *dev);
+ 		OSSafeReleaseNULL(matching);
+ 		int ufs_error = sweet_ufs_rootdev(root);
+ 		if (ufs_error) {

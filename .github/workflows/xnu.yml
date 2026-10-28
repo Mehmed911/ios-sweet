@@ -98,8 +98,8 @@ jobs:
           MAKEFLAGS: ${{ inputs.keep_going == 'false' && '' || '-k' }}
         run: |
           bash build.sh
-          grep -Fq 'stage > 162' xnu/osfmk/arm64/sweet_early.c
-          grep -Fq 'PRE IOFindBSDRoot' xnu/bsd/kern/bsd_init.c
+          grep -Fq 'stage > 167' xnu/osfmk/arm64/sweet_early.c
+          grep -Fq 'PRE UFS BACKEND' xnu/iokit/bsddev/IOKitBSDInit.cpp
 
       - name: Package build tree for local compiles
         if: always()
