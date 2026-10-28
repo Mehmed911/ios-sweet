@@ -1,0 +1,49 @@
+diff --git a/osfmk/arm64/sweet_early.c b/osfmk/arm64/sweet_early.c
+index 7cb8c05..0577bf7 100644
+--- a/osfmk/arm64/sweet_early.c
++++ b/osfmk/arm64/sweet_early.c
+@@ -90,7 +90,7 @@ sweet_early_string(const char *s)
+ void
+ sweet_early_mark(unsigned int stage, const char *label)
+ {
+-	if (early_disabled || stage > 134) {
++	if (early_disabled || stage > 137) {
+ 		return;
+ 	}
+ 	uint32_t color = 0xff00ff00u | ((stage & 7u) * 32u << 16);
+diff --git a/osfmk/kern/startup.c b/osfmk/kern/startup.c
+index 0d0992a..e96ac5d 100644
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -405,5 +405,8 @@ kernel_startup_initialize_upto(startup_subsystem_id_t upto)
+ #if defined(DUCHAMP)
+ 	if (upto == STARTUP_SUB_SYSCTL) {
+ 		sweet_early_mark(116, "sysctl callbacks entering");
+ 	}
++	if (upto == STARTUP_SUB_EARLY_BOOT) {
++		sweet_early_mark(135, "early boot callbacks entering");
++	}
+ #endif
+@@ -422,5 +425,8 @@ kernel_startup_initialize_upto(startup_subsystem_id_t upto)
+ #if defined(DUCHAMP)
+ 	if (upto == STARTUP_SUB_SYSCTL) {
+ 		sweet_early_mark(117, "sysctl callbacks returned");
+ 	}
++	if (upto == STARTUP_SUB_EARLY_BOOT) {
++		sweet_early_mark(136, "early boot callbacks returned");
++	}
+ #endif
+@@ -863,6 +869,13 @@ kernel_bootstrap_thread(void)
+ #if SCHED_HYGIENE_DEBUG
+ 	// Reset interrupts masked timeout before we enable interrupts
+ 	ml_spin_debug_clear_self();
+ #endif
++#if defined(DUCHAMP)
++	sweet_early_mark(137, "DUCHAMP PRE SPLLO");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 	(void) spllo();         /* Allow interruptions */
+ 
