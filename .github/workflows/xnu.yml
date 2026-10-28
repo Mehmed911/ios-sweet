@@ -54,6 +54,34 @@ jobs:
           # context matches the exact source that will be compiled.
           mv dxb/patches/0208-duchamp-bsd-pre-root-stage.patch \
             dxb/patches/zzzz-duchamp-bsd-pre-root-stage.patch
+          # Locale-dependent glob ordering can still visit zzzz before some
+          # mixed-case upstream patches.  Make the final Duchamp patch a
+          # mandatory post-pass after dxb finishes its normal patch loop.
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("dxb/build.sh")
+          source = path.read_text()
+          needle = '''        done
+        cd "${WORK_DIR}"
+    fi
+}
+'''
+          replacement = '''        done
+        DUCHAMP_FINAL_PATCH="${PATCH_DIR}/zzzz-duchamp-bsd-pre-root-stage.patch"
+        if ! grep -Fq 'DUCHAMP PRE ROOT SETCONF' "${WORK_DIR}/xnu/bsd/kern/bsd_init.c"; then
+            running "Applying mandatory final Duchamp patch: ${DUCHAMP_FINAL_PATCH}"
+            git apply --check "${DUCHAMP_FINAL_PATCH}"
+            git apply "${DUCHAMP_FINAL_PATCH}"
+        fi
+        cd "${WORK_DIR}"
+    fi
+}
+'''
+          if source.count(needle) != 1:
+              raise SystemExit("unexpected dxb patch-loop layout")
+          path.write_text(source.replace(needle, replacement))
+          PY
           # libfirehose_kernel is built arm64e-only; the SWEET kernel is plain arm64
           sed -i '' 's/ARCHS="x86_64 arm64e" VALID_ARCHS="x86_64 arm64e"/ARCHS="x86_64 arm64e arm64" VALID_ARCHS="x86_64 arm64e arm64"/' dxb/build.sh
           grep -c 'VALID_ARCHS="x86_64 arm64e arm64"' dxb/build.sh
