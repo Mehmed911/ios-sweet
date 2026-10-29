@@ -17,6 +17,10 @@ replacement = '''        done
             running "Applying mandatory semantic Duchamp BSD checkpoints"
             python3 "${WORK_DIR}/../tools/apply-duchamp-bsd-checkpoints.py" "${WORK_DIR}/xnu"
         fi
+        if ! grep -Fq 'INIT EXEC ACCEPTED' "${WORK_DIR}/xnu/bsd/kern/kern_exec.c"; then
+            running "Applying Duchamp process-1 exec checkpoints"
+            python3 "${WORK_DIR}/../tools/apply-duchamp-init-exec-checkpoints.py" "${WORK_DIR}/xnu"
+        fi
         cd "${WORK_DIR}"
     fi
 }
