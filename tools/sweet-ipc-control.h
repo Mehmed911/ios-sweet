@@ -1,5 +1,8 @@
 /* Included after the launchctl capture helpers; the observer starts no service. */
 #include "sweet-ipc.h"
+#if defined(SWEET_XPC_TEST)
+#include "sweet-xpc.h"
+#endif
 static int ipc_wait_gone(int pid) {
     for (int i = 0; i < 60; ++i) {
         if (kill(pid, 0) < 0 && *__error() == 3) return 0;
@@ -14,10 +17,31 @@ static int ipc_stopped(const char *tag, const char *service) {
 }
 static int ipc_lifecycle(void) {
     const char *client_target = "system/org.sweet.qemu.ipc-client";
+#if defined(SWEET_XPC_TEST)
+    note("SCENARIO xpc");
+    int waiting = -1;
+    for (int i = 0; i < 180; ++i) {
+        waiting = ipc_read_pid(IPC_CLIENT_PID);
+        if (ipc_path_matches(waiting, IPC_CLIENT_PATH)) break;
+        waiting = -1; pause_seconds(1);
+    }
+    if (waiting <= 1 || ipc_read_pid(IPC_SERVER_PID) > 1) return fail("XPC initial client/server state");
+    char *dormant[] = {"launchctl", "print", (char *)target, 0};
+    if (command("print-server-dormant", dormant) || property_pid(output) != 0 ||
+        !strstr(output, "runs = 0") || !strstr(output, XPC_SERVICE)) return fail("XPC dormant registration");
+    note("XPC DORMANT verified runs=0 no pid client=%d", waiting);
+    int begin = open(XPC_BEGIN, 0x601, 0600);
+    if (begin < 0 || write_all(begin, "begin\n", 6) || fsync(begin) || close(begin)) return fail("XPC begin release");
+    note("XPC BEGIN RELEASED client=%d", waiting);
+#else
     note("SCENARIO ipc");
+#endif
     int server = -1, client = -1;
     for (int i = 0; i < 180; ++i) {
         server = ipc_read_pid(IPC_SERVER_PID); client = ipc_read_pid(IPC_CLIENT_PID);
+#if defined(SWEET_XPC_TEST)
+        if (sweet_xpc_token(XPC_DONE, "done\n")) { pause_seconds(1); continue; }
+#endif
         if (server != client && ipc_path_matches(server, IPC_SERVER_PATH) &&
             ipc_path_matches(client, IPC_CLIENT_PATH)) break;
         server = client = -1; pause_seconds(1);

@@ -146,3 +146,6 @@ For automatic restarts after SIGTERM and SIGKILL, see the separate
 
 For two C services exchanging local socket messages, a normal client exit
 and a server that handles SIGTERM and cleans up, see [IPC-QEMU.md](IPC-QEMU.md).
+
+For native libxpc dictionaries and launchd starting a Mach service on
+demand, see [XPC-QEMU.md](XPC-QEMU.md).

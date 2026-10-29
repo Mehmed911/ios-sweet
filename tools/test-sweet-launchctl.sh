@@ -2,7 +2,7 @@
 # Check service management using pinned Procursus launchctl and original Apple launchd.
 set -eu
 if [ "$#" -lt 6 ] || [ "$#" -gt 8 ]; then
-    echo "usage: test-sweet-launchctl.sh KERNEL ADT BASE_LAUNCHD_HFS RUNTIME_ROOT HFSPLUS NEW_OUTDIR [SECONDS] [stop-restart|bootout-bootstrap|keepalive|ipc]" >&2
+    echo "usage: test-sweet-launchctl.sh KERNEL ADT BASE_LAUNCHD_HFS RUNTIME_ROOT HFSPLUS NEW_OUTDIR [SECONDS] [stop-restart|bootout-bootstrap|keepalive|ipc|xpc]" >&2
     exit 2
 fi
 kernel=$1
@@ -14,7 +14,7 @@ out=$6
 seconds=${7:-720}
 scenario=${8:-stop-restart}
 case "$scenario" in
-    stop-restart|bootout-bootstrap|keepalive|ipc) ;;
+    stop-restart|bootout-bootstrap|keepalive|ipc|xpc) ;;
     *) echo "unknown launchctl scenario: $scenario" >&2; exit 2 ;;
 esac
 src=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -25,12 +25,20 @@ fi
 mkdir -p "$out"
 python3 "$src/tools/audit-darwin-runtime.py" "$runtime" "$out/runtime-audit.json" --entry /bin/launchctl
 programs='sweet-launchd-service sweet-launchctl-control'
-if [ "$scenario" = ipc ]; then programs="$programs sweet-ipc-client"; fi
+case "$scenario" in ipc|xpc) programs="$programs sweet-ipc-client" ;; esac
 for program in $programs; do
     set --
     source="$src/tools/$program.c"
     if [ "$scenario" = ipc ] && [ "$program" = sweet-launchd-service ]; then
         source="$src/tools/sweet-ipc-server.c"
+    fi
+    if [ "$scenario" = xpc ]; then
+        set -- -fblocks
+        case "$program" in
+            sweet-launchd-service) source="$src/tools/sweet-xpc-server.c" ;;
+            sweet-ipc-client) source="$src/tools/sweet-xpc-client.c" ;;
+            sweet-launchctl-control) set -- -fblocks -DSWEET_XPC_TEST=1 ;;
+        esac
     fi
     if [ "$scenario" = bootout-bootstrap ] && [ "$program" = sweet-launchctl-control ]; then
         set -- -DSWEET_BOOTSTRAP_TEST=1
@@ -46,7 +54,7 @@ for program in $programs; do
         -o "$out/$program" "$out/$program.o"
 done
 set --
-if [ "$scenario" = ipc ]; then set -- --client "$out/sweet-ipc-client"; fi
+case "$scenario" in ipc|xpc) set -- --client "$out/sweet-ipc-client" ;; esac
 python3 "$src/tools/build-launchctl-root.py" --base "$base" --runtime "$runtime" \
     --audit "$out/runtime-audit.json" --service "$out/sweet-launchd-service" \
     --controller "$out/sweet-launchctl-control" --hfsplus "$hfsplus" --output "$out/root.hfs" \
@@ -55,7 +63,7 @@ python3 "$src/tools/mkpayload.py" "$kernel" "$adt" "$out/payload.bin" --ramdisk 
     --cmdline 'debug=0xc serial=3 cpus=1 keepsyms=1 -enable_kprintf_spam -noprogress rd=md0 rootrw=1 sweet_console_fb=1 unentitled_ios_sim_launch=1 launchdsuffix=sweet launchd_log_serial=1'
 qemu_status=0
 set --
-if [ "$scenario" = ipc ]; then
+if [ "$scenario" = ipc ] || [ "$scenario" = xpc ]; then
     set -- --stop-on-text 'SWEET ipc server: FAIL' --stop-on-text 'SWEET ipc client: FAIL'
 fi
 python3 "$src/tools/qemu-sweet.py" "$out/payload.bin" "$out/run" --secs "$seconds" \
@@ -63,8 +71,10 @@ python3 "$src/tools/qemu-sweet.py" "$out/payload.bin" "$out/run" --secs "$second
     --stop-on-text 'SWEET EARLY PANIC:' --stop-on-text 'SWEET launchctl: FAIL' \
     --stop-on-text 'SWEET launchctl: heartbeat=2 ' \
     --save-ramdisk --fail-on-panic "$@" || qemu_status=$?
-if [ "$scenario" = ipc ]; then
-    python3 "$src/tools/verify-sweet-ipc.py" "$out" --hfsplus "$hfsplus"
+if [ "$scenario" = ipc ] || [ "$scenario" = xpc ]; then
+    set --
+    if [ "$scenario" = xpc ]; then set -- --transport xpc; fi
+    python3 "$src/tools/verify-sweet-ipc.py" "$out" --hfsplus "$hfsplus" "$@"
 else
     python3 "$src/tools/verify-sweet-launchctl.py" "$out" --hfsplus "$hfsplus" --scenario "$scenario"
 fi

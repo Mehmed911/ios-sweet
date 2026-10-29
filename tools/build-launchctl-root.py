@@ -15,12 +15,12 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     for key in ('base', 'runtime', 'audit', 'service', 'controller', 'hfsplus', 'output'):
         ap.add_argument('--' + key, type=Path, required=True)
-    ap.add_argument('--scenario', choices=('stop-restart', 'bootout-bootstrap', 'keepalive', 'ipc'),
+    ap.add_argument('--scenario', choices=('stop-restart', 'bootout-bootstrap', 'keepalive', 'ipc', 'xpc'),
                     default='stop-restart')
     ap.add_argument('--client', type=Path)
     args = ap.parse_args()
-    if args.scenario == 'ipc' and args.client is None:
-        ap.error('ipc requires --client')
+    if args.scenario in ('ipc', 'xpc') and args.client is None:
+        ap.error('ipc/xpc requires --client')
     if args.output.exists():
         raise SystemExit('refusing to overwrite previous image')
     audit = json.loads(args.audit.read_text())
@@ -67,6 +67,11 @@ def main():
             properties['KeepAlive'] = True
             installed_target_data = plistlib.dumps(properties)
             (temp / 'keepalive.plist').write_bytes(installed_target_data)
+        if args.scenario == 'xpc':
+            properties['RunAtLoad'] = False
+            properties['MachServices'] = {'org.sweet.qemu.mach-service': True}
+            installed_target_data = plistlib.dumps(properties)
+            (temp / 'xpc.plist').write_bytes(installed_target_data)
         for guest, expected in {
             '/sbin/launchd': '4c61512d19b9a55a6ddad27e23b88fc5008fbf77d0c0b5e6bdd7c7d90cef3e06',
             '/usr/libexec/xpcproxy': '2d1f607a248961d6a8612aca68a42c57069fa9cf3f5afbee448cf3e70eeb315f',
@@ -77,8 +82,8 @@ def main():
         job = temp / 'control.plist'
         job.write_bytes(plistlib.dumps(controller_job))
         client_job = None
-        if args.scenario == 'ipc':
-            client_job = dict(properties, Label='org.sweet.qemu.ipc-client',
+        if args.scenario in ('ipc', 'xpc'):
+            client_job = dict(plistlib.loads(target_data), Label='org.sweet.qemu.ipc-client',
                               ProgramArguments=['/sbin/sweet-ipc-client'])
             (temp / 'client.plist').write_bytes(plistlib.dumps(client_job))
         files = {}
@@ -96,7 +101,9 @@ def main():
         })
         if args.scenario == 'keepalive':
             files[target_job] = (temp / 'keepalive.plist', '644')
-        if args.scenario == 'ipc':
+        if args.scenario == 'xpc':
+            files[target_job] = (temp / 'xpc.plist', '644')
+        if args.scenario in ('ipc', 'xpc'):
             files['/sbin/sweet-ipc-client'] = (args.client, '755')
             files['/System/Library/LaunchDaemons/org.sweet.qemu.ipc-client.plist'] = (temp / 'client.plist', '644')
         manifest = {}
@@ -109,7 +116,7 @@ def main():
                 raise SystemExit(f'HFS byte verification failed: {guest}')
             manifest[guest] = hashlib.sha256(data).hexdigest()
         expected_jobs = ['org.sweet.qemu.c-service.plist', 'org.sweet.qemu.launchctl-control.plist']
-        if args.scenario == 'ipc':
+        if args.scenario in ('ipc', 'xpc'):
             expected_jobs.insert(1, 'org.sweet.qemu.ipc-client.plist')
         if jobs() != expected_jobs:
             raise SystemExit('unexpected daemon job set')

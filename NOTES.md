@@ -1,5 +1,65 @@
 # DUCHAMP update — 2026-10-22
 
+Native XPC milestone (2026-10-30, QEMU/RAM only; this commit):
+One combined fixture now proves launchd MachServices registration,
+on-demand server activation, native Apple libxpc dictionary request/reply,
+and orderly exits. Original Apple launchd/xpcproxy/libxpc are unchanged;
+observer CLI remains pinned Procursus FOSS launchctl 1:1.1.1.
+Baseline commit: 8c6172eeb6b159bb0f64724bfece43f771d10dc8.
+No phone, USB, UFS or boot partition command was run.
+
+Actual result: work/launchctl-xpc, exit 0, 43/43 checks passed,
+449.402 host seconds, 35 sampled frames, zero unknown glyphs, no visible
+panic. Stopped on second observer heartbeat before 720 seconds.
+Observer PID 3, client PID 4, server PID 6; all root children of PID 1.
+The initial server print had no PID, runs=0 and its registered Mach name.
+Only after that print did the observer release the client's begin gate.
+Native XPC traffic caused launchd to start PID 6 without a start command.
+Both endpoints verified xpc_connection_get_pid and executable paths.
+Three independent dictionary exchanges matched the expected payloads:
+0x10203001 -> 0x4a7a6a5b, 0x10203002 -> 0x4a7a6a58,
+0x10203003 -> 0x4a7a6a59. All eight integer fields are compared.
+Client cancelled its connection and returned 0; server recorded native
+XPC connection invalidation, handled SIGTERM, cancelled listener/peer
+and returned 0. Final prints: not running, runs=1, last exit code=0.
+Both PIDs reaped; Mach service registration remained in the final print.
+All six CLI processes exited 0; final heartbeats confirmed stopped state.
+
+Replay tools/test-sweet-launchctl.sh with prior six inputs, 720, then xpc.
+Server plist: RunAtLoad=false, KeepAlive=false, MachServices containing
+org.sweet.qemu.mach-service. Client/observer: RunAtLoad=true, no service.
+Native programs use -fblocks; observer selects SWEET_XPC_TEST=1.
+The same 39-file / 10,551,232-byte runtime suffices; no new kernel CI.
+Public libxpc prototypes/ownership/queue rules checked in Apple docs;
+listener flag bit 0 also checked in the pinned libxpc disassembly.
+Sync replies occur on client main, outside its event-handler queue.
+The API has no per-request timeout here; whole-VM limit bounds the run.
+Details/replay: duchamp/XPC-QEMU.md.
+Report: work/launchctl-xpc/run/verification.json.
+Raw peer logs, CLI files and listings: work/launchctl-xpc/guest/.
+
+SHA-256:
+server bfb60c484b8878d658cad3182256d0b768e5273240dd7dfd4fd11b379a1c936a
+client e321ce84071a0c6c5d01188fca0782c5435d811e753cf65506cf55543a6bec55
+observer 0ac3063243d8d2a62928e12d31ebcdff3dfa8d5de53f798827afc431f3a45170
+input root 7dba76a3799e87d7b8443f23d6eaf391ab23cb51c31246aa24641f219077dbe3
+payload 28c415f14ee8ab3c2ab7927e95cdd3197fe63f465418dd3c29d96ac9b9d465cb
+exported root a90255ffc4b32bfa2fbbc6dc7798c949145537610223b0d6026356ded7aa7af1
+server plist e32f6c8940f7005aa3347ec2f2663dbf5c4a86c9405d4b9c7be6dad7f8f81275
+Rehashed unchanged Actions 104 kernel and original base:
+kernel 82fc8fe1391bea90bcce9ed2d4e8a2ff8204667f6785857873717564ec9331c9
+base 491aa78408c423c50e8b59644e416e94b643ed3eb119158d52684af4176c8b3f
+
+Five controller modes and both XPC programs passed arm64 -Wall -Wextra
+-Werror checks; shell/Python checks passed. Old Unix guest recheck passed
+39 checks with the split launch-policy validation. Its original 38-check
+report was saved/restored; verification-xpc-tools-recheck.json records
+the recheck. Prior images and results remain intact.
+
+Coverage is one native XPC connection, three replies and one on-demand
+activation. Repeated activation, concurrent clients, Foundation/system
+services, full iOS and MT6897 UFS remain unproven and separate work.
+
 Two-service IPC milestone (2026-10-30, QEMU/RAM only; this commit):
 A separate Unix-domain socket server and client now exchange validated
 messages as root children of unchanged Apple launchd PID 1. A third
