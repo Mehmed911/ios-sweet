@@ -155,3 +155,6 @@ For a program using the original Foundation and Objective-C runtime, see
 
 For Foundation request/reply processing inside native XPC peers, see
 [FOUNDATION-XPC-QEMU.md](FOUNDATION-XPC-QEMU.md).
+
+For two live clients, a second on-demand server instance and malformed
+message responses in one run, see [XPC-BATCH-QEMU.md](XPC-BATCH-QEMU.md).

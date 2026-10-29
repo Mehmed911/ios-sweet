@@ -2,7 +2,7 @@
 # Check service management using pinned Procursus launchctl and original Apple launchd.
 set -eu
 if [ "$#" -lt 6 ] || [ "$#" -gt 8 ]; then
-    echo "usage: test-sweet-launchctl.sh KERNEL ADT BASE_LAUNCHD_HFS RUNTIME_ROOT HFSPLUS NEW_OUTDIR [SECONDS] [stop-restart|bootout-bootstrap|keepalive|ipc|xpc|foundation|foundation-xpc]" >&2
+    echo "usage: test-sweet-launchctl.sh KERNEL ADT BASE_LAUNCHD_HFS RUNTIME_ROOT HFSPLUS NEW_OUTDIR [SECONDS] [stop-restart|bootout-bootstrap|keepalive|ipc|xpc|foundation|foundation-xpc|foundation-xpc-batch]" >&2
     exit 2
 fi
 kernel=$1
@@ -14,7 +14,7 @@ out=$6
 seconds=${7:-720}
 scenario=${8:-stop-restart}
 case "$scenario" in
-    stop-restart|bootout-bootstrap|keepalive|ipc|xpc|foundation|foundation-xpc) ;;
+    stop-restart|bootout-bootstrap|keepalive|ipc|xpc|foundation|foundation-xpc|foundation-xpc-batch) ;;
     *) echo "unknown launchctl scenario: $scenario" >&2; exit 2 ;;
 esac
 src=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -24,12 +24,12 @@ if [ -e "$out" ]; then
 fi
 mkdir -p "$out"
 set --
-if [ "$scenario" = foundation ] || [ "$scenario" = foundation-xpc ]; then
+if [ "$scenario" = foundation ] || [ "$scenario" = foundation-xpc ] || [ "$scenario" = foundation-xpc-batch ]; then
     set -- --entry /System/Library/Frameworks/Foundation.framework/Foundation
 fi
 python3 "$src/tools/audit-darwin-runtime.py" "$runtime" "$out/runtime-audit.json" --entry /bin/launchctl "$@"
 programs='sweet-launchd-service sweet-launchctl-control'
-case "$scenario" in ipc|xpc|foundation-xpc) programs="$programs sweet-ipc-client" ;; esac
+case "$scenario" in ipc|xpc|foundation-xpc|foundation-xpc-batch) programs="$programs sweet-ipc-client" ;; esac
 for program in $programs; do
     set --
     source="$src/tools/$program.c"
@@ -60,6 +60,16 @@ for program in $programs; do
             sweet-launchctl-control) set -- -DSWEET_FOUNDATION_TEST=1 ;;
         esac
     fi
+    if [ "$scenario" = foundation-xpc-batch ]; then
+        case "$program" in
+            sweet-launchd-service) source="$src/tools/sweet-xpc-batch-server.m" ;;
+            sweet-ipc-client) source="$src/tools/sweet-xpc-batch-client.m" ;;
+        esac
+        case "$program" in
+            sweet-launchctl-control) set -- -fblocks -DSWEET_XPC_BATCH_TEST=1 ;;
+            *) set -- -fblocks -fno-objc-arc -fobjc-exceptions ;;
+        esac
+    fi
     if [ "$scenario" = bootout-bootstrap ] && [ "$program" = sweet-launchctl-control ]; then
         set -- -DSWEET_BOOTSTRAP_TEST=1
     elif [ "$scenario" = keepalive ] && [ "$program" = sweet-launchctl-control ]; then
@@ -73,7 +83,7 @@ for program in $programs; do
     if [ "$scenario" = foundation ] && [ "$program" = sweet-launchd-service ]; then
         set -- -F"$runtime/System/Library/Frameworks" -framework Foundation -lobjc.A
     fi
-    if [ "$scenario" = foundation-xpc ] && [ "$program" != sweet-launchctl-control ]; then
+    if { [ "$scenario" = foundation-xpc ] || [ "$scenario" = foundation-xpc-batch ]; } && [ "$program" != sweet-launchctl-control ]; then
         set -- -F"$runtime/System/Library/Frameworks" -framework Foundation -lobjc.A
     fi
     ld64.lld -arch arm64 -platform_version ios 16.5 16.5 -adhoc_codesign \
@@ -81,8 +91,8 @@ for program in $programs; do
         -o "$out/$program" "$out/$program.o" "$@"
 done
 set --
-case "$scenario" in ipc|xpc|foundation-xpc) set -- --client "$out/sweet-ipc-client" ;; esac
-if [ "$scenario" = foundation ] || [ "$scenario" = foundation-xpc ]; then
+case "$scenario" in ipc|xpc|foundation-xpc|foundation-xpc-batch) set -- --client "$out/sweet-ipc-client" ;; esac
+if [ "$scenario" = foundation ] || [ "$scenario" = foundation-xpc ] || [ "$scenario" = foundation-xpc-batch ]; then
     set -- "$@" --runtime-source "$runtime/../source.json"
 fi
 python3 "$src/tools/build-launchctl-root.py" --base "$base" --runtime "$runtime" \
@@ -99,6 +109,11 @@ fi
 if [ "$scenario" = foundation-xpc ]; then
     set -- "$@" --stop-on-text 'Library not loaded:' --stop-on-text 'Symbol not found:'
 fi
+if [ "$scenario" = foundation-xpc-batch ]; then
+    set -- --stop-on-text 'SWEET ipc batch-server1: FAIL' --stop-on-text 'SWEET ipc batch-server2: FAIL' \
+        --stop-on-text 'SWEET ipc batch-client1: FAIL' --stop-on-text 'SWEET ipc batch-client2: FAIL' \
+        --stop-on-text 'Library not loaded:' --stop-on-text 'Symbol not found:'
+fi
 if [ "$scenario" = foundation ]; then
     set -- --stop-on-text 'SWEET ipc foundation: FAIL' --stop-on-text 'Library not loaded:' --stop-on-text 'Symbol not found:'
 fi
@@ -107,7 +122,9 @@ python3 "$src/tools/qemu-sweet.py" "$out/payload.bin" "$out/run" --secs "$second
     --stop-on-text 'SWEET EARLY PANIC:' --stop-on-text 'SWEET launchctl: FAIL' \
     --stop-on-text 'SWEET launchctl: heartbeat=2 ' \
     --save-ramdisk --fail-on-panic "$@" || qemu_status=$?
-if [ "$scenario" = foundation ]; then
+if [ "$scenario" = foundation-xpc-batch ]; then
+    python3 "$src/tools/verify-sweet-xpc-batch.py" "$out" --hfsplus "$hfsplus"
+elif [ "$scenario" = foundation ]; then
     python3 "$src/tools/verify-sweet-foundation.py" "$out" --hfsplus "$hfsplus"
 elif [ "$scenario" = ipc ] || [ "$scenario" = xpc ] || [ "$scenario" = foundation-xpc ]; then
     set --

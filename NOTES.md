@@ -1,5 +1,71 @@
 # DUCHAMP update — 2026-10-22
 
+Foundation/XPC batch milestone (2026-10-30, QEMU/RAM only; this commit):
+Two live clients now exercise two on-demand server generations and six
+representative malformed-request cases in one grouped QEMU boot.
+Baseline commit: a4b9d8956aed9683fad4ea01d987b56ee1bb6af9.
+No phone, USB, UFS or boot partition command was run.
+
+Actual result: work/launchctl-foundation-xpc-batch, exit 0, 83/83 checks
+passed. All 96 installed file hashes and the original launchd/xpcproxy
+hashes matched. 916.589 host seconds, 69 sampled frames, zero unknown
+glyphs, no visible panic; stopped on the second observer heartbeat,
+before the 1500-second limit. The user interrupted the conversation
+during the boot; the existing run finished in the background. Its
+completed report and raw logs were reviewed on resume; no second boot.
+
+Observer PID 3 and client PIDs 4/5 were root children of original launchd.
+Server PID 7 initially activated from native traffic, returned 0 after
+SIGTERM and was reaped. Clients stayed alive and reopened connections;
+native traffic activated server PID 11. Prints showed runs=0 initially,
+runs=1 after first activation/exit and runs=2 after the second.
+All nine real CLI processes exited 0. The observer issued print and kill
+only, with no kickstart/bootstrap/start. Both server instances and both
+client jobs finished with last exit code=0 and stayed stopped through
+two heartbeats. The MachServices name remained registered.
+
+Each server held two live connections; every one of the 36 data replies
+reported active=2. Per-peer handlers share one private serial dispatch
+queue, so this is concurrent live clients with serialized processing,
+not proof of parallel Foundation callbacks. Four hellos and four closes
+were recorded. Each client/generation sent three valid JSON requests
+and six rejected cases: syntax, wrong XPC type, missing data, 4097-byte
+payload, wrong JSON field type, and an envelope PID differing from the
+actual XPC peer. Exact statuses 1..6 were returned on the same connection.
+Valid requests after errors succeeded; totals: 12 accepted, 24 rejected.
+All 36 saved JSON files independently decoded correctly; all 12
+server/client reply pairs were byte-identical. Valid per-operation pool
+drains appeared in order. No runtime exception or diagnostic failure.
+
+Replay: tools/test-sweet-launchctl.sh with the previous kernel/ADT/base,
+research/foundation-runtime-20F66-v2/runtime-root and HFS tool, a fresh
+output directory, 1500 and foundation-xpc-batch.
+Details: duchamp/XPC-BATCH-QEMU.md.
+Report: work/launchctl-foundation-xpc-batch/run/verification.json.
+Raw CLI outputs, logs, JSON and extracted installed files: its guest/.
+Eight observer modes and the two new Objective-C peers passed arm64
+syntax checks with -Werror; shell/Python checks passed. Required new
+XPC/dispatch exports were verified in the pinned runtime before boot.
+An initial Objective-C identifier conflict was corrected before boot;
+there was only one VM run. Earlier scenarios/images remain preserved.
+
+SHA-256:
+server 90894c0b02d38a112c4976cb6d6142859fc5f37e937a81f20873d6a108b61e22
+client 1543a5c511277b84f5f9daea8d3b898a2b246b5594edc17c70c4169bd4b749bd
+observer 44ca3b85ed2605305ee9bf277dd497333fb12119f6a75f6157ba7651a22d9458
+input root 62671e29f50f6fd4d97df7a05b2f0d0cbc0d92cca133e011598f9043e41815cd
+payload ca55c15c2f94de7a0b25dedfbf29d6c583522abe0d9a3f7e03f0e7c83b9d531e
+exported root 125024bf1c51cd7bf03d262cecb06eeacf8f77c3da33826c55e7e771502d8206
+Rehashed unchanged kernel and original base:
+kernel 82fc8fe1391bea90bcce9ed2d4e8a2ff8204667f6785857873717564ec9331c9
+base 491aa78408c423c50e8b59644e416e94b643ed3eb119158d52684af4176c8b3f
+
+This is a bounded fixture, not a fuzzer or a production IPC server.
+Arbitrary malformed traffic, stress, NSXPCConnection, UIKit, SpringBoard,
+full iOS and MT6897 storage/drivers remain unproven.
+Next useful system step: inspect an original system daemon and its
+runtime/job dependencies before adding a QEMU-only service test.
+
 Foundation/XPC integration milestone (2026-10-30, QEMU/RAM only; this commit):
 Original Apple Foundation now processes JSON in both native libxpc peers,
 with on-demand launchd MachServices activation and orderly exits.
