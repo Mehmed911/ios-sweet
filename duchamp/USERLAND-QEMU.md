@@ -2,7 +2,8 @@
 
 The test runs a static PID 1 and a separate static arm64 Mach-O worker on a
 writable HFS+ RAM disk. It exercises file creation, fork, execve, arguments,
-getpid, console output, select timeouts, exit, wait4, and one supervised restart.
+getpid, console output, pipe IPC across exec, RAM file write/read/EOF checks,
+select timeouts, exit, wait4, and one supervised restart.
 It does not provide Apple's launchd, a shell, dynamic libraries, or iOS services.
 
 The existing successful kernel from Actions run
@@ -22,7 +23,7 @@ sh tools/test-sweet-userland.sh \
   work/qemu-multiproc.adt \
   work/qemu-rootvnode-98/root-with-launchd.hfs \
   work/qemu-rootvnode-98/launchd \
-  work/userland-exec-new 90
+  work/userland-ipc-new 90
 ```
 
 The output directory must not exist. Inputs are local artifacts, not tracked
@@ -48,13 +49,25 @@ PID 1 requires wait4 to return that child and status `00002a00`, then execs a ne
 worker with `stay`. The replacement continues printing heartbeats alongside
 PID 1. An unexpected exit causes `TEST FAILED` instead of a restart loop.
 
+Before forking each worker, PID 1 creates a new pipe. The child closes its
+read endpoint, uses dup2 to inherit the writer on fd 3, and execs the worker.
+The parent closes its writer and requires exactly `READYv1\n` followed by EOF;
+it then closes the reader. This validates inherited descriptors and endpoint
+closure across fork/exec without assuming which descriptors pipe allocated.
+
+On each exec, the worker writes `/sbin/worker-data` on the RAM root, closes it,
+reopens it read-only, compares every byte with `SWEET RAM FILE OK\n`, requires
+EOF, and closes it. Only then does it send READYv1 and close fd 3. File and
+pipe transfers handle short reads/writes; premature EOF fails the scenario.
+
 `verify-sweet-userland.py` requires both exec entries, the deliberate exit,
-correct wait status, restart, and continued parent/worker output. It records
+correct wait status, restart, both file/IPC checks, and continued output. It records
 input hashes and checks in `run/verification.json`. `no_panic_observed` alone
 does not pass the test. `fb.txt` is a circular framebuffer snapshot, not a
 complete serial log; a very long run can overwrite required earlier messages.
 
-Validated results live in `work/userland-exec-final/`; failed intermediate
+Validated IPC/file results live in `work/userland-ipc-final/`; the previous
+exec-only milestone is in `work/userland-exec-final/`. Failed intermediate
 experiments remain in their separate directories. Use the pristine baseline
 above, not `work/root-multiproc.hfs`, whose header was changed during an earlier
 unsuccessful host HFS-tool experiment. No phone compatibility is inferred from

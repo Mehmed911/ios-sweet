@@ -1,5 +1,31 @@
 # DUCHAMP update — 2026-10-22
 
+IPC and RAM-file milestone (2026-10-29, QEMU only; this commit):
+PID 1 now creates a fresh pipe before each fork, closes its writer, and checks
+the exec'd worker's exact READYv1 message followed by EOF. The child uses dup2
+to inherit the writer on fd 3 and closes unused endpoints. On each exec the
+worker creates /sbin/worker-data, writes 18 known bytes, closes and reopens it,
+compares every byte, checks EOF, then sends its pipe message and closes fd 3.
+Both transfer loops handle short reads/writes and reject premature EOF.
+
+The existing kernel from Actions 104 / 40939563499 was reused. The single
+test-sweet-userland.sh run in work/userland-ipc-final completed for 90 seconds
+with no_panic_observed, zero unknown glyphs, and all 17 semantic checks true.
+The intentional exit 42, wait4 status 00002a00, restart, and continued
+heartbeats still passed. Both workers completed the RAM-file and IPC checks.
+The updated verifier rejected a copied exec-only result in
+work/userland-ipc-negative, proving that old milestones alone do not pass.
+
+Final hashes: init
+b519aa9d6c849949ca73c70e99b6ef56dfe5111ca5aa270771fd3f679ad0138d;
+worker a5a310483d999a5038da85b08184f2ec3c80ec3b3546d02dae27b5dc439f5abd;
+root b1e19227f8f004c41b44a470f79d7750827df376d9f0c30c1c2363d6df067363;
+payload 42a402a2c38e030c7d207e83b9f43d08901d0b6630ed7a4c5e7724f509dc6e9b.
+See run/verification.json and run/fb.txt under that directory. Previous
+exec-only milestone: 039b4a1. No new kernel build or phone access was needed.
+Remaining work includes signals/service control, richer userland, and the
+separate MT6897 hardware backend. These are RAM-root observations in QEMU.
+
 Diagnostic exec/supervision milestone (2026-10-29, QEMU/RAM only; this
 commit): tools/build-sweet-userland.sh builds separate signed arm64 init and
 worker executables. PID 1 creates /sbin/worker on the writable RAM HFS root,

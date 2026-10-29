@@ -9,12 +9,15 @@
  */
 #define SYS_exit    1
 #define SYS_fork    2
+#define SYS_read    3
 #define SYS_write   4
 #define SYS_open    5
 #define SYS_close   6
 #define SYS_wait4   7
 #define SYS_getpid 20
+#define SYS_pipe   42
 #define SYS_execve 59
+#define SYS_dup2   90
 #define SYS_select 93
 #define O_RDWR     2
 #define O_CREATE   0x601
@@ -79,6 +82,12 @@ padding:
 	PRINT installed
 	mov x27, #0
 spawn_worker:
+	/* pipe returns the read descriptor in x0 and write descriptor in x1. */
+	mov x16, #SYS_pipe
+	svc #0x80
+	b.cs failed
+	mov x20, x0
+	mov x21, x1
 	mov x16, #SYS_fork
 	svc #0x80
 	b.cs failed
@@ -86,8 +95,51 @@ spawn_worker:
 	cbnz x1, child
 	mov x22, x0
 	PRINT spawned
+	mov x0, x21
+	mov x16, #SYS_close
+	svc #0x80
+	b.cs failed
+	/* Require the exec'd worker's exact READYv1 message and writer EOF. */
+	mov x23, x20
+	mov x24, sp
+	mov x25, #8
+	bl read_all
+	ldr x9, [sp]
+	adr x10, ipc_payload
+	ldr x10, [x10]
+	cmp x9, x10
+	b.ne failed
+	mov x0, x20
+	mov x1, sp
+	mov x2, #1
+	mov x16, #SYS_read
+	svc #0x80
+	b.cs failed
+	cbnz x0, failed
+	mov x0, x20
+	mov x16, #SYS_close
+	svc #0x80
+	b.cs failed
+	PRINT ipc_ok
 	b tick
 child:
+	/* Close the read endpoint and inherit the writer as fd 3 across exec. */
+	mov x0, x20
+	mov x16, #SYS_close
+	svc #0x80
+	b.cs child_failed
+	mov x0, x21
+	mov x1, #3
+	mov x16, #SYS_dup2
+	svc #0x80
+	b.cs child_failed
+	cmp x21, #3
+	b.eq child_exec
+	mov x0, x21
+	mov x16, #SYS_close
+	svc #0x80
+	b.cs child_failed
+child_exec:
 	adr x0, worker_path
 	str x0, [sp]
 	adr x9, once_arg
@@ -100,6 +152,7 @@ child:
 	mov x2, #0
 	mov x16, #SYS_execve
 	svc #0x80
+child_failed:
 	PRINT exec_failed
 	mov x0, #127
 	mov x16, #SYS_exit
@@ -139,6 +192,18 @@ tick:
 	PRINT restart
 	mov x27, #1
 	b spawn_worker
+read_all:
+	mov x0, x23
+	mov x1, x24
+	mov x2, x25
+	mov x16, #SYS_read
+	svc #0x80
+	b.cs failed
+	cbz x0, failed
+	add x24, x24, x0
+	subs x25, x25, x0
+	b.ne read_all
+	ret
 write_all:
 	mov x0, x23
 	mov x1, x24
@@ -194,6 +259,8 @@ stay_arg:
 	.asciz "stay"
 digits:
 	.ascii "0123456789abcdef"
+ipc_payload:
+	.ascii "READYv1\n"
 hello:
 	.ascii "\n*** SWEET userspace: init running as PID 1 ***\n"
 hello_end:
@@ -203,6 +270,9 @@ installed_end:
 spawned:
 	.ascii "SWEET init: worker forked\n"
 spawned_end:
+ipc_ok:
+	.ascii "SWEET init: IPC READYv1 and EOF verified\n"
+ipc_ok_end:
 alive:
 	.ascii "SWEET init: still alive\n"
 alive_end:

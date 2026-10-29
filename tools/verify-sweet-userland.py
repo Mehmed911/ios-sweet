@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Require observed exec, intentional exit, wait4, restart, and heartbeats.
+"""Require observed exec, RAM file roundtrip, pipe IPC, exit, and restart.
 
 A non-panic framebuffer is not a userspace success condition. This validator
 checks the complete diagnostic scenario and records hashes of its inputs.
@@ -26,6 +26,9 @@ def main():
     started = 'SWEET worker: exec successful, child PID verified'
     restart = 'SWEET init: restarting worker in stay mode'
     heartbeat = 'SWEET worker: still alive'
+    file_ok = 'SWEET worker: RAM file bytes and EOF verified'
+    ipc_ok = 'SWEET init: IPC READYv1 and EOF verified'
+    ipc_sent = 'SWEET worker: IPC READYv1 sent and closed'
     tail = ordered.split(restart, 1)[-1] if restart in ordered else ''
     checks = {
         'snapshot_decoded': result.get('unknown_glyphs') == 0,
@@ -33,11 +36,15 @@ def main():
         'pid1_started': start >= 0,
         'worker_installed': 'SWEET init: worker file installed' in screen,
         'two_exec_entries': screen.count(started) == 2,
+        'two_ram_file_roundtrips': screen.count(file_ok) == 2,
+        'two_worker_pipe_messages': screen.count(ipc_sent) == 2,
+        'two_parent_pipe_verifications': screen.count(ipc_ok) == 2,
         'intentional_exit': 'SWEET worker: intentional exit 42' in screen,
         'wait4_reaped': 'SWEET init: wait4 reaped worker, status hex:' in screen,
         'correct_wait_status': '00002a00' in screen,
         'worker_restarted': restart in screen,
         'restarted_worker_entered': started in tail,
+        'restarted_worker_file_and_ipc': all(mark in tail for mark in (file_ok, ipc_ok, ipc_sent)),
         'restarted_worker_heartbeats': tail.count(heartbeat) >= 2,
         'parent_heartbeats': screen.count('SWEET init: still alive') >= 3,
         'no_test_failure': 'TEST FAILED' not in screen and 'execve failed' not in screen,
