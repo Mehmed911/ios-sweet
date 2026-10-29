@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate launchctl stop/restart or bootout/bootstrap from the saved guest RAM root."""
+"""Validate launchctl lifecycle scenarios from the saved guest RAM root."""
 import argparse
 import hashlib
 import json
@@ -13,7 +13,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('output', type=Path)
     ap.add_argument('--hfsplus', type=Path, required=True)
-    ap.add_argument('--scenario', choices=('stop-restart', 'bootout-bootstrap'), default='stop-restart')
+    ap.add_argument('--scenario', choices=('stop-restart', 'bootout-bootstrap', 'keepalive'),
+                    default='stop-restart')
     args = ap.parse_args()
     root = args.output
     result = json.loads((root / 'run/result.json').read_text())
@@ -21,7 +22,9 @@ def main():
     guest = root / 'guest'
     guest.mkdir(exist_ok=True)
     reload_test = args.scenario == 'bootout-bootstrap'
+    keepalive_test = args.scenario == 'keepalive'
     tags = (('print-before', 'bootout', 'print-missing', 'bootstrap', 'print-after') if reload_test
+            else ('print-before', 'stop-term', 'print-auto-1', 'stop-kill', 'print-after') if keepalive_test
             else ('print-before', 'stop', 'print-stopped', 'restart', 'print-after'))
 
     def extract(path, target):
@@ -43,6 +46,9 @@ def main():
     after = re.search(r'AFTER pid=(\d+) state=running old=(\d+)', trace)
     old = int(summary[1]) if summary else int(before[1]) if before else -1
     new = int(summary[2]) if summary else int(after[1]) if after else -1
+    restarts = re.findall(r'(?m)^AUTORESTART cycle=(\d+) signal=(\w+) old=(\d+) new=(\d+)$', trace)
+    middle = int(restarts[0][3]) if restarts else -1
+    instances = {old, middle, new} if keepalive_test else {old, new}
     frames = sorted((root / 'run/frames').glob('*.txt'))
     screen = '\n'.join(p.read_text() for p in frames)
     if (root / 'run/fb.txt').exists():
@@ -80,9 +86,10 @@ def main():
         'different_positive_pids': old > 1 and new > 1 and old != new,
         'print_after_running': pid(data['print-after']) == new and 'state = running' in data['print-after'],
         'ready_file_matches_restart': data['ready'].strip() == str(new),
-        'both_target_instances_observed': processes == {old, new},
+        ('three_target_instances_observed' if keepalive_test else 'both_target_instances_observed'):
+            processes == instances,
         'target_sigterm_default_and_unmasked': set(int(p) for p in re.findall(
-            r'TERM default mask=0x00000000 pid=(\d+)', screen)) == {old, new},
+            r'TERM default mask=0x00000000 pid=(\d+)', screen)) == instances,
         'restarted_target_has_heartbeats': sum(int(p) == new for _, p in beats) >= 2,
         'controller_survives': len(re.findall(r'heartbeat=\d+ new_pid=' + str(new), trace)) >= 2,
         'control_pass': summary is not None,
@@ -91,13 +98,17 @@ def main():
             and 'SWEET EARLY PANIC:' not in screen and 'panic(cpu ' not in screen,
         'screen_decoded': result.get('unknown_glyphs') == 0,
     }
-    if reload_test:
+    if reload_test or keepalive_test:
         job = extract('/System/Library/LaunchDaemons/org.sweet.qemu.c-service.plist',
                       guest / 'target.plist')
         try:
             properties = plistlib.loads(job)
         except (plistlib.InvalidFileException, ValueError):
             properties = {}
+        if not isinstance(properties, dict):
+            properties = {}
+        checks['target_plist_preserved'] = hashlib.sha256(job).hexdigest() == manifest.get('target_job_sha256')
+    if reload_test:
         checks.update({
             'bootout_bootstrap_scenario': 'SCENARIO bootout-bootstrap' in trace,
             'unregistered_gap_observed':
@@ -105,10 +116,38 @@ def main():
             'print_missing_is_enoservice': data['print-missing'].strip() ==
                 'Could not find service "org.sweet.qemu.c-service" in domain for system',
             'print_missing_has_no_pid': pid(data['print-missing']) == 0,
-            'target_plist_preserved': hashlib.sha256(job).hexdigest() == manifest.get('target_job_sha256'),
             'target_is_runatload_not_keepalive': properties.get('Label') == 'org.sweet.qemu.c-service'
                 and properties.get('RunAtLoad') is True and properties.get('KeepAlive') is False,
             'bootstrap_pass': f'BOOTSTRAP PASS old={old} new={new}' in trace,
+            'exactly_five_cli_results': len(re.findall(r'(?m)^CLI \S+ status=', trace)) == 5,
+        })
+    elif keepalive_test:
+        base_properties = manifest.get('base_target_job', {})
+        reverted = dict(properties, KeepAlive=False)
+
+        def runs(text):
+            found = re.search(r'(?m)^\s*runs = (\d+)\s*$', text)
+            return int(found[1]) if found else -1
+
+        checks.update({
+            'keepalive_scenario': 'SCENARIO keepalive' in trace and manifest.get('scenario') == 'keepalive',
+            'unconditional_keepalive_enabled': properties.get('KeepAlive') is True,
+            'only_keepalive_changed_in_target_job': base_properties.get('KeepAlive') is False
+                and reverted == base_properties,
+            'controller_not_keepalive': manifest['controller_job'].get('KeepAlive') is False,
+            'three_distinct_positive_pids': min(old, middle, new) > 1 and len(instances) == 3,
+            'two_automatic_restarts_in_order': restarts == [
+                ('1', 'SIGTERM', str(old), str(middle)), ('2', 'SIGKILL', str(middle), str(new))],
+            'second_pid_reaped': f'STOPPED pid={middle} ESRCH cycle=2' in trace,
+            'middle_print_running': pid(data['print-auto-1']) == middle
+                and 'state = running' in data['print-auto-1'],
+            'launchd_run_count_increases': [runs(data[t]) for t in
+                ('print-before', 'print-auto-1', 'print-after')] == [1, 2, 3],
+            'launchd_records_term_then_kill': bool(re.search(
+                r'(?m)^\s*last terminating signal = [^\n]*:\s*15\s*$', data['print-auto-1']))
+                and bool(re.search(r'(?m)^\s*last terminating signal = [^\n]*:\s*9\s*$', data['print-after'])),
+            'keepalive_pass': f'KEEPALIVE PASS old={old} new={new} cycles=2' in trace,
+            'no_manual_start_cli': re.findall(r'(?m)^BEGIN (\S+)$', trace) == list(tags),
             'exactly_five_cli_results': len(re.findall(r'(?m)^CLI \S+ status=', trace)) == 5,
         })
     else:
@@ -130,6 +169,8 @@ def main():
                                     if (guest / value).exists() else None
                                     for name, value in names.items()},
               'sampled_frames': len(frames), 'framebuffer_is_sampled': True}
+    if keepalive_test:
+        report.update(middle_pid=middle, automatic_restarts=restarts)
     (root / 'run/verification.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))
     return 0 if report['passed'] else 1

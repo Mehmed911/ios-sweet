@@ -140,3 +140,6 @@ small restore runtime and pinned Procursus packages, not the full system image.
 For removal of the registration and reloading the same plist, see
 [the separate bootout/bootstrap scenario](BOOTSTRAP-QEMU.md). The stopped
 print above intentionally tests a job that remains registered.
+
+For automatic restarts after SIGTERM and SIGKILL, see the separate
+[KeepAlive scenario](KEEPALIVE-QEMU.md).

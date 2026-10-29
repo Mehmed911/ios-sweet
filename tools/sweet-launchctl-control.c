@@ -146,6 +146,42 @@ static int command_expected(const char *tag, char *const *argv, int expected_exi
 static int command(const char *tag, char *const *argv) {
     return command_expected(tag, argv, 0);
 }
+#if defined(SWEET_KEEPALIVE_TEST)
+static int keepalive_restarts(int initial) {
+    int previous = initial;
+    for (int cycle = 1; cycle <= 2; ++cycle) {
+        char *signal = cycle == 1 ? "SIGTERM" : "SIGKILL";
+        char *tag = cycle == 1 ? "stop-term" : "stop-kill";
+        char *stop[] = {"launchctl", "kill", signal, (char *)target, 0};
+        if (command(tag, stop)) return -1;
+        int gone = 0;
+        for (int i = 0; i < 60; ++i) {
+            if (kill(previous, 0) < 0 && *__error() == 3) { gone = 1; break; }
+            pause_seconds(1);
+        }
+        if (!gone) return -1;
+        note("STOPPED pid=%d ESRCH cycle=%d", previous, cycle);
+        note("AUTO WAIT cycle=%d signal=%s old=%d", cycle, signal, previous);
+        int next = -1;
+        for (int i = 0; i < 120; ++i) {
+            next = ready_pid();
+            if (next > 1 && next != initial && next != previous &&
+                path_matches(next, "/sbin/sweet-launchd-service")) break;
+            next = -1;
+            pause_seconds(1);
+        }
+        if (next <= 1) return -1;
+        note("AUTORESTART cycle=%d signal=%s old=%d new=%d", cycle, signal, previous, next);
+        if (cycle == 1) {
+            char *running[] = {"launchctl", "print", (char *)target, 0};
+            if (command("print-auto-1", running) || property_pid(output) != next ||
+                !strstr(output, "state = running")) return -1;
+        }
+        previous = next;
+    }
+    return previous;
+}
+#endif
 int main(void) {
     trace = open("/private/var/tmp/launchctl-control.log", 0x601, 0600);
     if (trace < 0) return fail("trace open");
@@ -156,6 +192,8 @@ int main(void) {
     note("controller pid=%d ppid=1 uid=0 parent=/sbin/launchd", getpid());
 #if defined(SWEET_BOOTSTRAP_TEST)
     note("SCENARIO bootout-bootstrap");
+#elif defined(SWEET_KEEPALIVE_TEST)
+    note("SCENARIO keepalive");
 #endif
     int old = -1;
     for (int i = 0; i < 120; ++i) {
@@ -169,6 +207,11 @@ int main(void) {
     if (command("print-before", before) || property_pid(output) != old ||
         !strstr(output, "state = running")) return fail("print before");
     note("BEFORE pid=%d state=running", old);
+#if defined(SWEET_KEEPALIVE_TEST)
+    /* No kickstart/bootstrap/exec of the target: only launchd may respawn it. */
+    int next = keepalive_restarts(old);
+    if (next <= 1) return fail("KeepAlive autorestart");
+#else
 #if defined(SWEET_BOOTSTRAP_TEST)
     /* Use a service target: never boot out the whole system domain. */
     char *remove[] = {"launchctl", "bootout", (char *)target, 0};
@@ -223,12 +266,15 @@ int main(void) {
         pause_seconds(1);
     }
     if (!ready) return fail("restarted service readiness");
+#endif
     char *after[] = {"launchctl", "print", (char *)target, 0};
     if (command("print-after", after) || property_pid(output) != next ||
         !strstr(output, "state = running")) return fail("print after");
     note("AFTER pid=%d state=running old=%d", next, old);
 #if defined(SWEET_BOOTSTRAP_TEST)
     note("BOOTSTRAP PASS old=%d new=%d", old, next);
+#elif defined(SWEET_KEEPALIVE_TEST)
+    note("KEEPALIVE PASS old=%d new=%d cycles=2", old, next);
 #endif
     note("CONTROL PASS old=%d new=%d", old, next);
     sync();

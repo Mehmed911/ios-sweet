@@ -2,7 +2,7 @@
 # Check service management using pinned Procursus launchctl and original Apple launchd.
 set -eu
 if [ "$#" -lt 6 ] || [ "$#" -gt 8 ]; then
-    echo "usage: test-sweet-launchctl.sh KERNEL ADT BASE_LAUNCHD_HFS RUNTIME_ROOT HFSPLUS NEW_OUTDIR [SECONDS] [stop-restart|bootout-bootstrap]" >&2
+    echo "usage: test-sweet-launchctl.sh KERNEL ADT BASE_LAUNCHD_HFS RUNTIME_ROOT HFSPLUS NEW_OUTDIR [SECONDS] [stop-restart|bootout-bootstrap|keepalive]" >&2
     exit 2
 fi
 kernel=$1
@@ -14,7 +14,7 @@ out=$6
 seconds=${7:-720}
 scenario=${8:-stop-restart}
 case "$scenario" in
-    stop-restart|bootout-bootstrap) ;;
+    stop-restart|bootout-bootstrap|keepalive) ;;
     *) echo "unknown launchctl scenario: $scenario" >&2; exit 2 ;;
 esac
 src=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -28,6 +28,8 @@ for program in sweet-launchd-service sweet-launchctl-control; do
     set --
     if [ "$scenario" = bootout-bootstrap ] && [ "$program" = sweet-launchctl-control ]; then
         set -- -DSWEET_BOOTSTRAP_TEST=1
+    elif [ "$scenario" = keepalive ] && [ "$program" = sweet-launchctl-control ]; then
+        set -- -DSWEET_KEEPALIVE_TEST=1
     fi
     clang -target arm64-apple-ios16.5 -Wall -Wextra -Werror -O1 \
         -fno-stack-protector -fno-builtin "$@" -c "$src/tools/$program.c" -o "$out/$program.o"
@@ -37,7 +39,8 @@ for program in sweet-launchd-service sweet-launchctl-control; do
 done
 python3 "$src/tools/build-launchctl-root.py" --base "$base" --runtime "$runtime" \
     --audit "$out/runtime-audit.json" --service "$out/sweet-launchd-service" \
-    --controller "$out/sweet-launchctl-control" --hfsplus "$hfsplus" --output "$out/root.hfs"
+    --controller "$out/sweet-launchctl-control" --hfsplus "$hfsplus" --output "$out/root.hfs" \
+    --scenario "$scenario"
 python3 "$src/tools/mkpayload.py" "$kernel" "$adt" "$out/payload.bin" --ramdisk "$out/root.hfs" \
     --cmdline 'debug=0xc serial=3 cpus=1 keepsyms=1 -enable_kprintf_spam -noprogress rd=md0 rootrw=1 sweet_console_fb=1 unentitled_ios_sim_launch=1 launchdsuffix=sweet launchd_log_serial=1'
 qemu_status=0

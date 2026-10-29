@@ -1,5 +1,58 @@
 # DUCHAMP update — 2026-10-22
 
+KeepAlive milestone (2026-10-30, QEMU/RAM only; this commit):
+Unchanged Apple launchd/xpcproxy automatically restarted the diagnostic
+C service twice with KeepAlive=true, using pinned Procursus FOSS
+launchctl 1:1.1.1 only to print and send SIGTERM / SIGKILL.
+Baseline commit: 9653af572059e49531a7eb43638aa2e02c5daef2.
+No phone, USB, UFS or boot partition command was run.
+
+Actual result: work/launchctl-keepalive, exit 0, 33/33 checks passed,
+450.716 host seconds, 35 sampled frames, zero unknown glyphs, no visible
+panic. Stopped on SWEET launchctl: heartbeat=2 before the 720-second limit.
+Controller PID 3 is a root child of original PID 1 /sbin/launchd.
+All five CLI processes exited 0:
+print-before: PID 4 running, runs=1.
+kill SIGTERM: PID 4 reaped / ESRCH; launchd respawned PID 7 automatically.
+print-auto-1: PID 7 running, runs=2, last terminating signal=15.
+kill SIGKILL: PID 7 reaped / ESRCH; launchd respawned PID 10 automatically.
+print-after: PID 10 running, runs=3, last terminating signal=9.
+No kickstart/bootstrap/direct exec of the target was used by the controller.
+All three target instances passed readiness checks; PID 10 and controller
+continued heartbeats. The saved readiness file contained 10.
+
+Replay tools/test-sweet-launchctl.sh with the prior six inputs, 720, and
+keepalive as eighth argument. Only controller gets SWEET_KEEPALIVE_TEST=1.
+The copied target plist changes only KeepAlive false -> true; base stays
+unchanged and controller KeepAlive stays false. The target C binary is
+byte-identical to the prior tests. Builder records base/installed plist
+hashes and base properties. Verifier checks three distinct PIDs, ordered
+autorestarts, run count 1/2/3, signals, raw CLI files and final heartbeats.
+Details/replay: duchamp/KEEPALIVE-QEMU.md.
+Report: work/launchctl-keepalive/run/verification.json.
+Raw trace and CLI outputs: work/launchctl-keepalive/guest/.
+
+SHA-256:
+target 465d9bed7e2d6765c121d4cb5f330cd123b48ab9f387c3a5feaceb171bd4677f
+controller ca5fcabfe9da5ab23768841986ab9e0eada43674c2a32524ef0b7fc05cf30bb8
+input root 9ef39b5556b5d4416a89aa58e21eafd0bd0038c9f468359ba61cb6a33720a03f
+payload d7b6d4d88ee53ec67473bf21ebea8e2fdde545b172b5a7665e3ce16aabfbaba6
+exported root 85b2e3958900f668387963f0fea647bc1a20f88aa83b58f30aec72a0d104de30
+KeepAlive plist 7e33d9a92afeca768a5aacd4fb95ff171355444bee1c24099a6dfa136cc8f808
+base plist 004e41dbd0bc0d0f1ef88a7ee73c6ae228c55a5e7d8728704289dc244380083c
+Rehashed unchanged Actions 104 kernel and initial base:
+kernel 82fc8fe1391bea90bcce9ed2d4e8a2ff8204667f6785857873717564ec9331c9
+base root 491aa78408c423c50e8b59644e416e94b643ed3eb119158d52684af4176c8b3f
+No new kernel CI build. Original launchd/xpcproxy/CLI hashes passed.
+Three C controller modes passed arm64 -Wall -Wextra -Werror checks;
+shell syntax and Python compile checks passed. Updated verifier still
+accepts prior saved guests: 22 stop/restart and 27 bootout/bootstrap checks.
+
+This tests unconditional KeepAlive after signal termination in QEMU.
+Normal exit, conditional KeepAlive dictionaries and custom shutdown
+handlers remain separate coverage. Full iOS and MT6897 UFS are not proven.
+Keep all successful roots and prior failed probes for comparison.
+
 bootout/bootstrap milestone (2026-10-30, QEMU/RAM only; this commit):
 The pinned Procursus FOSS launchctl 1:1.1.1 successfully removed and
 reloaded org.sweet.qemu.c-service under unchanged Apple launchd/xpcproxy.

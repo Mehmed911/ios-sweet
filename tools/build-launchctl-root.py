@@ -15,6 +15,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     for key in ('base', 'runtime', 'audit', 'service', 'controller', 'hfsplus', 'output'):
         ap.add_argument('--' + key, type=Path, required=True)
+    ap.add_argument('--scenario', choices=('stop-restart', 'bootout-bootstrap', 'keepalive'),
+                    default='stop-restart')
     args = ap.parse_args()
     if args.output.exists():
         raise SystemExit('refusing to overwrite previous image')
@@ -57,6 +59,11 @@ def main():
                 or properties.get('RunAtLoad') is not True
                 or properties.get('KeepAlive') is not False):
             raise SystemExit('target must be the RunAtLoad, non-KeepAlive diagnostic service')
+        installed_target_data = target_data
+        if args.scenario == 'keepalive':
+            properties['KeepAlive'] = True
+            installed_target_data = plistlib.dumps(properties)
+            (temp / 'keepalive.plist').write_bytes(installed_target_data)
         for guest, expected in {
             '/sbin/launchd': '4c61512d19b9a55a6ddad27e23b88fc5008fbf77d0c0b5e6bdd7c7d90cef3e06',
             '/usr/libexec/xpcproxy': '2d1f607a248961d6a8612aca68a42c57069fa9cf3f5afbee448cf3e70eeb315f',
@@ -79,6 +86,8 @@ def main():
             '/sbin/sweet-launchctl-control': (args.controller, '755'),
             '/System/Library/LaunchDaemons/org.sweet.qemu.launchctl-control.plist': (job, '644'),
         })
+        if args.scenario == 'keepalive':
+            files[target_job] = (temp / 'keepalive.plist', '644')
         manifest = {}
         for guest, (source, mode) in files.items():
             run('add', str(source.resolve()), guest)
@@ -93,7 +102,10 @@ def main():
             raise SystemExit('unexpected daemon job set')
         (args.output.parent / 'launchctl-root-manifest.json').write_text(json.dumps({
             'base_sha256': hashlib.sha256(args.base.read_bytes()).hexdigest(),
-            'target_job_sha256': hashlib.sha256(target_data).hexdigest(),
+            'base_target_job_sha256': hashlib.sha256(target_data).hexdigest(),
+            'base_target_job': plistlib.loads(target_data),
+            'target_job_sha256': hashlib.sha256(installed_target_data).hexdigest(),
+            'scenario': args.scenario,
             'files': manifest, 'jobs': expected_jobs, 'controller_job': controller_job,
         }, indent=2) + '\n')
     print(f'{args.output}: pinned Procursus launchctl, target and controller installed')
