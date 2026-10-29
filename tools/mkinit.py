@@ -129,8 +129,10 @@ def build(obj, entitlements=None):
 
 
 if __name__ == '__main__':
-    # mkinit.py OBJ OUT [ENTITLEMENTS.plist]
-    ents = open(sys.argv[3], 'rb').read() if len(sys.argv) > 3 else None
-    out = build(open(sys.argv[1], 'rb').read(), ents)
-    open(sys.argv[2], 'wb').write(out)
-    print(f'{sys.argv[2]}: {len(out)} bytes')
+    args = sys.argv[1:]
+    if len(args) not in (2, 3):
+        raise SystemExit('usage: mkinit.py OBJECT OUT [ENTITLEMENTS.plist]')
+    ents = open(args[2], 'rb').read() if len(args) == 3 else None
+    out = build(open(args[0], 'rb').read(), ents)
+    open(args[1], 'wb').write(out)
+    print(f'{args[1]}: {len(out)} bytes')

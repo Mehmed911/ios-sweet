@@ -1,5 +1,37 @@
 # DUCHAMP update — 2026-10-22
 
+Diagnostic exec/supervision milestone (2026-10-29, QEMU/RAM only; this
+commit): tools/build-sweet-userland.sh builds separate signed arm64 init and
+worker executables. PID 1 creates /sbin/worker on the writable RAM HFS root,
+forks and execs it with argv once, then uses wait4(WNOHANG) to reap its deliberate
+exit 42 (raw status 00002a00). It requires that status before restarting the
+worker with argv stay; unexpected exits stop with TEST FAILED. Worker entry
+also checks argc and a PID greater than 1. No kernel change was required:
+Actions run 104 / 40939563499 at 4ada6fda3a7b6bd6b3c880698b35c0bc30ebbf8e
+provided the reused kernel. Final 90-second QEMU run completed with
+no_panic_observed and zero unknown glyphs; every semantic check passed,
+including two exec entries, wait status, restart, and continued parent/worker
+heartbeats. The verifier correctly rejected the earlier failed compact-worker
+run despite its no_panic_observed snapshot.
+
+Artifacts: work/userland-exec-final/{launchd,sweet-worker.macho,root.hfs,
+payload.bin,run/fb.txt,run/verification.json}. Reproduce with the single command
+documented in duchamp/USERLAND-QEMU.md. Kernel SHA-256:
+82fc8fe1391bea90bcce9ed2d4e8a2ff8204667f6785857873717564ec9331c9;
+init cba363ff31a227b0ca4aa410196148f0abcb7146a0a885455e993625a931da73;
+worker 2918b89ab249a0f54f2e63a89355e746669dcd3cb6f6b315581838391bd8a64a;
+root 0a19b8c12959f48d292bedd8a018a461de832dd043cd9932747677f8766ac34f;
+payload 30bfd3b0b46aabb1b673cff58165ba5fa0b84281260d25d07d154c399e54ecde.
+
+Failed experiments retained: the compact worker used an invalid 4K file offset
+for this 16K arm64 loader; it has been replaced with the standard Mach-O layout.
+An earlier unsuccessful writable hpmount attempt altered work/root-multiproc.hfs;
+do not reuse it. All final images use the unchanged original HFS baseline
+work/qemu-rootvnode-98/root-with-launchd.hfs (e5b5c1b6...36726414a).
+Phone, UFS, and boot partitions were not accessed. Next work can add IPC and
+file-service tests in QEMU; a dynamic userland and MT6897 storage remain
+separate unfinished work. This milestone is a diagnostic userspace, not iOS.
+
 Direct device read (2026-10-24): ADB/root reports Linux
 `6.1.57-android14-11` on aarch64 and the expected ARM feature set. Android's
 `dmesg` exposes no usable EL or PSCI diagnostic, so the current EL cannot be

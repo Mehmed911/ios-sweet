@@ -20,8 +20,6 @@ on:
     paths:
       - "xnu/patches/**"
       - "tools/apply-duchamp-pid1-heartbeat-console.py"
-      - "tools/sweet-init.S"
-      - "tools/mkinit.py"
       - ".github/workflows/xnu.yml"
 
 concurrency:
