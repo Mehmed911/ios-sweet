@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Trace PID 1 getpid/heartbeat and optionally mirror its console to the early FB."""
+"""Trace PID 1 fork/heartbeat and optionally mirror its console to the early FB."""
 
 from pathlib import Path
 import sys
@@ -20,7 +20,7 @@ syscalls_path = root / "bsd/dev/arm/systemcalls.c"
 km_path = root / "bsd/dev/arm/km.c"
 
 early = early_path.read_text()
-early = replace_once(early, "stage > 194", "stage > 199", "stage ceiling")
+early = replace_once(early, "stage > 194", "stage > 196", "stage ceiling")
 
 syscalls = syscalls_path.read_text()
 syscalls = replace_once(
@@ -28,10 +28,9 @@ syscalls = replace_once(
     '''static boolean_t sweet_pid1_first_write_seen;
 static boolean_t sweet_pid1_first_write_pending;
 ''',
-    '''static boolean_t sweet_pid1_first_write_seen;
-static boolean_t sweet_pid1_first_write_pending;
-static boolean_t sweet_pid1_getpid_pending;
+    '''static boolean_t sweet_pid1_startup_seen;
 static boolean_t sweet_pid1_heartbeat_pending;
+static boolean_t sweet_pid1_fork_pending;
 ''',
     "PID 1 heartbeat state",
 )
@@ -43,18 +42,14 @@ syscalls = replace_once(
 \t\tsweet_early_mark(192, "PID1 FIRST CONSOLE WRITE");
 \t}
 ''',
-    '''\tif (pid == 1 && !sweet_pid1_first_write_seen && code == 4) {
-\t\tsweet_pid1_first_write_seen = TRUE;
-\t\tsweet_pid1_first_write_pending = TRUE;
-\t\tsweet_early_mark(192, "PID1 FIRST CONSOLE WRITE");
-\t}
-\tif (pid == 1 && code == 20 && !sweet_pid1_getpid_pending) {
-\t\tsweet_pid1_getpid_pending = TRUE;
-\t\tsweet_early_mark(195, "PID1 GETPID ENTERED");
-\t}
-\tif (pid == 1 && code == 93 && !sweet_pid1_heartbeat_pending) {
+    '''\tif (pid == 1 && code == 93 && !sweet_pid1_startup_seen) {
+\t\tsweet_pid1_startup_seen = TRUE;
 \t\tsweet_pid1_heartbeat_pending = TRUE;
-\t\tsweet_early_mark(197, "PID1 HEARTBEAT ENTERED");
+\t\tsweet_early_mark(192, "PID1 STARTUP LINE COMPLETE");
+\t}
+\tif (pid == 1 && code == 2 && !sweet_pid1_fork_pending) {
+\t\tsweet_pid1_fork_pending = TRUE;
+\t\tsweet_early_mark(194, "PID1 FORK ENTERED");
 \t}
 ''',
     "PID 1 getpid and heartbeat entry",
@@ -67,20 +62,15 @@ syscalls = replace_once(
 \t\t    error == 0 ? "SWEET USERSPACE PID1 RUNNING" : "PID1 CONSOLE WRITE FAILED");
 \t}
 ''',
-    '''\tif (sweet_pid1_first_write_pending) {
-\t\tsweet_pid1_first_write_pending = FALSE;
-\t\tsweet_early_mark(error == 0 ? 193 : 194,
-\t\t    error == 0 ? "SWEET USERSPACE PID1 RUNNING" : "PID1 CONSOLE WRITE FAILED");
-\t}
-\tif (sweet_pid1_getpid_pending) {
-\t\tsweet_pid1_getpid_pending = FALSE;
-\t\tsweet_early_mark(196,
-\t\t    error == 0 && uthread->uu_rval[0] == 1 ? "PID1 GETPID OK" : "PID1 GETPID FAILED");
-\t}
-\tif (sweet_pid1_heartbeat_pending) {
+    '''\tif (pid == 1 && sweet_pid1_heartbeat_pending) {
 \t\tsweet_pid1_heartbeat_pending = FALSE;
-\t\tsweet_early_mark(198,
-\t\t    error == 0 ? "PID1 HEARTBEAT RETURNED" : "PID1 HEARTBEAT FAILED");
+\t\tsweet_early_mark(193,
+\t\t    error == 0 ? "PID1 FIRST HEARTBEAT RETURNED" : "PID1 HEARTBEAT FAILED");
+\t}
+\tif (pid == 1 && sweet_pid1_fork_pending) {
+\t\tsweet_pid1_fork_pending = FALSE;
+\t\tsweet_early_mark(error == 0 ? 195 : 196,
+\t\t    error == 0 ? "PID1 FORK OK" : "PID1 FORK FAILED");
 \t}
 ''',
     "PID 1 getpid and heartbeat results",

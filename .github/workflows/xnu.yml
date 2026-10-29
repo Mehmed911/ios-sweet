@@ -19,6 +19,9 @@ on:
     branches: [main, duchamp-bootstrap]
     paths:
       - "xnu/patches/**"
+      - "tools/apply-duchamp-pid1-heartbeat-console.py"
+      - "tools/sweet-init.S"
+      - "tools/mkinit.py"
       - ".github/workflows/xnu.yml"
 
 concurrency:
@@ -98,7 +101,7 @@ jobs:
           MAKEFLAGS: ${{ inputs.keep_going == 'false' && '' || '-k' }}
         run: |
           bash build.sh
-          grep -Fq 'stage > 199' xnu/osfmk/arm64/sweet_early.c
+          grep -Fq 'stage > 196' xnu/osfmk/arm64/sweet_early.c
           grep -Fq 'QEMU RAM BLOCK READY' xnu/iokit/bsddev/IOKitBSDInit.cpp
           grep -Fq 'MT6897 BACKEND STUB' xnu/iokit/bsddev/IOKitBSDInit.cpp
           grep -Fq 'QEMU RAM ROOT MOUNTED' xnu/bsd/kern/bsd_init.c
@@ -115,11 +118,9 @@ jobs:
           grep -Fq 'DEV DIRECTORY READY' xnu/bsd/kern/bsd_init.c
           grep -Fq 'DEVFS CONSOLE READY' xnu/bsd/kern/bsd_init.c
           grep -Fq 'DEVFS MOUNT FAILED' xnu/bsd/kern/bsd_init.c
-          grep -Fq 'PID1 FIRST CONSOLE WRITE' xnu/bsd/dev/arm/systemcalls.c
-          grep -Fq 'SWEET USERSPACE PID1 RUNNING' xnu/bsd/dev/arm/systemcalls.c
-          grep -Fq 'PID1 CONSOLE WRITE FAILED' xnu/bsd/dev/arm/systemcalls.c
-          grep -Fq 'PID1 GETPID OK' xnu/bsd/dev/arm/systemcalls.c
-          grep -Fq 'PID1 HEARTBEAT RETURNED' xnu/bsd/dev/arm/systemcalls.c
+          grep -Fq 'PID1 STARTUP LINE COMPLETE' xnu/bsd/dev/arm/systemcalls.c
+          grep -Fq 'PID1 FORK OK' xnu/bsd/dev/arm/systemcalls.c
+          grep -Fq 'PID1 FIRST HEARTBEAT RETURNED' xnu/bsd/dev/arm/systemcalls.c
           grep -Fq 'sweet_console_fb' xnu/bsd/dev/arm/km.c
 
       - name: Package build tree for local compiles

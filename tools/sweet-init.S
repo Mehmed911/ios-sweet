@@ -12,6 +12,7 @@
  */
 #define SYS_write	4
 #define SYS_open	5
+#define SYS_fork	2
 #define SYS_getpid	20
 #define SYS_select	93
 #define O_RDWR		2
@@ -54,9 +55,31 @@ _start:
 	add	sp, sp, #16
 
 	adr	x1, hello_tail
-	adr	x2, alive
+	adr	x2, parent_started
 	sub	x2, x2, x1
 	bl	write_console
+
+	/* XNU arm64 returns x1=0 to the parent and x1=1 to the child. */
+	mov	x16, #SYS_fork
+	svc	#0x80
+	b.cs	hang
+	cbnz	x1, child
+
+	adr	x1, parent_started
+	adr	x2, child_started
+	sub	x2, x2, x1
+	bl	write_console
+	adr	x20, parent_alive
+	adr	x21, parent_alive_end
+	b	tick
+
+child:
+	adr	x1, child_started
+	adr	x2, parent_alive
+	sub	x2, x2, x1
+	bl	write_console
+	adr	x20, child_alive
+	adr	x21, child_alive_end
 
 tick:
 	/* select(0, NULL, NULL, NULL, &5s) as a portable sleep */
@@ -68,9 +91,8 @@ tick:
 	mov	x16, #SYS_select
 	svc	#0x80
 
-	adr	x1, alive
-	adr	x2, alive_end
-	sub	x2, x2, x1
+	mov	x1, x20
+	sub	x2, x21, x20
 	bl	write_console
 	b	tick
 
@@ -94,6 +116,13 @@ hello:
 	.ascii	"\n*** SWEET userspace: init running as PID "
 hello_tail:
 	.ascii	" ***\n"
-alive:
+parent_started:
+	.ascii	"SWEET init: child started\n"
+child_started:
+	.ascii	"SWEET child: process running\n"
+parent_alive:
 	.ascii	"SWEET init: still alive\n"
-alive_end:
+parent_alive_end:
+child_alive:
+	.ascii	"SWEET child: still alive\n"
+child_alive_end:
