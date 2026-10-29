@@ -1,8 +1,8 @@
 #!/bin/sh
 # Check service management using pinned Procursus launchctl and original Apple launchd.
 set -eu
-if [ "$#" -lt 6 ] || [ "$#" -gt 7 ]; then
-    echo "usage: test-sweet-launchctl.sh KERNEL ADT BASE_LAUNCHD_HFS RUNTIME_ROOT HFSPLUS NEW_OUTDIR [SECONDS]" >&2
+if [ "$#" -lt 6 ] || [ "$#" -gt 8 ]; then
+    echo "usage: test-sweet-launchctl.sh KERNEL ADT BASE_LAUNCHD_HFS RUNTIME_ROOT HFSPLUS NEW_OUTDIR [SECONDS] [stop-restart|bootout-bootstrap]" >&2
     exit 2
 fi
 kernel=$1
@@ -12,6 +12,11 @@ runtime=$(CDPATH= cd -- "$4" && pwd)
 hfsplus=$5
 out=$6
 seconds=${7:-720}
+scenario=${8:-stop-restart}
+case "$scenario" in
+    stop-restart|bootout-bootstrap) ;;
+    *) echo "unknown launchctl scenario: $scenario" >&2; exit 2 ;;
+esac
 src=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 if [ -e "$out" ]; then
     echo "refusing to overwrite previous results: $out" >&2
@@ -20,8 +25,12 @@ fi
 mkdir -p "$out"
 python3 "$src/tools/audit-darwin-runtime.py" "$runtime" "$out/runtime-audit.json" --entry /bin/launchctl
 for program in sweet-launchd-service sweet-launchctl-control; do
+    set --
+    if [ "$scenario" = bootout-bootstrap ] && [ "$program" = sweet-launchctl-control ]; then
+        set -- -DSWEET_BOOTSTRAP_TEST=1
+    fi
     clang -target arm64-apple-ios16.5 -Wall -Wextra -Werror -O1 \
-        -fno-stack-protector -fno-builtin -c "$src/tools/$program.c" -o "$out/$program.o"
+        -fno-stack-protector -fno-builtin "$@" -c "$src/tools/$program.c" -o "$out/$program.o"
     ld64.lld -arch arm64 -platform_version ios 16.5 16.5 -adhoc_codesign \
         -syslibroot "$runtime" -L"$runtime/usr/lib" -lSystem.B -e _main \
         -o "$out/$program" "$out/$program.o"
@@ -37,5 +46,5 @@ python3 "$src/tools/qemu-sweet.py" "$out/payload.bin" "$out/run" --secs "$second
     --stop-on-text 'SWEET EARLY PANIC:' --stop-on-text 'SWEET launchctl: FAIL' \
     --stop-on-text 'SWEET launchctl: heartbeat=2 ' \
     --save-ramdisk --fail-on-panic || qemu_status=$?
-python3 "$src/tools/verify-sweet-launchctl.py" "$out" --hfsplus "$hfsplus"
+python3 "$src/tools/verify-sweet-launchctl.py" "$out" --hfsplus "$hfsplus" --scenario "$scenario"
 exit "$qemu_status"

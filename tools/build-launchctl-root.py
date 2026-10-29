@@ -49,6 +49,14 @@ def main():
         run('chmod', '755', '/bin')
     with tempfile.TemporaryDirectory(prefix='sweet-launchctl-') as scratch:
         temp = Path(scratch)
+        target_job = '/System/Library/LaunchDaemons/org.sweet.qemu.c-service.plist'
+        run('extract', target_job, str(temp / 'target.plist'))
+        target_data = (temp / 'target.plist').read_bytes()
+        properties = plistlib.loads(target_data)
+        if (properties.get('Label') != 'org.sweet.qemu.c-service'
+                or properties.get('RunAtLoad') is not True
+                or properties.get('KeepAlive') is not False):
+            raise SystemExit('target must be the RunAtLoad, non-KeepAlive diagnostic service')
         for guest, expected in {
             '/sbin/launchd': '4c61512d19b9a55a6ddad27e23b88fc5008fbf77d0c0b5e6bdd7c7d90cef3e06',
             '/usr/libexec/xpcproxy': '2d1f607a248961d6a8612aca68a42c57069fa9cf3f5afbee448cf3e70eeb315f',
@@ -85,6 +93,7 @@ def main():
             raise SystemExit('unexpected daemon job set')
         (args.output.parent / 'launchctl-root-manifest.json').write_text(json.dumps({
             'base_sha256': hashlib.sha256(args.base.read_bytes()).hexdigest(),
+            'target_job_sha256': hashlib.sha256(target_data).hexdigest(),
             'files': manifest, 'jobs': expected_jobs, 'controller_job': controller_job,
         }, indent=2) + '\n')
     print(f'{args.output}: pinned Procursus launchctl, target and controller installed')

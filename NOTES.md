@@ -1,5 +1,54 @@
 # DUCHAMP update — 2026-10-22
 
+bootout/bootstrap milestone (2026-10-30, QEMU/RAM only; this commit):
+The pinned Procursus FOSS launchctl 1:1.1.1 successfully removed and
+reloaded org.sweet.qemu.c-service under unchanged Apple launchd/xpcproxy.
+Prior lifecycle commit: 5343d416b2d83ad71f37357d7321065172aa62d8.
+No phone, USB, UFS or boot partition command was run.
+
+Actual result: work/launchctl-bootstrap, exit 0, 27/27 checks passed,
+399.932 host seconds, 31 sampled frames, zero unknown glyphs, no visible
+panic. Stop marker: SWEET launchctl: heartbeat=2 .
+Controller PID 3 is a root child of PID 1 /sbin/launchd.
+print-before: exit 0, target PID 4 running.
+bootout system/org.sweet.qemu.c-service: exit 0, PID 4 reaped / ESRCH.
+After five seconds, print returned ENOSERVICE=113 (wait status 0x7100):
+Could not find service "org.sweet.qemu.c-service" in domain for system
+The plist remained readable and byte-identical to the base image.
+bootstrap system /System/Library/LaunchDaemons/org.sweet.qemu.c-service.plist:
+exit 0; readiness file became 9; print-after: exit 0, PID 9 running.
+Both target and controller continued heartbeats. This proves removal of
+registration and reloading, beyond the earlier stopped-but-registered test.
+
+Replay tools/test-sweet-launchctl.sh with the same six inputs, 720, then
+bootout-bootstrap as its eighth argument. Omitting the mode retains the
+SIGTERM/kickstart scenario. Only the controller gets SWEET_BOOTSTRAP_TEST=1.
+Verifier requires the exact missing-service status/text and checks the
+saved guest plist, original executables, PID transition and heartbeats.
+Details and replay: duchamp/BOOTSTRAP-QEMU.md.
+Raw trace/CLI files: work/launchctl-bootstrap/guest/.
+Report: work/launchctl-bootstrap/run/verification.json.
+
+SHA-256:
+target 465d9bed7e2d6765c121d4cb5f330cd123b48ab9f387c3a5feaceb171bd4677f
+controller ef31d135fdf0120e930b77f7c34724a5cb44589ce8bed7b75d8194ee2f3c0bd8
+input root 949814247b6e88a4d466518d0dc88bdce01cd13066e9fb7120590afc87585b58
+payload fe12ca6fd72cf90be45a82a9f807bc4147c46115e9a996ccaa761b9bb575d38b
+exported root d2bbb6a6910f100fac9bff93a7c1f646f27fe0c63451ba8fa3d2a8cd951b51e4
+target plist 004e41dbd0bc0d0f1ef88a7ee73c6ae228c55a5e7d8728704289dc244380083c
+The unchanged Actions 104 kernel and initial base root were rehashed:
+kernel 82fc8fe1391bea90bcce9ed2d4e8a2ff8204667f6785857873717564ec9331c9
+base 491aa78408c423c50e8b59644e416e94b643ed3eb119158d52684af4176c8b3f
+No new kernel CI build. Both controller modes pass arm64 C checks with
+-Wall -Wextra -Werror; Python compile and shell syntax checks pass.
+The updated verifier accepts the prior lifecycle run (22 checks) and
+rejects the earlier SIGTERM-ignored run despite its no-panic result.
+
+This milestone covers one diagnostic service in QEMU's development
+kernel. It does not establish full iOS or a working MT6897 storage backend.
+Keep the existing successful roots and failed probes. Further work should
+select a separately scoped userland test; phone storage remains outside it.
+
 launchctl lifecycle milestone (2026-10-30, QEMU/RAM only; this commit):
 Apple's unchanged launchd/xpcproxy now successfully serve print, SIGTERM
 stop, stopped-state print, kickstart -p, and running-state print through

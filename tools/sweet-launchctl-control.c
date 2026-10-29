@@ -92,7 +92,7 @@ static int property_pid(const char *text) {
     }
     return 0;
 }
-static int command(const char *tag, char *const *argv) {
+static int command_expected(const char *tag, char *const *argv, int expected_exit) {
     char path[160];
     snprintf(path, sizeof(path), "/private/var/tmp/launchctl-%s.txt", tag);
     int fd = open(path, 0x602, 0600);
@@ -140,7 +140,11 @@ static int command(const char *tag, char *const *argv) {
     output[at] = 0;
     close(fd);
     if (status != 0) note("CLI %s output: %.160s", tag, output);
-    return status == 0 && at < sizeof(output) - 1 ? 0 : -1;
+    /* Exact wait status also rejects a signal death instead of an exit. */
+    return status == (expected_exit << 8) && at < sizeof(output) - 1 ? 0 : -1;
+}
+static int command(const char *tag, char *const *argv) {
+    return command_expected(tag, argv, 0);
 }
 int main(void) {
     trace = open("/private/var/tmp/launchctl-control.log", 0x601, 0600);
@@ -150,6 +154,9 @@ int main(void) {
         proc_pidpath(1, parent, sizeof(parent)) <= 0 || strcmp(parent, "/sbin/launchd"))
         return fail("controller identity");
     note("controller pid=%d ppid=1 uid=0 parent=/sbin/launchd", getpid());
+#if defined(SWEET_BOOTSTRAP_TEST)
+    note("SCENARIO bootout-bootstrap");
+#endif
     int old = -1;
     for (int i = 0; i < 120; ++i) {
         old = ready_pid();
@@ -162,8 +169,14 @@ int main(void) {
     if (command("print-before", before) || property_pid(output) != old ||
         !strstr(output, "state = running")) return fail("print before");
     note("BEFORE pid=%d state=running", old);
+#if defined(SWEET_BOOTSTRAP_TEST)
+    /* Use a service target: never boot out the whole system domain. */
+    char *remove[] = {"launchctl", "bootout", (char *)target, 0};
+    if (command("bootout", remove)) return fail("launchctl bootout");
+#else
     char *stop[] = {"launchctl", "kill", "SIGTERM", (char *)target, 0};
     if (command("stop", stop)) return fail("launchctl kill");
+#endif
     int gone = 0;
     for (int i = 0; i < 60; ++i) {
         if (kill(old, 0) < 0 && *__error() == 3) { gone = 1; break; }
@@ -172,6 +185,21 @@ int main(void) {
     if (!gone) return fail("old pid not reaped");
     note("STOPPED pid=%d ESRCH", old);
     pause_seconds(5);
+#if defined(SWEET_BOOTSTRAP_TEST)
+    char *missing[] = {"launchctl", "print", (char *)target, 0};
+    /* Procursus v1.1.1 xpc_private.h defines ENOSERVICE as 113. */
+    if (command_expected("print-missing", missing, 113) || property_pid(output) != 0 ||
+        !strstr(output, "Could not find service \"org.sweet.qemu.c-service\" in domain for "))
+        return fail("service still registered or unexpected print error");
+    const char *plist = "/System/Library/LaunchDaemons/org.sweet.qemu.c-service.plist";
+    int job = open(plist, 0);
+    if (job < 0) return fail("target plist missing");
+    close(job);
+    note("UNREGISTERED expected_exit=113 no pid after 5 seconds; plist readable");
+    char *reload[] = {"launchctl", "bootstrap", "system", (char *)plist, 0};
+    if (command("bootstrap", reload)) return fail("launchctl bootstrap");
+    int next = -1;
+#else
     char *stopped[] = {"launchctl", "print", (char *)target, 0};
     if (command("print-stopped", stopped) || property_pid(output) != 0 ||
         !strstr(output, "org.sweet.qemu.c-service")) return fail("print stopped");
@@ -180,9 +208,16 @@ int main(void) {
     if (command("restart", restart)) return fail("launchctl kickstart");
     int next = decimal(output);
     if (next <= 1 || next == old) return fail("new pid");
+#endif
     int ready = 0;
     for (int i = 0; i < 120; ++i) {
-        if (ready_pid() == next && path_matches(next, "/sbin/sweet-launchd-service")) {
+#if defined(SWEET_BOOTSTRAP_TEST)
+        /* The file can still contain the dead PID until the new instance
+         * finishes its own identity, signal and RAM-file checks. */
+        next = ready_pid();
+#endif
+        if (next > 1 && next != old && ready_pid() == next &&
+            path_matches(next, "/sbin/sweet-launchd-service")) {
             ready = 1; break;
         }
         pause_seconds(1);
@@ -192,6 +227,9 @@ int main(void) {
     if (command("print-after", after) || property_pid(output) != next ||
         !strstr(output, "state = running")) return fail("print after");
     note("AFTER pid=%d state=running old=%d", next, old);
+#if defined(SWEET_BOOTSTRAP_TEST)
+    note("BOOTSTRAP PASS old=%d new=%d", old, next);
+#endif
     note("CONTROL PASS old=%d new=%d", old, next);
     sync();
     for (unsigned int count = 1;; ++count) {

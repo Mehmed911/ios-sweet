@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Validate Procursus launchctl outputs and actual stop/restart from the guest RAM root."""
+"""Validate launchctl stop/restart or bootout/bootstrap from the saved guest RAM root."""
 import argparse
 import hashlib
 import json
 from pathlib import Path
+import plistlib
 import re
 import subprocess
 
@@ -12,22 +13,30 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('output', type=Path)
     ap.add_argument('--hfsplus', type=Path, required=True)
+    ap.add_argument('--scenario', choices=('stop-restart', 'bootout-bootstrap'), default='stop-restart')
     args = ap.parse_args()
     root = args.output
     result = json.loads((root / 'run/result.json').read_text())
     manifest = json.loads((root / 'launchctl-root-manifest.json').read_text())
     guest = root / 'guest'
     guest.mkdir(exist_ok=True)
+    reload_test = args.scenario == 'bootout-bootstrap'
+    tags = (('print-before', 'bootout', 'print-missing', 'bootstrap', 'print-after') if reload_test
+            else ('print-before', 'stop', 'print-stopped', 'restart', 'print-after'))
+
+    def extract(path, target):
+        # A failing HFS tool can return zero; never reuse an older extraction.
+        target.unlink(missing_ok=True)
+        subprocess.run([str(args.hfsplus.resolve()), str((root / 'run/ramdisk-final.hfs').resolve()),
+                        'extract', path, str(target.resolve())], check=True, capture_output=True)
+        return target.read_bytes() if target.exists() else b''
+
     names = {'trace': 'launchctl-control.log', 'ready': 'sweet-service.pid'}
-    names.update({tag: f'launchctl-{tag}.txt' for tag in
-                  ('print-before', 'stop', 'print-stopped', 'restart', 'print-after')})
+    names.update({tag: f'launchctl-{tag}.txt' for tag in tags})
     data = {}
     for key, name in names.items():
         target = guest / name
-        subprocess.run([str(args.hfsplus.resolve()), str((root / 'run/ramdisk-final.hfs').resolve()),
-                        'extract', '/private/var/tmp/' + name, str(target.resolve())],
-                       check=True, capture_output=True)
-        data[key] = target.read_text(errors='replace') if target.exists() else ''
+        data[key] = extract('/private/var/tmp/' + name, target).decode(errors='replace')
     trace = data['trace']
     summary = re.search(r'CONTROL PASS old=(\d+) new=(\d+)', trace)
     before = re.search(r'BEFORE pid=(\d+) state=running', trace)
@@ -46,7 +55,6 @@ def main():
         found = re.search(r'(?m)^\s*pid = (\d+)\s*$', text)
         return int(found[1]) if found else 0
 
-    tags = ('print-before', 'stop', 'print-stopped', 'restart', 'print-after')
     originals = {}
     for path, expected in {
         '/sbin/launchd': '4c61512d19b9a55a6ddad27e23b88fc5008fbf77d0c0b5e6bdd7c7d90cef3e06',
@@ -54,25 +62,21 @@ def main():
         '/bin/launchctl': '11527b7bb1027f10a7d994815efbe81df3b692ca9df8b172b6a1f656c6cc028d',
     }.items():
         target = guest / Path(path).name
-        subprocess.run([str(args.hfsplus.resolve()), str((root / 'run/ramdisk-final.hfs').resolve()),
-                        'extract', path, str(target.resolve())], check=True, capture_output=True)
-        originals[path] = target.exists() and hashlib.sha256(target.read_bytes()).hexdigest() == expected
-    statuses = [trace.find(f'CLI {tag} status=0x00000000') for tag in tags]
+        originals[path] = hashlib.sha256(extract(path, target)).hexdigest() == expected
+    statuses = [trace.find(f'CLI {tag} status=0x{(113 << 8) if tag == "print-missing" else 0:08x}')
+                for tag in tags]
     checks = {
         'original_launchd_preserved': originals['/sbin/launchd'],
         'original_xpcproxy_preserved': originals['/usr/libexec/xpcproxy'],
         'pinned_procursus_launchctl_preserved': originals['/bin/launchctl'],
         'controller_is_root_child_of_launchd':
             bool(re.search(r'controller pid=\d+ ppid=1 uid=0 parent=/sbin/launchd', trace)),
-        'five_cli_commands_succeeded': all(i >= 0 for i in statuses),
+        ('five_cli_expected_statuses' if reload_test else 'five_cli_commands_succeeded'):
+            all(i >= 0 for i in statuses),
         'cli_commands_in_order': all(i >= 0 for i in statuses) and statuses == sorted(statuses),
         'print_before_running': old > 1 and pid(data['print-before']) == old
             and 'state = running' in data['print-before'],
         'old_pid_reaped': f'STOPPED pid={old} ESRCH' in trace,
-        'stop_gap_observed': 'STOP GAP verified no pid after 5 seconds' in trace,
-        'print_stopped_has_no_pid': pid(data['print-stopped']) == 0
-            and 'org.sweet.qemu.c-service' in data['print-stopped'],
-        'kickstart_reports_new_pid': data['restart'].strip() == str(new),
         'different_positive_pids': old > 1 and new > 1 and old != new,
         'print_after_running': pid(data['print-after']) == new and 'state = running' in data['print-after'],
         'ready_file_matches_restart': data['ready'].strip() == str(new),
@@ -87,7 +91,35 @@ def main():
             and 'SWEET EARLY PANIC:' not in screen and 'panic(cpu ' not in screen,
         'screen_decoded': result.get('unknown_glyphs') == 0,
     }
-    report = {'passed': all(checks.values()), 'checks': checks, 'old_pid': old, 'new_pid': new,
+    if reload_test:
+        job = extract('/System/Library/LaunchDaemons/org.sweet.qemu.c-service.plist',
+                      guest / 'target.plist')
+        try:
+            properties = plistlib.loads(job)
+        except (plistlib.InvalidFileException, ValueError):
+            properties = {}
+        checks.update({
+            'bootout_bootstrap_scenario': 'SCENARIO bootout-bootstrap' in trace,
+            'unregistered_gap_observed':
+                'UNREGISTERED expected_exit=113 no pid after 5 seconds; plist readable' in trace,
+            'print_missing_is_enoservice': data['print-missing'].strip() ==
+                'Could not find service "org.sweet.qemu.c-service" in domain for system',
+            'print_missing_has_no_pid': pid(data['print-missing']) == 0,
+            'target_plist_preserved': hashlib.sha256(job).hexdigest() == manifest.get('target_job_sha256'),
+            'target_is_runatload_not_keepalive': properties.get('Label') == 'org.sweet.qemu.c-service'
+                and properties.get('RunAtLoad') is True and properties.get('KeepAlive') is False,
+            'bootstrap_pass': f'BOOTSTRAP PASS old={old} new={new}' in trace,
+            'exactly_five_cli_results': len(re.findall(r'(?m)^CLI \S+ status=', trace)) == 5,
+        })
+    else:
+        checks.update({
+            'stop_gap_observed': 'STOP GAP verified no pid after 5 seconds' in trace,
+            'print_stopped_has_no_pid': pid(data['print-stopped']) == 0
+                and 'org.sweet.qemu.c-service' in data['print-stopped'],
+            'kickstart_reports_new_pid': data['restart'].strip() == str(new),
+        })
+    report = {'passed': all(checks.values()), 'scenario': args.scenario,
+              'checks': checks, 'old_pid': old, 'new_pid': new,
               'launchctl_variant': 'Procursus FOSS 1:1.1.1, unchanged packaged binary',
               'elapsed_host_seconds': result.get('elapsed_host_seconds'),
               'stop_marker': result.get('stop_marker'),
@@ -95,6 +127,7 @@ def main():
                          for name in ('sweet-launchd-service', 'sweet-launchctl-control', 'root.hfs',
                                       'payload.bin', 'run/ramdisk-final.hfs')},
               'cli_output_sha256': {name: hashlib.sha256((guest / value).read_bytes()).hexdigest()
+                                    if (guest / value).exists() else None
                                     for name, value in names.items()},
               'sampled_frames': len(frames), 'framebuffer_is_sampled': True}
     (root / 'run/verification.json').write_text(json.dumps(report, indent=2) + '\n')

@@ -136,3 +136,7 @@ The previous launchd input root remained
 `491aa78408c423c50e8b59644e416e94b643ed3eb119158d52684af4176c8b3f`.
 Neither Apple executable was patched. Replaying this test needs only the
 small restore runtime and pinned Procursus packages, not the full system image.
+
+For removal of the registration and reloading the same plist, see
+[the separate bootout/bootstrap scenario](BOOTSTRAP-QEMU.md). The stopped
+print above intentionally tests a job that remains registered.
