@@ -21,6 +21,10 @@ replacement = '''        done
             running "Applying Duchamp process-1 exec checkpoints"
             python3 "${WORK_DIR}/../tools/apply-duchamp-init-exec-checkpoints.py" "${WORK_DIR}/xnu"
         fi
+        if ! grep -Fq 'PID1 CONSOLE OPEN OK' "${WORK_DIR}/xnu/bsd/vfs/vfs_syscalls.c"; then
+            running "Applying Duchamp PID 1 syscall checkpoints"
+            python3 "${WORK_DIR}/../tools/apply-duchamp-pid1-syscall-checkpoints.py" "${WORK_DIR}/xnu"
+        fi
         cd "${WORK_DIR}"
     fi
 }
