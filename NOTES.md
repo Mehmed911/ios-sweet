@@ -1,5 +1,55 @@
 # DUCHAMP update — 2026-10-22
 
+Dynamic C runtime milestone (2026-10-29, QEMU/RAM only; this commit):
+Fetched only Apple's 20F66 iPhone X restore disk 096-03566-084.dmg using
+remotezip; pinned SHA-256
+8223b75c9399dfc8cf0971374527d710b69e29e8ef69722b98a82902199fcff5.
+It is an unencrypted IM4P/APFS container, not a decrypted system image.
+prepare-darwin-runtime.py was also tested against the local pinned member.
+Its real plain-arm64 dyld/libSystem dependency closure has 37 files,
+10,401,536 bytes, all kept locally under ignored research/.
+
+A separate C executable links to /usr/lib/dyld and libSystem with LC_MAIN
+and explicit ld64.lld -adhoc_codesign. It uses real printf, dyld image
+enumeration, file create/write/close/reopen/read/EOF, libc fork, and waitpid.
+A static diagnostic PID 1 forks/execs it, requires exit 0, then heartbeats.
+The 32 MiB HFS root is a fresh baseline copy; all 39 installed files were
+extracted and byte-compared using libdmg-hfsplus at pinned commit
+7ac55ec64c96f7800d9818ce64c79670e7f02b67. The baseline SHA-256 remains
+e5b5c1b68c00db65ae31d8d29baef6ab88c8131e29940d8ce7b810536726414a.
+
+Final complete wrapper run: work/userland-dynamic-final, 90 seconds, exit 0,
+all 15 semantic/metadata checks passed. C main reported PID 2 and 37 images;
+child PID 3 exited 42, parent verified waitpid, C exited 0, PID 1 continued.
+Zero unknown glyphs and no visible panic. An initial 45-second probe had not
+reached C main. The first 90-second binary ran successfully but had no
+LC_CODE_SIGNATURE; the validator rejected it. Explicit -adhoc_codesign
+fixed that build issue and the final untouched wrapper passed. Signature
+command presence/execution under a development policy does not prove
+production trust or entitlement enforcement.
+
+Kernel unchanged from Actions 104 / 40939563499, SHA-256
+82fc8fe1391bea90bcce9ed2d4e8a2ff8204667f6785857873717564ec9331c9.
+Final init 2c2892d85895afefc8bd62ef620ac7081f81cdc6bbeb22935fdd4759dfd6d663;
+C program 8a8427fc901b7d4041079e80e6965253ddb15a031918fcd04d2b5476f6a8953f;
+root 750fc8ec3e2452a708da00aa078a8f6b65d7f27333c18cba17add0899ea67c91;
+payload 422bd7cb12fd82d502cde09070d06822b417ec4f9e9137d23ed0665d7ddd0e05.
+Reports: work/userland-dynamic-final/run/{fb.txt,verification.json}.
+Reproduction and launchd inspection: duchamp/DYNAMIC-USERLAND.md.
+
+Original restore launchd and xpcproxy were extracted for metadata/import
+inspection only. Both are arm64/iOS and directly require libSystem/libobjc,
+already in the tested closure. xpcproxy has a weak cryptex trampoline import.
+Their private spawn, Mach/dispatch, host ports, sandbox/csops behavior is not
+verified. The five supplied daemon plists include iPhone restore services.
+Next: isolated QEMU root with actual launchd as PID 1, xpcproxy, writable
+private/var directories, console/null nodes, and one controlled C service;
+trace errors before adding more jobs. No original launchd was executed yet.
+Full iOS and MT6897 hardware support remain unfinished. Phone/UFS/boot
+partitions were not accessed. Previous milestone commit: 053964a.
+The runner's long-path QMP socket fix is included: transient socket in /tmp,
+removed on completion. Other pending checkpoint/loader changes stay separate.
+
 Signal/service-control milestone (2026-10-29, QEMU/RAM only; this commit):
 After the intentional exit-42/restart, PID 1 sends SIGSTOP (17) to the positive
 worker PID and polls wait4(WNOHANG|WUNTRACED) for status 0000117f. It holds the

@@ -285,7 +285,11 @@ def main():
         mon = ('127.0.0.1', 45555)
         qmp_arg = f'tcp:{mon[0]}:{mon[1]},server,nowait'
     else:
-        mon = f'{out}/mon.sock'
+        # AF_UNIX paths are limited to roughly 108 bytes on Linux.  Workspaces
+        # mounted from Windows can easily exceed that before "mon.sock" is
+        # appended, so keep the transient QMP endpoint in /tmp instead of the
+        # artifact directory.
+        mon = f'/tmp/qemu-sweet-{os.getpid()}.sock'
         if os.path.exists(mon):
             os.unlink(mon)
         qmp_arg = f'unix:{mon},server,nowait'
@@ -358,6 +362,11 @@ def main():
             p.wait()
         return 130
     finally:
+        if isinstance(mon, str) and os.path.exists(mon):
+            try:
+                os.unlink(mon)
+            except Exception:
+                pass
         ram_file = f'{out}/ram.bin'
         if os.path.exists(ram_file):
             try:

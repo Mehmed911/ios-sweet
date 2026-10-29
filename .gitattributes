@@ -1,3 +1,4 @@
 # These scripts run inside Linux/WSL even from a Windows checkout.
 tools/build-sweet-userland.sh text eol=lf
 tools/test-sweet-userland.sh text eol=lf
+tools/test-sweet-dynamic.sh text eol=lf
