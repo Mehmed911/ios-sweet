@@ -1,5 +1,67 @@
 # DUCHAMP update — 2026-10-22
 
+launchctl lifecycle milestone (2026-10-30, QEMU/RAM only; this commit):
+Apple's unchanged launchd/xpcproxy now successfully serve print, SIGTERM
+stop, stopped-state print, kickstart -p, and running-state print through
+pinned Procursus FOSS launchctl 1:1.1.1. This is not an Apple-supplied
+launchctl binary. Restore/update/system image file lists contained none.
+The CLI SHA-256 is
+11527b7bb1027f10a7d994815efbe81df3b692ca9df8b172b6a1f656c6cc028d;
+libiosexec.1.dylib is
+9d8f0b10be02f9829854e11dc4a86f70dbfd0f0322f3a3a996716e4d38214391.
+prepare-launchctl-runtime.py pins official package URLs/SHA-256 values and
+copies the existing restore runtime. LC_RPATH resolution was added to the
+dependency audit; the closure is 39 files / 10,551,232 bytes. No global
+package installation, Apple binary patch, or kernel modification was used.
+
+Final complete wrapper run: work/launchctl-signals, exit 0, 22/22 checks
+passed, 412.973 host seconds, 32 sampled frames, zero unknown glyphs, and
+no visible panic. The 720-second maximum was cut short by the second
+controller heartbeat after CONTROL PASS. The root/System controller PID 3
+is a child of original /sbin/launchd PID 1. Target PID 4 was running,
+terminated by SIGTERM, reaped (ESRCH), and remained absent during the
+stopped check after at least five seconds. kickstart printed 9; the new
+target published PID 9 and print-after showed it running. All five CLIs
+exited 0. Both target and controller continued heartbeats.
+
+The target now publishes a PID readiness file after its identity/file checks
+and explicitly sets/read-backs SIGTERM=SIG_DFL with an empty mask. Both
+instances logged inherited SIGTERM=ignored, mask=0. Before that fix the
+CLI request succeeded and launchd logged signal 0xf, but the target kept
+running; work/launchctl-final correctly failed after 60 reap polls.
+The first probe (work/launchctl-probe-1) failed from O_WRONLY capture
+readback / EBADF; O_RDWR fixed the controller. That failed VM was stopped
+early with its RAM root exported. All attempts and raw outputs are kept.
+The strict verifier rejects the earlier no-panic / successful-CLI failure.
+This tests default SIGTERM termination, not custom signal-handler cleanup.
+
+--save-ramdisk validates the ADT RAMDisk physical range and exports it after
+stopping the VM. The verifier extracts all five actual stdout/stderr files,
+the controller trace, readiness PID, and original executable bytes from the
+saved HFS image. It checks ordered CLI statuses, old/new process state,
+signal normalization, both target instances and continuing heartbeats.
+Evidence: work/launchctl-signals/guest/ and run/verification.json.
+
+Final target SHA-256
+465d9bed7e2d6765c121d4cb5f330cd123b48ab9f387c3a5feaceb171bd4677f;
+controller 2425fbdf5d19ce32eaf90bf6b3bc967afec5bcd57aa7fed011e8c508958b3001;
+input root 6304a5a91fd1b6cf223912f710139df443d2de3bb1fc5934ad926a301d419e3d;
+payload e4ac257dacec131822e5d864dc232046028f52ba0b25f73d6075d573c916def6;
+exported root 072372b543a717b9c06ca0e4bdee7ed634a9a87f43efa53be92e6e64bba08071.
+Actions 104 / 40939563499 kernel is unchanged:
+82fc8fe1391bea90bcce9ed2d4e8a2ff8204667f6785857873717564ec9331c9.
+The previous launchd input root remains
+491aa78408c423c50e8b59644e416e94b643ed3eb119158d52684af4176c8b3f.
+The full public system DMG was also fetched during asset investigation:
+research/launchctl-20F66/096-04088-077.dmg, ZIP CRC32 028fc181 verified.
+It is not needed to replay this test. Apple/third-party files stay ignored.
+No helper/QEMU download processes remained after completion.
+
+Next QEMU step: bootstrap/bootout of the target job and verify removal and
+re-registration. Full iOS, SpringBoard, production signing, and MT6897 UFS/
+hardware remain unfinished. Phone/USB/boot partitions were not accessed.
+Previous commit: b52fd2a. Reproduction: duchamp/LAUNCHCTL-QEMU.md.
+
 Original launchd milestone (2026-10-30, QEMU/RAM only; this commit):
 Original, unmodified iOS 16.5 restore launchd now runs as PID 1 and launches
 one persistent dynamically linked C system service via original xpcproxy.

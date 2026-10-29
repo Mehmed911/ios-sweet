@@ -22,6 +22,7 @@ returns 2 when a panic is visible; absence of a panic does not prove boot.
 An undecodable or blank screen returns 3 with --fail-on-panic.
 """
 import argparse, json, os, shutil, socket, struct, subprocess, sys, time, zlib
+import adt
 
 FRAMEBUFFERS = {
     'sweet': {'base': 0x9c000000, 'width': 1080, 'height': 2400, 'stride': 4320},
@@ -236,6 +237,10 @@ def main():
     ap.add_argument('--secs', type=float, default=20, help='Duration to run QEMU in seconds (default: 20)')
     ap.add_argument('--snapshot-interval', type=float, default=0,
                     help='pause the VM clock and save decoded framebuffer samples every N seconds')
+    ap.add_argument('--save-ramdisk', action='store_true',
+                    help='save the stopped guest RAMDisk as ramdisk-final.hfs')
+    ap.add_argument('--stop-on-text', action='append', default=[],
+                    help='stop after a sampled framebuffer contains this text (repeatable)')
     ap.add_argument('--gdb', action='store_true', help='start halted, gdb stub on :1234, no timeout')
     ap.add_argument('--hmp', action='append', default=[], help='extra monitor command run after stop (repeatable), e.g. "x /8gx 0xfffffe..."')
     ap.add_argument('--cpu', default='cortex-a76', help='QEMU CPU model (default: cortex-a76)')
@@ -262,6 +267,8 @@ def main():
         ap.error('--fail-on-panic requires --kernel')
     if a.snapshot_interval < 0 or (a.snapshot_interval and not a.kernel):
         ap.error('--snapshot-interval requires --kernel and a nonnegative interval')
+    if a.stop_on_text and not a.snapshot_interval:
+        ap.error('--stop-on-text requires --snapshot-interval')
 
     if not check_qemu_dependency(a.cpu):
         return 1
@@ -283,6 +290,20 @@ def main():
 
     framebuffer = FRAMEBUFFERS[a.framebuffer]
     phys_base, img, ba_pa, entry_pa = build_image(payload, framebuffer)
+    ramdisk = None
+    if a.save_ramdisk:
+        adt_off, adt_size = struct.unpack_from('<2Q', payload, 0x20)
+        tree, _ = adt.parse(payload[adt_off:adt_off + adt_size])
+        chosen = next(c for c in tree.children if c.name == 'chosen')
+        memory_map = next(c for c in chosen.children if c.name == 'memory-map')
+        value = memory_map.prop('RAMDisk')
+        if value is None or len(value) != 16:
+            ap.error('--save-ramdisk requires an ADT RAMDisk range')
+        ramdisk = struct.unpack('<2Q', value)
+        mem_size = struct.unpack_from('<Q', payload, 0x40)[0]
+        if not (ramdisk[1] > 0 and ramdisk[0] >= phys_base and
+                ramdisk[0] + ramdisk[1] <= phys_base + mem_size):
+            ap.error('RAMDisk range is outside the payload RAM window')
     open(f'{out}/ram.bin', 'wb').write(img)
     open(f'{out}/stub.bin', 'wb').write(stub(ba_pa, entry_pa))
     print(f'phys_base={phys_base:#x} boot_args={ba_pa:#x} entry={entry_pa:#x}', file=sys.stderr)
@@ -323,7 +344,7 @@ def main():
             return 0
 
         t0 = time.time()
-        next_snapshot, snapshot_count = a.snapshot_interval, 0
+        next_snapshot, snapshot_count, stop_marker = a.snapshot_interval, 0, None
         while p.poll() is None and time.time() - t0 < a.secs:
             if a.snapshot_interval and time.time() - t0 >= next_snapshot:
                 frames = os.path.join(out, 'frames')
@@ -340,6 +361,9 @@ def main():
                     f.write(screen)
                 snapshot_count += 1
                 next_snapshot = time.time() - t0 + a.snapshot_interval
+                stop_marker = next((text for text in a.stop_on_text if text in screen), None)
+                if stop_marker is not None:
+                    break
             if a.live_serial:
                 serial_pos = stream_serial_file(serial_file, serial_pos)
             time.sleep(0.2)
@@ -353,6 +377,8 @@ def main():
                 mon, 'stop', 'info registers', *a.hmp,
                 pmemsave=(framebuffer['base'], framebuffer['stride'] * framebuffer['height'], f'{out}/fb.raw'))
             open(f'{out}/regs.txt', 'w').write(regs + ''.join(f'\n(qemu) {c}\n{r}' for c, r in zip(a.hmp, extra)))
+            if ramdisk:
+                qmp(mon, pmemsave=(*ramdisk, f'{out}/ramdisk-final.hfs'))
             p.kill()
             p.wait()
             raw = open(f'{out}/fb.raw', 'rb').read()
@@ -366,6 +392,7 @@ def main():
         else:
             print(f'qemu exited early: {p.returncode}', file=sys.stderr)
 
+        result.update(elapsed_host_seconds=round(time.time() - t0, 3), stop_marker=stop_marker)
         open(f'{out}/result.json', 'w').write(json.dumps(result, indent=2) + '\n')
         print(json.dumps(result), file=sys.stderr)
         print(f'{out}/fb.png  {out}/regs.txt  {out}/qemu.log', file=sys.stderr)

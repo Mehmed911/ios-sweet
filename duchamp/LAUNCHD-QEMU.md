@@ -103,5 +103,6 @@ Nonfatal messages include a missing MRM cache, a jetsam limit request
 returning EINVAL, and unavailable persona lookup. A successful single job
 does not prove those facilities or the wider iOS service graph. Production
 signing enforcement, SpringBoard, device drivers and MT6897 UFS are outside
-this test. The next QEMU experiment is status/stop/restart via original
-launchctl.
+this test. The follow-on [launchctl fixture](LAUNCHCTL-QEMU.md) tests
+status/stop/restart with pinned Procursus FOSS launchctl. The Apple image
+file lists inspected here do not contain an Apple-supplied launchctl.

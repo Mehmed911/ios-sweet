@@ -19,7 +19,7 @@ def macho(path):
     result = dict(cpu='arm64', subtype=sub, filetype=kind, flags=flags,
                   size=len(data), sha256=hashlib.sha256(data).hexdigest(),
                   dependencies=[], code_signature=False, platform=None,
-                  dylinker=None, main_entry=None)
+                  dylinker=None, main_entry=None, rpaths=[])
     off = 32
     for _ in range(count):
         cmd, length = struct.unpack_from('<II', data, off)
@@ -39,6 +39,9 @@ def macho(path):
             result['dylinker'] = data[off + nameoff:off + length].split(b'\0')[0].decode()
         elif cmd == 0x80000028:
             result['main_entry'], = struct.unpack_from('<Q', data, off + 8)
+        elif cmd == 0x8000001c:
+            nameoff, = struct.unpack_from('<I', data, off + 8)
+            result['rpaths'].append(data[off + nameoff:off + length].split(b'\0')[0].decode())
         off += length
     return result
 
@@ -47,9 +50,11 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('root', type=Path)
     ap.add_argument('report', type=Path)
+    ap.add_argument('--entry', action='append', default=[],
+                    help='also audit this guest executable and its required libraries')
     args = ap.parse_args()
     root = args.root.resolve()
-    todo = ['/usr/lib/dyld', '/usr/lib/libSystem.B.dylib']
+    todo = ['/usr/lib/dyld', '/usr/lib/libSystem.B.dylib', *args.entry]
     files, missing, invalid = {}, set(), {}
     while todo:
         guest = todo.pop()
@@ -65,9 +70,18 @@ def main():
             invalid[guest] = str(error)
             continue
         files[guest] = item
+        if item['dylinker']:
+            todo.append(item['dylinker'])
         for dependency in item['dependencies']:
             if not dependency['weak']:
-                todo.append(dependency['path'])
+                target = dependency['path']
+                if target.startswith('@rpath/'):
+                    candidates = [p.rstrip('/') + '/' + target[len('@rpath/'):]
+                                  for p in item['rpaths'] if p.startswith('/')]
+                    target = next((p for p in candidates if
+                                   (root / p.lstrip('/')).is_file()), target)
+                    dependency['resolved_path'] = target
+                todo.append(target)
     report = dict(passed=not missing and not invalid, files=files,
                   missing=sorted(missing), invalid=invalid,
                   signature_note='Signature load-command presence only; runtime verification is separate.')
