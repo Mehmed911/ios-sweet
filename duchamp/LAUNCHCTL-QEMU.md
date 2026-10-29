@@ -149,3 +149,6 @@ and a server that handles SIGTERM and cleans up, see [IPC-QEMU.md](IPC-QEMU.md).
 
 For native libxpc dictionaries and launchd starting a Mach service on
 demand, see [XPC-QEMU.md](XPC-QEMU.md).
+
+For a program using the original Foundation and Objective-C runtime, see
+[FOUNDATION-QEMU.md](FOUNDATION-QEMU.md).

@@ -2,7 +2,7 @@
 # Check service management using pinned Procursus launchctl and original Apple launchd.
 set -eu
 if [ "$#" -lt 6 ] || [ "$#" -gt 8 ]; then
-    echo "usage: test-sweet-launchctl.sh KERNEL ADT BASE_LAUNCHD_HFS RUNTIME_ROOT HFSPLUS NEW_OUTDIR [SECONDS] [stop-restart|bootout-bootstrap|keepalive|ipc|xpc]" >&2
+    echo "usage: test-sweet-launchctl.sh KERNEL ADT BASE_LAUNCHD_HFS RUNTIME_ROOT HFSPLUS NEW_OUTDIR [SECONDS] [stop-restart|bootout-bootstrap|keepalive|ipc|xpc|foundation]" >&2
     exit 2
 fi
 kernel=$1
@@ -14,7 +14,7 @@ out=$6
 seconds=${7:-720}
 scenario=${8:-stop-restart}
 case "$scenario" in
-    stop-restart|bootout-bootstrap|keepalive|ipc|xpc) ;;
+    stop-restart|bootout-bootstrap|keepalive|ipc|xpc|foundation) ;;
     *) echo "unknown launchctl scenario: $scenario" >&2; exit 2 ;;
 esac
 src=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -23,7 +23,11 @@ if [ -e "$out" ]; then
     exit 2
 fi
 mkdir -p "$out"
-python3 "$src/tools/audit-darwin-runtime.py" "$runtime" "$out/runtime-audit.json" --entry /bin/launchctl
+set --
+if [ "$scenario" = foundation ]; then
+    set -- --entry /System/Library/Frameworks/Foundation.framework/Foundation
+fi
+python3 "$src/tools/audit-darwin-runtime.py" "$runtime" "$out/runtime-audit.json" --entry /bin/launchctl "$@"
 programs='sweet-launchd-service sweet-launchctl-control'
 case "$scenario" in ipc|xpc) programs="$programs sweet-ipc-client" ;; esac
 for program in $programs; do
@@ -40,6 +44,14 @@ for program in $programs; do
             sweet-launchctl-control) set -- -fblocks -DSWEET_XPC_TEST=1 ;;
         esac
     fi
+    if [ "$scenario" = foundation ]; then
+        case "$program" in
+            sweet-launchd-service)
+                source="$src/tools/sweet-foundation.m"
+                set -- -fno-objc-arc -fobjc-exceptions ;;
+            sweet-launchctl-control) set -- -DSWEET_FOUNDATION_TEST=1 ;;
+        esac
+    fi
     if [ "$scenario" = bootout-bootstrap ] && [ "$program" = sweet-launchctl-control ]; then
         set -- -DSWEET_BOOTSTRAP_TEST=1
     elif [ "$scenario" = keepalive ] && [ "$program" = sweet-launchctl-control ]; then
@@ -49,12 +61,17 @@ for program in $programs; do
     fi
     clang -target arm64-apple-ios16.5 -Wall -Wextra -Werror -O1 \
         -fno-stack-protector -fno-builtin "$@" -c "$source" -o "$out/$program.o"
+    set --
+    if [ "$scenario" = foundation ] && [ "$program" = sweet-launchd-service ]; then
+        set -- -F"$runtime/System/Library/Frameworks" -framework Foundation -lobjc.A
+    fi
     ld64.lld -arch arm64 -platform_version ios 16.5 16.5 -adhoc_codesign \
         -syslibroot "$runtime" -L"$runtime/usr/lib" -lSystem.B -e _main \
-        -o "$out/$program" "$out/$program.o"
+        -o "$out/$program" "$out/$program.o" "$@"
 done
 set --
 case "$scenario" in ipc|xpc) set -- --client "$out/sweet-ipc-client" ;; esac
+if [ "$scenario" = foundation ]; then set -- --runtime-source "$runtime/../source.json"; fi
 python3 "$src/tools/build-launchctl-root.py" --base "$base" --runtime "$runtime" \
     --audit "$out/runtime-audit.json" --service "$out/sweet-launchd-service" \
     --controller "$out/sweet-launchctl-control" --hfsplus "$hfsplus" --output "$out/root.hfs" \
@@ -66,12 +83,17 @@ set --
 if [ "$scenario" = ipc ] || [ "$scenario" = xpc ]; then
     set -- --stop-on-text 'SWEET ipc server: FAIL' --stop-on-text 'SWEET ipc client: FAIL'
 fi
+if [ "$scenario" = foundation ]; then
+    set -- --stop-on-text 'SWEET ipc foundation: FAIL' --stop-on-text 'Library not loaded:' --stop-on-text 'Symbol not found:'
+fi
 python3 "$src/tools/qemu-sweet.py" "$out/payload.bin" "$out/run" --secs "$seconds" \
     --framebuffer duchamp --kernel "$kernel" --snapshot-interval 10 \
     --stop-on-text 'SWEET EARLY PANIC:' --stop-on-text 'SWEET launchctl: FAIL' \
     --stop-on-text 'SWEET launchctl: heartbeat=2 ' \
     --save-ramdisk --fail-on-panic "$@" || qemu_status=$?
-if [ "$scenario" = ipc ] || [ "$scenario" = xpc ]; then
+if [ "$scenario" = foundation ]; then
+    python3 "$src/tools/verify-sweet-foundation.py" "$out" --hfsplus "$hfsplus"
+elif [ "$scenario" = ipc ] || [ "$scenario" = xpc ]; then
     set --
     if [ "$scenario" = xpc ]; then set -- --transport xpc; fi
     python3 "$src/tools/verify-sweet-ipc.py" "$out" --hfsplus "$hfsplus" "$@"

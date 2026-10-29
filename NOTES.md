@@ -1,5 +1,64 @@
 # DUCHAMP update — 2026-10-22
 
+Foundation milestone (2026-10-30, QEMU/RAM only; this commit):
+An Objective-C program now executes selected APIs in the original Apple
+iOS 16.5 Foundation/CoreFoundation and matching libobjc/Swift closure.
+Baseline commit: 2409971aaf221e6a2984392b0836d9c9ced9e9b2.
+No phone, USB, UFS or boot partition command was run.
+
+Actual result: work/launchctl-foundation, exit 0, 26/26 checks passed,
+94 installed/original file byte checks passed, 315.692 host seconds,
+23 sampled frames, zero unknown glyphs, no visible panic. Stopped on
+second observer heartbeat before the 900-second limit.
+Program PID 4, observer PID 3; root children of original launchd PID 1.
+Ordered proof: NSAutoreleasePool creation; uppercase DUCHAMP; Arabic
+UTF-8 round trip with five UTF-16 units; NSDictionary/NSNumber with
+device and soc; JSON encode/decode; atomic NSData write/read; named
+SweetProbe NSException throw/catch; pool drain; readiness; normal exit.
+The saved 31-byte JSON independently decoded as device=DUCHAMP,soc=6897.
+Both launchctl commands exited 0. Final print: not running, runs=1,
+last exit code=0. PID 4 reaped; later heartbeats confirmed no restart.
+The observer sent no signal or start command to the target.
+
+Runtime preparation: tools/prepare-foundation-runtime.py.
+Successful output: research/foundation-runtime-20F66-v2/runtime-root.
+82 plain-arm64 binaries / 100,424,416 bytes, seven framework resources,
+no missing strong dependencies. Source APFS hash and all file/resource
+hashes recorded in its parent source.json. The first preparation output
+was retained after rewriting identical read-only base files failed;
+the preparer now skips matching existing bytes. Broad 7z extraction
+rejected one unneeded libextension symlink; it was not reconstructed.
+Replay can exclude it with -xr!libextension.dylib (list exclusion checked).
+
+Replay tools/test-sweet-launchctl.sh with the prior six inputs, replacing
+the runtime with the new one, then 900 and foundation. Objective-C uses manual reference counting
+and exceptions; observer uses SWEET_FOUNDATION_TEST=1.
+Builder copies/grows only the new RAM root from 32 to 128 MiB, verifies
+its HFS header/length, creates only missing framework directories and
+re-extracts every installed file. Target plist stays unchanged.
+RAMDisk: 0x1c24d8000 + 0x08000000, inside the 512 MiB payload window.
+Details/replay: duchamp/FOUNDATION-QEMU.md.
+Report: work/launchctl-foundation/run/verification.json.
+Raw logs, JSON and file extractions: work/launchctl-foundation/guest/.
+
+SHA-256:
+program eb121f6730f9bd198b1631bea0ebffaa349893379d3927c894ed88724ba7f1a6
+observer 88424f24048eb5334b14c8beaa8e8b88ca74fb7985c3028f19068adf0b2890c8
+input root ee2c72087cec9fe87500253c0c583ca7f55aa4d78d5e4cc097bc29bd3df5c040
+payload 1ecf5feaf7f16ef85392c0abf9a9a29bb3c7c58e3e0c68a0799db7a86736b81e
+exported root 096c443f4ab67987ad55f287b256cc88e662aa5c204db204c681bf798f84b271
+Foundation 182a6fb6d6c51e8e1a70e9152c84cd9d1bd65d2a1f0bda21a4ebe1be446021f2
+CoreFoundation 1bc84069d4292467b750c7aafb4c3114092cb9b5fa906d9c40e61504dc883878
+Rehashed unchanged Actions 104 kernel and original base:
+kernel 82fc8fe1391bea90bcce9ed2d4e8a2ff8204667f6785857873717564ec9331c9
+base 491aa78408c423c50e8b59644e416e94b643ed3eb119158d52684af4176c8b3f
+
+All six controller modes and the Objective-C program pass arm64 checks
+with warnings as errors; shell/Python checks pass. No kernel change or
+new CI build. Earlier images/results and Apple sources remain local.
+Coverage is selected Foundation APIs, not Foundation/XPC integration,
+network services, UIKit, SpringBoard, full iOS or MT6897 UFS.
+
 Native XPC milestone (2026-10-30, QEMU/RAM only; this commit):
 One combined fixture now proves launchd MachServices registration,
 on-demand server activation, native Apple libxpc dictionary request/reply,

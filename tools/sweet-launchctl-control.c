@@ -149,6 +149,9 @@ static int command(const char *tag, char *const *argv) {
 #if defined(SWEET_IPC_TEST) || defined(SWEET_XPC_TEST)
 #include "sweet-ipc-control.h"
 #endif
+#if defined(SWEET_FOUNDATION_TEST)
+#include "sweet-foundation-control.h"
+#endif
 #if defined(SWEET_KEEPALIVE_TEST)
 static int keepalive_restarts(int initial) {
     int previous = initial;
@@ -193,6 +196,9 @@ int main(void) {
         proc_pidpath(1, parent, sizeof(parent)) <= 0 || strcmp(parent, "/sbin/launchd"))
         return fail("controller identity");
     note("controller pid=%d ppid=1 uid=0 parent=/sbin/launchd", getpid());
+#if defined(SWEET_FOUNDATION_TEST)
+    return foundation_lifecycle();
+#endif
 #if defined(SWEET_IPC_TEST) || defined(SWEET_XPC_TEST)
     return ipc_lifecycle();
 #endif
