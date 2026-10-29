@@ -171,7 +171,7 @@ def screen_result(screen, unknown):
     return {'status': status, 'unknown_glyphs': unknown, 'snapshot_only': True}
 
 
-def qmp(endpoint, *cmds, pmemsave=None):
+def qmp(endpoint, *cmds, pmemsave=None, resume=False):
     """Run QEMU human-monitor commands over QMP (synchronous, unlike the echoing HMP socket)."""
     s = socket.socket(socket.AF_INET if isinstance(endpoint, tuple) else socket.AF_UNIX)
     s.connect(endpoint)
@@ -197,6 +197,8 @@ def qmp(endpoint, *cmds, pmemsave=None):
         r = call('pmemsave', val=pmemsave[0], size=pmemsave[1], filename=pmemsave[2])
         if 'error' in r:
             print(f'qmp pmemsave: {r["error"]}', file=sys.stderr)
+    if resume:
+        call('cont')
     s.close()
     return out
 
@@ -232,6 +234,8 @@ def main():
     ap.add_argument('payload', nargs='?', help='SWEETXNU payload binary (from mkpayload.py)')
     ap.add_argument('outdir', nargs='?', help='Output directory for fb.png, regs.txt, and logs')
     ap.add_argument('--secs', type=float, default=20, help='Duration to run QEMU in seconds (default: 20)')
+    ap.add_argument('--snapshot-interval', type=float, default=0,
+                    help='pause the VM clock and save decoded framebuffer samples every N seconds')
     ap.add_argument('--gdb', action='store_true', help='start halted, gdb stub on :1234, no timeout')
     ap.add_argument('--hmp', action='append', default=[], help='extra monitor command run after stop (repeatable), e.g. "x /8gx 0xfffffe..."')
     ap.add_argument('--cpu', default='cortex-a76', help='QEMU CPU model (default: cortex-a76)')
@@ -256,6 +260,8 @@ def main():
 
     if a.fail_on_panic and not a.kernel:
         ap.error('--fail-on-panic requires --kernel')
+    if a.snapshot_interval < 0 or (a.snapshot_interval and not a.kernel):
+        ap.error('--snapshot-interval requires --kernel and a nonnegative interval')
 
     if not check_qemu_dependency(a.cpu):
         return 1
@@ -317,7 +323,23 @@ def main():
             return 0
 
         t0 = time.time()
+        next_snapshot, snapshot_count = a.snapshot_interval, 0
         while p.poll() is None and time.time() - t0 < a.secs:
+            if a.snapshot_interval and time.time() - t0 >= next_snapshot:
+                frames = os.path.join(out, 'frames')
+                os.makedirs(frames, exist_ok=True)
+                raw_path = os.path.join(frames, 'sample.raw')
+                # Stop virtual time before dumping memory. A running dump can
+                # otherwise appear to XNU as an excessively long interrupt.
+                qmp(mon, 'stop', pmemsave=(framebuffer['base'],
+                    framebuffer['stride'] * framebuffer['height'], raw_path), resume=True)
+                with open(raw_path, 'rb') as f:
+                    screen, _unknown = decode_screen(f.read(), font, framebuffer)
+                os.unlink(raw_path)
+                with open(os.path.join(frames, f'{snapshot_count:04}.txt'), 'w') as f:
+                    f.write(screen)
+                snapshot_count += 1
+                next_snapshot = time.time() - t0 + a.snapshot_interval
             if a.live_serial:
                 serial_pos = stream_serial_file(serial_file, serial_pos)
             time.sleep(0.2)
@@ -362,6 +384,10 @@ def main():
             p.wait()
         return 130
     finally:
+        # Also reap the VM if a diagnostic capture or decoding raises.
+        if p and p.poll() is None:
+            p.kill()
+            p.wait()
         if isinstance(mon, str) and os.path.exists(mon):
             try:
                 os.unlink(mon)

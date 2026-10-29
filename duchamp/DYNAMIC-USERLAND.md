@@ -93,7 +93,7 @@ payload `422bd7cb12fd82d502cde09070d06822b417ec4f9e9137d23ed0665d7ddd0e05`.
 The kernel was reused unchanged from Actions 104, SHA-256
 `82fc8fe1391bea90bcce9ed2d4e8a2ff8204667f6785857873717564ec9331c9`.
 
-## Original launchd: inspected, not booted
+## Original launchd: separate QEMU test
 
 The same restore disk contains `/sbin/launchd` (525,088 bytes, SHA-256
 `4c61512d19b9a55a6ddad27e23b88fc5008fbf77d0c0b5e6bdd7c7d90cef3e06`)
@@ -104,19 +104,18 @@ commands. Their required direct libraries are libSystem and libobjc, already
 in the tested closure. xpcproxy also names libcryptex_trampoline as a weak
 dependency; it is not installed in this test image. Absence of a required
 library is therefore not an observed launchd blocker, but runtime behavior
-has not been tested.
+needed the separate guest test described below.
 
 The launchd import list includes Mach port/message operations, dispatch,
 host special ports, csops, sandbox checks, and private posix_spawn options.
-xpcproxy also imports private spawn/sandbox interfaces. These interfaces and
-bootstrap service behavior still need guest tests; successful printf/fork
-does not establish that they work. Embedded paths include `/dev/console`,
+xpcproxy also imports private spawn/sandbox interfaces. A single running
+service exercises only part of these interfaces; successful printf/fork
+alone did not establish their behavior. Embedded paths include `/dev/console`,
 `/dev/null`, `/private/var/tmp`, and `/private/var/db/com.apple.xpc.launchd`.
 
-The next isolated QEMU image should provide the required device nodes and
-writable directories, then test this launchd as PID 1 with xpcproxy and one
-controlled C service. Record startup errors and service output. Do not copy
-the five supplied LaunchDaemons blindly: they include iPhone restore jobs
-such as restored_external and diskimagesiod. Neither original executable nor
-those jobs have been installed or executed by this milestone. The current
-`/sbin/launchd` remains our static diagnostic harness, not Apple's launchd.
+The follow-on test in [LAUNCHD-QEMU.md](LAUNCHD-QEMU.md) boots the original
+launchd as PID 1 with xpcproxy and one controlled C service, using a separate
+root image. It records startup errors and service output. The five supplied
+LaunchDaemons are not copied: they include iPhone restore jobs such as
+restored_external and diskimagesiod. This earlier dynamic C test still uses
+our static diagnostic harness at `/sbin/launchd`.

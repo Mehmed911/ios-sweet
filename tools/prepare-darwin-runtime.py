@@ -19,7 +19,9 @@ URL = ('https://updates.cdn-apple.com/2023SpringFCS/fullrestores/032-85130/'
 MEMBER = '096-03566-084.dmg'
 SHA256 = '8223b75c9399dfc8cf0971374527d710b69e29e8ef69722b98a82902199fcff5'
 SELECTED = ['usr/lib/dyld', 'usr/lib/libSystem.B.dylib', 'usr/lib/system',
-            'usr/lib/libobjc.A.dylib', 'usr/lib/libc++.1.dylib', 'usr/lib/libc++abi.dylib']
+            'usr/lib/libobjc.A.dylib', 'usr/lib/libc++.1.dylib', 'usr/lib/libc++abi.dylib',
+            'sbin/launchd', 'usr/libexec/xpcproxy', 'private/etc/master.passwd',
+            'private/etc/group']
 
 
 def tlv(data, off):

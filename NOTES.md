@@ -1,5 +1,56 @@
 # DUCHAMP update — 2026-10-22
 
+Original launchd milestone (2026-10-30, QEMU/RAM only; this commit):
+Original, unmodified iOS 16.5 restore launchd now runs as PID 1 and launches
+one persistent dynamically linked C system service via original xpcproxy.
+The static /usr/appleinternal/sbin/launchd.sweet entry is selected with the
+existing DEVELOPMENT launchdsuffix=sweet path, checks PID 1, opens console
+fds and execs /sbin/launchd without forking or starting the service itself.
+The C service reports PID 3, PPID 1, real/effective UID 0, and verifies that
+proc_pidpath(1) is /sbin/launchd. Its RAM-file roundtrip and continuing
+numbered heartbeats passed. Only one process identity was observed.
+Job: org.sweet.qemu.c-service, UserName=root, GroupName=wheel,
+LimitLoadToSessionType=System, RunAtLoad=true, KeepAlive=false.
+
+Final unchanged wrapper run in work/launchd-final completed for 180 host
+seconds with exit 0, all 15 checks true, 14 sampled frames, zero unknown
+glyphs, and no visible panic. run/verification.json records hashes/checks;
+run/frames and run/fb.txt contain sampled circular framebuffer logs.
+Original launchd SHA-256
+4c61512d19b9a55a6ddad27e23b88fc5008fbf77d0c0b5e6bdd7c7d90cef3e06;
+xpcproxy 2d1f607a248961d6a8612aca68a42c57069fa9cf3f5afbee448cf3e70eeb315f.
+Bootstrap fca4093be866f706e4a693f7f79bcfd2239ea144ccdb14dd2bbeb215719f441f;
+C service 6adbe9d1fb35a1833b273507aeb2b0e9c75450d73274a3410937aa0c495d24de;
+root 491aa78408c423c50e8b59644e416e94b643ed3eb119158d52684af4176c8b3f;
+payload 42f784c42bbf31745502f5e11b2727f8cc2b4365f3b42c2cbaf004c7ffa781a8.
+Kernel unchanged from Actions 104 / 40939563499, SHA-256
+82fc8fe1391bea90bcce9ed2d4e8a2ff8204667f6785857873717564ec9331c9.
+
+Probe 1 reached Apple launchd but panicked because the root-only fixture
+could not resolve mobile (errno 114). The builder now preserves the restore
+image's account IDs/groups and locks password fields. Probe 2 panicked in
+the interrupt-duration watchdog while a separate observer dumped live RAM.
+The new optional QEMU snapshots stop virtual time before pmemsave and
+resume afterward; the runner also reaps the VM on capture/decoding errors.
+Probe 3 then passed 12 earlier checks and ran the service in user/501.
+launchd rejected DYLD_SHARED_REGION in that job. The final job removes that
+variable and explicitly selects a root/System service. The strict verifier
+also rejects the failed first probe. No watchdog or kernel check was disabled.
+
+prepare-darwin-runtime.py now extracts launchd/xpcproxy and account inputs
+alongside the 37-file runtime closure; tested using the pinned restore disk
+into research/darwin-launchd-20F66. All Apple inputs stay ignored/local.
+Each installed regular file is re-extracted and byte-compared; the HFS job
+directory is checked for exactly one job. The original dynamic RAM-root
+SHA-256 stays 750fc8ec3e2452a708da00aa078a8f6b65d7f27333c18cba17add0899ea67c91.
+launchd retains embedded __TEXT,__config; no binary or global config patch.
+Nonfatal logs include missing MRM cache, jetsam EINVAL and persona lookup
+failures. This proves one service, not complete launchd/iOS compatibility.
+Next concrete QEMU work: original launchctl status and controlled service
+stop/restart. GUI, hardware drivers and MT6897 UFS remain unfinished.
+Phone/USB/UFS/boot partitions were not accessed. Previous commit: 3a9bc41.
+Reproduction: duchamp/LAUNCHD-QEMU.md.
+
 Dynamic C runtime milestone (2026-10-29, QEMU/RAM only; this commit):
 Fetched only Apple's 20F66 iPhone X restore disk 096-03566-084.dmg using
 remotezip; pinned SHA-256
