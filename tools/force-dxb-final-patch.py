@@ -33,6 +33,10 @@ replacement = '''        done
             running "Applying Duchamp PID 1 console write checkpoints"
             python3 "${WORK_DIR}/../tools/apply-duchamp-pid1-write-checkpoints.py" "${WORK_DIR}/xnu"
         fi
+        if ! grep -Fq 'PID1 HEARTBEAT RETURNED' "${WORK_DIR}/xnu/bsd/dev/arm/systemcalls.c"; then
+            running "Applying Duchamp PID 1 heartbeat and console framebuffer support"
+            python3 "${WORK_DIR}/../tools/apply-duchamp-pid1-heartbeat-console.py" "${WORK_DIR}/xnu"
+        fi
         cd "${WORK_DIR}"
     fi
 }
