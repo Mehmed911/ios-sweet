@@ -7,7 +7,7 @@ index ada7fc9..2a4ba0e 100644
  sweet_early_mark(unsigned int stage, const char *label)
  {
 -	if (early_disabled || stage > 154) {
-+	if (early_disabled || stage > 169) {
++	if (early_disabled || stage > 172) {
  		return;
  	}
  	uint32_t color = 0xff00ff00u | ((stage & 7u) * 32u << 16);
@@ -86,7 +86,31 @@ index 2ab6bfa..ea26cd1 100644
  
  	/* Mount the root file system. */
  	while (TRUE) {
-@@ -1129,6 +1150,10 @@ setconf(void)
+@@ -894,7 +915,22 @@ bsd_init(void)
+ #endif
+ 
+ 		bsd_init_kprintf("vfs_mountroot\n");
+-		if (0 == (err = vfs_mountroot())) {
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++		sweet_early_mark(170, "DUCHAMP PRE MOUNTROOT");
++#endif
++		err = vfs_mountroot();
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++		if (err == 0) {
++			sweet_early_mark(171, "QEMU RAM ROOT MOUNTED");
++		} else {
++			sweet_early_mark(172, "QEMU RAM ROOT MOUNT FAILED");
++		}
++		__asm__ volatile("dsb sy; isb" ::: "memory");
++		for (;;) {
++			__asm__ volatile("wfe" ::: "memory");
++		}
++#endif
++		if (err == 0) {
+ 			break;
+ 		}
+ 		rootdevice[0] = '\0';
+@@ -1129,6 +1165,10 @@ setconf(void)
  	u_int32_t       flags;
  	kern_return_t   err;
  
@@ -140,7 +164,7 @@ diff --git a/iokit/bsddev/IOKitBSDInit.cpp b/iokit/bsddev/IOKitBSDInit.cpp
  
  	if ((regEntry = IORegistryEntry::fromPath( "/chosen", gIODTPlane ))) {
  		do {
-@@ -769,17 +781,24 @@ IOFindBSDRoot( char * rootName, unsigned int rootNameSize,
+@@ -769,17 +781,21 @@ IOFindBSDRoot( char * rootName, unsigned int rootNameSize,
  #if defined(ARM64_BOARD_CONFIG_SWEET)
  //
  //	SWEET: root on a GPT partition of the internal UFS (bsd/dev/sweet_ufs.c)
@@ -161,10 +185,7 @@ diff --git a/iokit/bsddev/IOKitBSDInit.cpp b/iokit/bsddev/IOKitBSDInit.cpp
 +			strlcpy(rootName, "md0", rootNameSize);
 +			*oflags = 0;
 +			sweet_early_mark(168, "QEMU RAM BLOCK READY");
-+			__asm__ volatile("dsb sy; isb" ::: "memory");
-+			for (;;) {
-+				__asm__ volatile("wfe" ::: "memory");
-+			}
++			goto iofrootx;
  		}
 -		strlcpy(rootName, rdBootVar, rootNameSize);
 -		IOLog("BSD root: %s, major %d, minor %d\n", rootName, major(*root), minor(*root));

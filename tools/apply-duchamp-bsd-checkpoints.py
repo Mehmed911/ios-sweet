@@ -21,7 +21,7 @@ bsd_path = root / "bsd/kern/bsd_init.c"
 iokit_path = root / "iokit/bsddev/IOKitBSDInit.cpp"
 
 early = early_path.read_text()
-early = replace_once(early, "stage > 154", "stage > 169", "stage ceiling")
+early = replace_once(early, "stage > 154", "stage > 172", "stage ceiling")
 early_path.write_text(early)
 
 startup_path = root / "osfmk/kern/startup.c"
@@ -161,8 +161,7 @@ iokit = replace_once(
     "\t\t\tstrlcpy(rootName, \"md0\", rootNameSize);\n"
     "\t\t\t*oflags = 0;\n"
     "\t\t\tsweet_early_mark(168, \"QEMU RAM BLOCK READY\");\n"
-    "\t\t\t__asm__ volatile(\"dsb sy; isb\" ::: \"memory\");\n"
-    "\t\t\tfor (;;) {\n\t\t\t\t__asm__ volatile(\"wfe\" ::: \"memory\");\n\t\t\t}\n"
+    "\t\t\tgoto iofrootx;\n"
     "\t\t}\n"
     "\t\tsweet_early_mark(169, \"MT6897 BACKEND STUB\");\n"
     "\t\treturn kIOReturnUnsupported;\n"
@@ -170,3 +169,35 @@ iokit = replace_once(
     "safe root backend selector",
 )
 iokit_path.write_text(iokit)
+
+bsd = bsd_path.read_text()
+bsd = replace_once(
+    bsd,
+    '''\t\tbsd_init_kprintf("vfs_mountroot\\n");
+\t\tif (0 == (err = vfs_mountroot())) {
+\t\t\tbreak;
+\t\t}
+''',
+    '''\t\tbsd_init_kprintf("vfs_mountroot\\n");
+#if defined(ARM64_BOARD_CONFIG_SWEET)
+\t\tsweet_early_mark(170, "DUCHAMP PRE MOUNTROOT");
+#endif
+\t\terr = vfs_mountroot();
+#if defined(ARM64_BOARD_CONFIG_SWEET)
+\t\tif (err == 0) {
+\t\t\tsweet_early_mark(171, "QEMU RAM ROOT MOUNTED");
+\t\t} else {
+\t\t\tsweet_early_mark(172, "QEMU RAM ROOT MOUNT FAILED");
+\t\t}
+\t\t__asm__ volatile("dsb sy; isb" ::: "memory");
+\t\tfor (;;) {
+\t\t\t__asm__ volatile("wfe" ::: "memory");
+\t\t}
+#endif
+\t\tif (err == 0) {
+\t\t\tbreak;
+\t\t}
+''',
+    "RAM root mount result barrier",
+)
+bsd_path.write_text(bsd)

@@ -98,9 +98,11 @@ jobs:
           MAKEFLAGS: ${{ inputs.keep_going == 'false' && '' || '-k' }}
         run: |
           bash build.sh
-          grep -Fq 'stage > 169' xnu/osfmk/arm64/sweet_early.c
+          grep -Fq 'stage > 172' xnu/osfmk/arm64/sweet_early.c
           grep -Fq 'QEMU RAM BLOCK READY' xnu/iokit/bsddev/IOKitBSDInit.cpp
           grep -Fq 'MT6897 BACKEND STUB' xnu/iokit/bsddev/IOKitBSDInit.cpp
+          grep -Fq 'QEMU RAM ROOT MOUNTED' xnu/bsd/kern/bsd_init.c
+          grep -Fq 'QEMU RAM ROOT MOUNT FAILED' xnu/bsd/kern/bsd_init.c
 
       - name: Package build tree for local compiles
         if: always()
