@@ -25,6 +25,10 @@ replacement = '''        done
             running "Applying Duchamp PID 1 syscall checkpoints"
             python3 "${WORK_DIR}/../tools/apply-duchamp-pid1-syscall-checkpoints.py" "${WORK_DIR}/xnu"
         fi
+        if ! grep -Fq 'DEVFS CONSOLE READY' "${WORK_DIR}/xnu/bsd/kern/bsd_init.c"; then
+            running "Applying Duchamp RAM-root devfs console setup"
+            python3 "${WORK_DIR}/../tools/apply-duchamp-devfs-console.py" "${WORK_DIR}/xnu"
+        fi
         cd "${WORK_DIR}"
     fi
 }

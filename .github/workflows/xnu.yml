@@ -98,7 +98,7 @@ jobs:
           MAKEFLAGS: ${{ inputs.keep_going == 'false' && '' || '-k' }}
         run: |
           bash build.sh
-          grep -Fq 'stage > 186' xnu/osfmk/arm64/sweet_early.c
+          grep -Fq 'stage > 191' xnu/osfmk/arm64/sweet_early.c
           grep -Fq 'QEMU RAM BLOCK READY' xnu/iokit/bsddev/IOKitBSDInit.cpp
           grep -Fq 'MT6897 BACKEND STUB' xnu/iokit/bsddev/IOKitBSDInit.cpp
           grep -Fq 'QEMU RAM ROOT MOUNTED' xnu/bsd/kern/bsd_init.c
@@ -111,6 +111,10 @@ jobs:
           grep -Fq 'PID1 OPEN CONSOLE' xnu/bsd/vfs/vfs_syscalls.c
           grep -Fq 'PID1 CONSOLE OPEN OK' xnu/bsd/vfs/vfs_syscalls.c
           grep -Fq 'PID1 CONSOLE OPEN FAILED' xnu/bsd/vfs/vfs_syscalls.c
+          grep -Fq 'sweet_mkdir_kernel' xnu/bsd/vfs/vfs_syscalls.c
+          grep -Fq 'DEV DIRECTORY READY' xnu/bsd/kern/bsd_init.c
+          grep -Fq 'DEVFS CONSOLE READY' xnu/bsd/kern/bsd_init.c
+          grep -Fq 'DEVFS MOUNT FAILED' xnu/bsd/kern/bsd_init.c
 
       - name: Package build tree for local compiles
         if: always()
