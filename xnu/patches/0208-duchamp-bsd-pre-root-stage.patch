@@ -7,7 +7,7 @@ index ada7fc9..2a4ba0e 100644
  sweet_early_mark(unsigned int stage, const char *label)
  {
 -	if (early_disabled || stage > 154) {
-+	if (early_disabled || stage > 172) {
++	if (early_disabled || stage > 173) {
  		return;
  	}
  	uint32_t color = 0xff00ff00u | ((stage & 7u) * 32u << 16);
@@ -100,17 +100,31 @@ index 2ab6bfa..ea26cd1 100644
 +			sweet_early_mark(171, "QEMU RAM ROOT MOUNTED");
 +		} else {
 +			sweet_early_mark(172, "QEMU RAM ROOT MOUNT FAILED");
-+		}
-+		__asm__ volatile("dsb sy; isb" ::: "memory");
-+		for (;;) {
-+			__asm__ volatile("wfe" ::: "memory");
++			__asm__ volatile("dsb sy; isb" ::: "memory");
++			for (;;) {
++				__asm__ volatile("wfe" ::: "memory");
++			}
 +		}
 +#endif
 +		if (err == 0) {
  			break;
  		}
  		rootdevice[0] = '\0';
-@@ -1129,6 +1165,10 @@ setconf(void)
+@@ -936,6 +972,13 @@ bsd_init(void)
+ 	set_rootvnode(init_rootvnode);
+ 	lck_rw_unlock_exclusive(&rootvnode_rw_lock);
+ 	init_rootvnode = NULLVP;  /* use rootvnode after this point */
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(173, "QEMU ROOTVNODE READY");
++	__asm__ volatile("dsb sy; isb" ::: "memory");
++	for (;;) {
++		__asm__ volatile("wfe" ::: "memory");
++	}
++#endif
+ 
+ 
+ 	if (!bsd_rooted_ramdisk()) {
+@@ -1129,6 +1172,10 @@ setconf(void)
  	u_int32_t       flags;
  	kern_return_t   err;
  

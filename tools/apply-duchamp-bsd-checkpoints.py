@@ -21,7 +21,7 @@ bsd_path = root / "bsd/kern/bsd_init.c"
 iokit_path = root / "iokit/bsddev/IOKitBSDInit.cpp"
 
 early = early_path.read_text()
-early = replace_once(early, "stage > 154", "stage > 172", "stage ceiling")
+early = replace_once(early, "stage > 154", "stage > 173", "stage ceiling")
 early_path.write_text(early)
 
 startup_path = root / "osfmk/kern/startup.c"
@@ -188,10 +188,10 @@ bsd = replace_once(
 \t\t\tsweet_early_mark(171, "QEMU RAM ROOT MOUNTED");
 \t\t} else {
 \t\t\tsweet_early_mark(172, "QEMU RAM ROOT MOUNT FAILED");
-\t\t}
-\t\t__asm__ volatile("dsb sy; isb" ::: "memory");
-\t\tfor (;;) {
-\t\t\t__asm__ volatile("wfe" ::: "memory");
+\t\t\t__asm__ volatile("dsb sy; isb" ::: "memory");
+\t\t\tfor (;;) {
+\t\t\t\t__asm__ volatile("wfe" ::: "memory");
+\t\t\t}
 \t\t}
 #endif
 \t\tif (err == 0) {
@@ -199,5 +199,29 @@ bsd = replace_once(
 \t\t}
 ''',
     "RAM root mount result barrier",
+)
+bsd_path.write_text(bsd)
+
+bsd = bsd_path.read_text()
+bsd = replace_once(
+    bsd,
+    '''\tlck_rw_lock_exclusive(&rootvnode_rw_lock);
+\tset_rootvnode(init_rootvnode);
+\tlck_rw_unlock_exclusive(&rootvnode_rw_lock);
+\tinit_rootvnode = NULLVP;  /* use rootvnode after this point */
+''',
+    '''\tlck_rw_lock_exclusive(&rootvnode_rw_lock);
+\tset_rootvnode(init_rootvnode);
+\tlck_rw_unlock_exclusive(&rootvnode_rw_lock);
+\tinit_rootvnode = NULLVP;  /* use rootvnode after this point */
+#if defined(ARM64_BOARD_CONFIG_SWEET)
+\tsweet_early_mark(173, "QEMU ROOTVNODE READY");
+\t__asm__ volatile("dsb sy; isb" ::: "memory");
+\tfor (;;) {
+\t\t__asm__ volatile("wfe" ::: "memory");
+\t}
+#endif
+''',
+    "rootvnode result barrier",
 )
 bsd_path.write_text(bsd)
