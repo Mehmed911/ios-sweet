@@ -3,7 +3,7 @@
 The test runs a static PID 1 and a separate static arm64 Mach-O worker on a
 writable HFS+ RAM disk. It exercises file creation, fork, execve, arguments,
 getpid, console output, pipe IPC across exec, RAM file write/read/EOF checks,
-select timeouts, exit, wait4, and one supervised restart.
+select timeouts, exit, wait4, signals, and supervised restarts.
 It does not provide Apple's launchd, a shell, dynamic libraries, or iOS services.
 
 The existing successful kernel from Actions run
@@ -23,7 +23,7 @@ sh tools/test-sweet-userland.sh \
   work/qemu-multiproc.adt \
   work/qemu-rootvnode-98/root-with-launchd.hfs \
   work/qemu-rootvnode-98/launchd \
-  work/userland-ipc-new 90
+  work/userland-signals-new 90
 ```
 
 The output directory must not exist. Inputs are local artifacts, not tracked
@@ -46,8 +46,28 @@ replacement in a copied HFS image. Do not shorten Mach-O segment alignment to
 
 The first worker receives `once`, prints two heartbeats, and exits with code 42.
 PID 1 requires wait4 to return that child and status `00002a00`, then execs a new
-worker with `stay`. The replacement continues printing heartbeats alongside
-PID 1. An unexpected exit causes `TEST FAILED` instead of a restart loop.
+worker with `stay`. PID 1 tests signals on this second worker, then starts a
+third worker which continues heartbeats. Unexpected exits cause `TEST FAILED`.
+
+The signal test uses the constants and status encoding from this XNU source:
+
+| Operation | Signal | Required wait4 status |
+| --- | --- | --- |
+| Stop | SIGSTOP = 17 | `0000117f`, WNOHANG + WUNTRACED |
+| Continue | SIGCONT = 19 | `0000137f`, WNOHANG + WCONTINUED |
+| Terminate | SIGTERM = 15 | `0000000f`, WNOHANG |
+
+After observing the stop event, PID 1 waits at least five seconds. The
+framebuffer verifier requires no worker heartbeat in that interval. After the
+continue event PID 1 allows ten seconds for fresh worker output before sending
+SIGTERM. It requires the exact termination status, reaps the child, and checks
+that kill(pid, 0) returns ESRCH before starting the third worker. Signals target
+only its positive child PID. Event polling is bounded to 50 attempts with 100ms
+pauses; an absent or unexpected event fails instead of waiting forever.
+
+The worker sets SIGTERM to SIG_DFL and clears its signal mask explicitly.
+Select retries EINTR. This tests default signal actions, not a custom signal
+handler or application cleanup during graceful shutdown.
 
 Before forking each worker, PID 1 creates a new pipe. The child closes its
 read endpoint, uses dup2 to inherit the writer on fd 3, and execs the worker.
@@ -60,14 +80,19 @@ reopens it read-only, compares every byte with `SWEET RAM FILE OK\n`, requires
 EOF, and closes it. Only then does it send READYv1 and close fd 3. File and
 pipe transfers handle short reads/writes; premature EOF fails the scenario.
 
-`verify-sweet-userland.py` requires both exec entries, the deliberate exit,
-correct wait status, restart, both file/IPC checks, and continued output. It records
+`verify-sweet-userland.py` requires all three exec entries, the deliberate exit,
+correct wait statuses, ordered signal events, the stop/resume output checks,
+all file/IPC checks, and continued output after the final restart. It records
 input hashes and checks in `run/verification.json`. `no_panic_observed` alone
 does not pass the test. `fb.txt` is a circular framebuffer snapshot, not a
 complete serial log; a very long run can overwrite required earlier messages.
 
-Validated IPC/file results live in `work/userland-ipc-final/`; the previous
-exec-only milestone is in `work/userland-exec-final/`. Failed intermediate
+Verified signal results live in `work/userland-signals-verified/`. The first
+signal run in `work/userland-signals-final/` passed its guest checks but had a
+host wrapper error after its comment was edited while the shell was running.
+Previous IPC/file
+results are in `work/userland-ipc-final/`, and the exec-only milestone is in
+`work/userland-exec-final/`. Failed intermediate
 experiments remain in their separate directories. Use the pristine baseline
 above, not `work/root-multiproc.hfs`, whose header was changed during an earlier
 unsuccessful host HFS-tool experiment. No phone compatibility is inferred from

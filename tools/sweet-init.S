@@ -1,7 +1,8 @@
 /*
  * QEMU diagnostic PID 1 for a writable HFS RAM root. Installs an independent,
  * ad-hoc signed Mach-O worker, forks/execs it, checks its intentional first
- * exit with wait4, then restarts it in persistent heartbeat mode.
+ * exit with wait4, tests stop/continue/terminate on its replacement, then
+ * restarts a final worker in persistent heartbeat mode.
  *
  * Build with tools/build-sweet-userland.sh. All references are PC-relative;
  * mutable state lives in registers/stack. XNU arm64 syscalls use x16 and
@@ -15,6 +16,7 @@
 #define SYS_close   6
 #define SYS_wait4   7
 #define SYS_getpid 20
+#define SYS_kill   37
 #define SYS_pipe   42
 #define SYS_execve 59
 #define SYS_dup2   90
@@ -22,6 +24,9 @@
 #define O_RDWR     2
 #define O_CREATE   0x601
 #define MODE_0755  0755
+#define SIGTERM   15
+#define SIGSTOP   17
+#define SIGCONT   19
 
 	.macro PRINT name
 	adr x1, \name
@@ -159,14 +164,7 @@ child_failed:
 	svc #0x80
 	b hang
 tick:
-	mov x0, #0
-	mov x1, #0
-	mov x2, #0
-	mov x3, #0
-	adr x4, five_sec
-	mov x16, #SYS_select
-	svc #0x80
-	b.cs failed
+	bl sleep_five
 	PRINT alive
 	mov x0, x22
 	mov x1, sp
@@ -175,7 +173,7 @@ tick:
 	mov x16, #SYS_wait4
 	svc #0x80
 	b.cs failed
-	cbz x0, tick
+	cbz x0, running_worker
 	cmp x0, x22
 	b.ne failed
 	ldr w28, [sp]
@@ -192,6 +190,111 @@ tick:
 	PRINT restart
 	mov x27, #1
 	b spawn_worker
+running_worker:
+	cmp x27, #1
+	b.ne tick
+	/* Operate only on our positive child PID, never on a process group. */
+	PRINT stop_sending
+	mov x1, #SIGSTOP
+	bl signal_worker
+	mov w24, #0x117f             /* W_STOPCODE(SIGSTOP) */
+	mov w25, #3                  /* WNOHANG | WUNTRACED */
+	bl wait_event
+	PRINT stop_verified
+	mov w0, w28
+	bl print_hex
+	bl sleep_five
+	PRINT stopped_hold
+	PRINT cont_sending
+	mov x1, #SIGCONT
+	bl signal_worker
+	mov w24, #0x137f             /* W_STOPCODE(SIGCONT) */
+	mov w25, #17                 /* WNOHANG | WCONTINUED */
+	bl wait_event
+	PRINT cont_verified
+	mov w0, w28
+	bl print_hex
+	/* Leave time for fresh worker output after continuation. */
+	bl sleep_five
+	bl sleep_five
+	PRINT resumed_window
+	PRINT term_sending
+	mov x1, #SIGTERM
+	bl signal_worker
+	mov w24, #15                 /* WTERMSIG == SIGTERM, no core flag */
+	mov w25, #1                  /* WNOHANG */
+	bl wait_event
+	PRINT term_verified
+	mov w0, w28
+	bl print_hex
+	/* After wait4 reaps it, kill(pid, 0) must fail with ESRCH (3). */
+	mov x0, x22
+	mov x1, #0
+	mov x2, #1
+	mov x16, #SYS_kill
+	svc #0x80
+	b.cc failed
+	cmp x0, #3
+	b.ne failed
+	PRINT absent_verified
+	PRINT signal_restart
+	mov x27, #2
+	b spawn_worker
+signal_worker:
+	cmp x22, #1
+	b.ls failed
+	mov x0, x22
+	mov x2, #1                  /* POSIX kill, one positive PID */
+	mov x16, #SYS_kill
+	svc #0x80
+	b.cs failed
+	ret
+wait_event:
+	/* Poll for one specific wait4 event, at most 50 times with 100ms sleeps. */
+	mov x26, #50
+wait_poll:
+	mov x0, x22
+	mov x1, sp
+	mov x2, x25
+	mov x3, #0
+	mov x16, #SYS_wait4
+	svc #0x80
+	b.cs failed
+	cbz x0, wait_pause
+	cmp x0, x22
+	b.ne failed
+	ldr w28, [sp]
+	cmp w28, w24
+	b.ne failed
+	ret
+wait_pause:
+	subs x26, x26, #1
+	b.eq failed
+	mov x0, #0
+	mov x1, #0
+	mov x2, #0
+	mov x3, #0
+	adr x4, short_pause
+	mov x16, #SYS_select
+	svc #0x80
+	b.cc wait_poll
+	cmp x0, #4                  /* EINTR: recheck the event */
+	b.eq wait_poll
+	b failed
+sleep_five:
+	mov x0, #0
+	mov x1, #0
+	mov x2, #0
+	mov x3, #0
+	adr x4, five_sec
+	mov x16, #SYS_select
+	svc #0x80
+	b.cc sleep_done
+	cmp x0, #4                  /* EINTR */
+	b.eq sleep_five
+	b failed
+sleep_done:
+	ret
 read_all:
 	mov x0, x23
 	mov x1, x24
@@ -249,6 +352,8 @@ hang:
 	.p2align 3
 five_sec:
 	.quad 5, 0
+short_pause:
+	.quad 0, 100000
 console_path:
 	.asciz "/dev/console"
 worker_path:
@@ -282,6 +387,36 @@ reaped_end:
 restart:
 	.ascii "SWEET init: restarting worker in stay mode\n"
 restart_end:
+stop_sending:
+	.ascii "SWEET init: SIGSTOP sending\n"
+stop_sending_end:
+stop_verified:
+	.ascii "SWEET init: SIGSTOP wait4 verified\n"
+stop_verified_end:
+stopped_hold:
+	.ascii "SWEET init: stopped hold complete\n"
+stopped_hold_end:
+cont_sending:
+	.ascii "SWEET init: SIGCONT sending\n"
+cont_sending_end:
+cont_verified:
+	.ascii "SWEET init: SIGCONT wait4 verified\n"
+cont_verified_end:
+resumed_window:
+	.ascii "SWEET init: resumed heartbeat window complete\n"
+resumed_window_end:
+term_sending:
+	.ascii "SWEET init: SIGTERM sending\n"
+term_sending_end:
+term_verified:
+	.ascii "SWEET init: SIGTERM wait4 verified\n"
+term_verified_end:
+absent_verified:
+	.ascii "SWEET init: terminated worker ESRCH verified\n"
+absent_verified_end:
+signal_restart:
+	.ascii "SWEET init: restarting after SIGTERM\n"
+signal_restart_end:
 exec_failed:
 	.ascii "SWEET child: execve failed\n"
 exec_failed_end:

@@ -1,5 +1,37 @@
 # DUCHAMP update — 2026-10-22
 
+Signal/service-control milestone (2026-10-29, QEMU/RAM only; this commit):
+After the intentional exit-42/restart, PID 1 sends SIGSTOP (17) to the positive
+worker PID and polls wait4(WNOHANG|WUNTRACED) for status 0000117f. It holds the
+worker stopped for at least five seconds, sends SIGCONT (19), requires
+WCONTINUED status 0000137f, and allows ten seconds for renewed heartbeat output.
+It then sends SIGTERM (15), requires termination status 0000000f, reaps the
+worker, checks kill(pid, 0) returns ESRCH, and starts a third persistent worker.
+Each wait event has at most 50 polls with 100ms pauses. Worker SIGTERM is
+explicitly SIG_DFL with an empty signal mask; select retries EINTR. This tests
+default actions, not a custom signal handler or graceful cleanup routine.
+
+The complete 90-second wrapper run in work/userland-signals-verified exited 0.
+All 27 semantic checks passed, including ordered signal events, no worker
+heartbeat during the stopped interval, fresh heartbeat after continuation,
+termination/reaping, final restart, and all three workers' file/IPC tests.
+No visible panic and zero unknown glyphs were observed. The earlier run in
+work/userland-signals-final also passed guest checks but its host wrapper
+reported a trailing syntax error after its comment was edited mid-execution;
+the untouched rerun passed end to end. The verifier rejected an IPC-only
+result copied to work/userland-signals-negative. Previous milestone: ef86078.
+
+Kernel unchanged from Actions 104 / 40939563499, SHA-256
+82fc8fe1391bea90bcce9ed2d4e8a2ff8204667f6785857873717564ec9331c9.
+Final init 10256d2be047a950c2b920670e69806814089b37ae6ef19ce8c44a2e65df2c1c;
+worker 595827b44de924f7316a2befbe6ef641ac897b7a0cd25e14bd68f5fd52dbdcb1;
+root ccc0ecc271447f104854eabaea6b5cbdaf9c56e9a5706d93a9282f5bb20c17c1;
+payload 19dd823926c2fe1971bcd3dfbeff1c8a3510742d0be60f103d8c96c9bf083df9.
+The repeated build produced identical input hashes. Artifacts and report:
+work/userland-signals-verified/run/{fb.txt,verification.json}. Documentation:
+duchamp/USERLAND-QEMU.md. Phone/UFS/boot partitions were not accessed.
+Richer userspace and the MT6897 hardware backend remain unfinished.
+
 IPC and RAM-file milestone (2026-10-29, QEMU only; this commit):
 PID 1 now creates a fresh pipe before each fork, closes its writer, and checks
 the exec'd worker's exact READYv1 message followed by EOF. The child uses dup2

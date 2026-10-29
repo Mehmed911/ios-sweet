@@ -1,5 +1,5 @@
 #!/bin/sh
-# Build and verify the complete fork/exec/wait/restart scenario in QEMU.
+# Build and verify exec/file/IPC and signal-driven service control in QEMU.
 set -eu
 if [ "$#" -lt 5 ] || [ "$#" -gt 6 ]; then
     echo "usage: test-sweet-userland.sh KERNEL ADT BASE_HFS BASE_INIT NEW_OUTDIR [SECONDS]" >&2

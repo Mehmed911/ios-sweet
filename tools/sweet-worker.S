@@ -6,6 +6,8 @@
 #define SYS_open    5
 #define SYS_close   6
 #define SYS_getpid 20
+#define SYS_sigaction 46
+#define SYS_sigprocmask 48
 #define SYS_select 93
 
 	.macro PRINT name
@@ -42,6 +44,20 @@ _start:
 	cmp x0, #1
 	b.ls hang
 	PRINT started
+	/* Explicit default SIGTERM disposition and empty mask for this test.
+	 * __user64_sigaction is handler/trampoline (8 bytes each), mask/flags (4). */
+	mov x0, #15
+	adr x1, default_action
+	mov x2, #0
+	mov x16, #SYS_sigaction
+	svc #0x80
+	b.cs failed
+	mov x0, #3                  /* SIG_SETMASK */
+	adr x1, empty_mask
+	mov x2, #0
+	mov x16, #SYS_sigprocmask
+	svc #0x80
+	b.cs failed
 	/* Write, close, reopen, read, compare all bytes, then require EOF. */
 	adr x0, data_path
 	mov x1, #0x601
@@ -110,7 +126,11 @@ loop:
 	adr x4, five_sec
 	mov x16, #SYS_select
 	svc #0x80
-	b.cs failed
+	b.cc heartbeat_ready
+	cmp x0, #4                  /* A resumed select may return EINTR. */
+	b.eq loop
+	b failed
+heartbeat_ready:
 	PRINT heartbeat
 	add x21, x21, #1
 	cmp w20, #'o'
@@ -161,6 +181,11 @@ write_console:
 	.p2align 3
 five_sec:
 	.quad 5, 0
+default_action:
+	.quad 0, 0
+	.long 0, 0
+empty_mask:
+	.long 0
 console_path:
 	.asciz "/dev/console"
 data_path:
