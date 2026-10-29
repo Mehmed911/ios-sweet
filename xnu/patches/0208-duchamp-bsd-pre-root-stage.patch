@@ -7,7 +7,7 @@ index ada7fc9..2a4ba0e 100644
  sweet_early_mark(unsigned int stage, const char *label)
  {
 -	if (early_disabled || stage > 154) {
-+	if (early_disabled || stage > 167) {
++	if (early_disabled || stage > 169) {
  		return;
  	}
  	uint32_t color = 0xff00ff00u | ((stage & 7u) * 32u << 16);
@@ -140,17 +140,37 @@ diff --git a/iokit/bsddev/IOKitBSDInit.cpp b/iokit/bsddev/IOKitBSDInit.cpp
  
  	if ((regEntry = IORegistryEntry::fromPath( "/chosen", gIODTPlane ))) {
  		do {
-@@ -770,7 +782,13 @@ IOFindBSDRoot( char * rootName, unsigned int rootNameSize,
+@@ -769,17 +781,24 @@ IOFindBSDRoot( char * rootName, unsigned int rootNameSize,
+ #if defined(ARM64_BOARD_CONFIG_SWEET)
+ //
  //	SWEET: root on a GPT partition of the internal UFS (bsd/dev/sweet_ufs.c)
  //
+-	if (strcmp(rdBootVar, "ufsroot0") == 0) {
+-		extern int sweet_ufs_rootdev(dev_t *dev);
 +	sweet_early_mark(166, "root selection ready");
- 	if (strcmp(rdBootVar, "ufsroot0") == 0) {
-+		sweet_early_mark(167, "PRE UFS BACKEND");
-+		__asm__ volatile("dsb sy; isb" ::: "memory");
-+		for (;;) {
-+			__asm__ volatile("wfe" ::: "memory");
-+		}
- 		extern int sweet_ufs_rootdev(dev_t *dev);
++	if (strcmp(rdBootVar, "ufsroot0") == 0) {
++		char backend[16] = "mt6897";
++		PE_parse_boot_argn("sweet-root-backend", backend, sizeof(backend));
++		sweet_early_mark(167, "root backend selected");
  		OSSafeReleaseNULL(matching);
- 		int ufs_error = sweet_ufs_rootdev(root);
- 		if (ufs_error) {
+-		int ufs_error = sweet_ufs_rootdev(root);
+-		if (ufs_error) {
+-			panic("IOFindBSDRoot: SWEET UFS root %s unavailable: %d", rdBootVar, ufs_error);
++		if (strcmp(backend, "qemu-ram") == 0) {
++			*root = mdevlookup(0);
++			strlcpy(rootName, "md0", rootNameSize);
++			*oflags = 0;
++			sweet_early_mark(168, "QEMU RAM BLOCK READY");
++			__asm__ volatile("dsb sy; isb" ::: "memory");
++			for (;;) {
++				__asm__ volatile("wfe" ::: "memory");
++			}
+ 		}
+-		strlcpy(rootName, rdBootVar, rootNameSize);
+-		IOLog("BSD root: %s, major %d, minor %d\n", rootName, major(*root), minor(*root));
+-		*oflags = 0;
+-		goto iofrootx;
++		sweet_early_mark(169, "MT6897 BACKEND STUB");
++		return kIOReturnUnsupported;
+ 	}
+ #endif

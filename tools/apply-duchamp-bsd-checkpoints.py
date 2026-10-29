@@ -21,27 +21,27 @@ bsd_path = root / "bsd/kern/bsd_init.c"
 iokit_path = root / "iokit/bsddev/IOKitBSDInit.cpp"
 
 early = early_path.read_text()
-early = replace_once(early, "stage > 154", "stage > 167", "stage ceiling")
+early = replace_once(early, "stage > 154", "stage > 169", "stage ceiling")
 early_path.write_text(early)
 
 startup_path = root / "osfmk/kern/startup.c"
 startup = startup_path.read_text()
-startup = replace_once(
-    startup,
-    '''#if defined(DUCHAMP)
+stage154_barrier = '''#if defined(DUCHAMP)
 	sweet_early_mark(154, "DUCHAMP PRE BSD INIT");
 	__asm__ volatile("dsb sy; isb" ::: "memory");
 	for (;;) {
 		__asm__ volatile("wfe" ::: "memory");
 	}
 #endif
-''',
-    '''#if defined(DUCHAMP)
+'''
+stage154_released = '''#if defined(DUCHAMP)
 	sweet_early_mark(154, "DUCHAMP PRE BSD INIT");
 #endif
-''',
-    "stage 154 release",
-)
+'''
+if stage154_barrier in startup:
+    startup = replace_once(startup, stage154_barrier, stage154_released, "stage 154 release")
+elif stage154_released not in startup:
+    raise SystemExit("stage 154 release: neither barrier nor released anchor found")
 startup_path.write_text(startup)
 
 bsd = bsd_path.read_text()
@@ -138,13 +138,35 @@ iokit = replace_once(
 )
 iokit = replace_once(
     iokit,
-    "\tif (strcmp(rdBootVar, \"ufsroot0\") == 0) {\n\t\textern int sweet_ufs_rootdev(dev_t *dev);",
+    "\tif (strcmp(rdBootVar, \"ufsroot0\") == 0) {\n"
+    "\t\textern int sweet_ufs_rootdev(dev_t *dev);\n"
+    "\t\tOSSafeReleaseNULL(matching);\n"
+    "\t\tint ufs_error = sweet_ufs_rootdev(root);\n"
+    "\t\tif (ufs_error) {\n"
+    "\t\t\tpanic(\"IOFindBSDRoot: SWEET UFS root %s unavailable: %d\", rdBootVar, ufs_error);\n"
+    "\t\t}\n"
+    "\t\tstrlcpy(rootName, rdBootVar, rootNameSize);\n"
+    "\t\tIOLog(\"BSD root: %s, major %d, minor %d\\n\", rootName, major(*root), minor(*root));\n"
+    "\t\t*oflags = 0;\n"
+    "\t\tgoto iofrootx;\n"
+    "\t}",
     "\tsweet_early_mark(166, \"root selection ready\");\n"
     "\tif (strcmp(rdBootVar, \"ufsroot0\") == 0) {\n"
-    "\t\tsweet_early_mark(167, \"PRE UFS BACKEND\");\n"
-    "\t\t__asm__ volatile(\"dsb sy; isb\" ::: \"memory\");\n"
-    "\t\tfor (;;) {\n\t\t\t__asm__ volatile(\"wfe\" ::: \"memory\");\n\t\t}\n"
-    "\t\textern int sweet_ufs_rootdev(dev_t *dev);",
-    "pre-UFS backend barrier",
+    "\t\tchar backend[16] = \"mt6897\";\n"
+    "\t\tPE_parse_boot_argn(\"sweet-root-backend\", backend, sizeof(backend));\n"
+    "\t\tsweet_early_mark(167, \"root backend selected\");\n"
+    "\t\tOSSafeReleaseNULL(matching);\n"
+    "\t\tif (strcmp(backend, \"qemu-ram\") == 0) {\n"
+    "\t\t\t*root = mdevlookup(0);\n"
+    "\t\t\tstrlcpy(rootName, \"md0\", rootNameSize);\n"
+    "\t\t\t*oflags = 0;\n"
+    "\t\t\tsweet_early_mark(168, \"QEMU RAM BLOCK READY\");\n"
+    "\t\t\t__asm__ volatile(\"dsb sy; isb\" ::: \"memory\");\n"
+    "\t\t\tfor (;;) {\n\t\t\t\t__asm__ volatile(\"wfe\" ::: \"memory\");\n\t\t\t}\n"
+    "\t\t}\n"
+    "\t\tsweet_early_mark(169, \"MT6897 BACKEND STUB\");\n"
+    "\t\treturn kIOReturnUnsupported;\n"
+    "\t}",
+    "safe root backend selector",
 )
 iokit_path.write_text(iokit)

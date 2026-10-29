@@ -13,7 +13,7 @@ needle = '''        done
 }
 '''
 replacement = '''        done
-        if ! grep -Fq 'PRE UFS BACKEND' "${WORK_DIR}/xnu/iokit/bsddev/IOKitBSDInit.cpp"; then
+        if ! grep -Fq 'QEMU RAM BLOCK READY' "${WORK_DIR}/xnu/iokit/bsddev/IOKitBSDInit.cpp"; then
             running "Applying mandatory semantic Duchamp BSD checkpoints"
             python3 "${WORK_DIR}/../tools/apply-duchamp-bsd-checkpoints.py" "${WORK_DIR}/xnu"
         fi
