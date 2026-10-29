@@ -15,9 +15,12 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     for key in ('base', 'runtime', 'audit', 'service', 'controller', 'hfsplus', 'output'):
         ap.add_argument('--' + key, type=Path, required=True)
-    ap.add_argument('--scenario', choices=('stop-restart', 'bootout-bootstrap', 'keepalive'),
+    ap.add_argument('--scenario', choices=('stop-restart', 'bootout-bootstrap', 'keepalive', 'ipc'),
                     default='stop-restart')
+    ap.add_argument('--client', type=Path)
     args = ap.parse_args()
+    if args.scenario == 'ipc' and args.client is None:
+        ap.error('ipc requires --client')
     if args.output.exists():
         raise SystemExit('refusing to overwrite previous image')
     audit = json.loads(args.audit.read_text())
@@ -73,6 +76,11 @@ def main():
                 raise SystemExit(f'base original executable mismatch: {guest}')
         job = temp / 'control.plist'
         job.write_bytes(plistlib.dumps(controller_job))
+        client_job = None
+        if args.scenario == 'ipc':
+            client_job = dict(properties, Label='org.sweet.qemu.ipc-client',
+                              ProgramArguments=['/sbin/sweet-ipc-client'])
+            (temp / 'client.plist').write_bytes(plistlib.dumps(client_job))
         files = {}
         for guest, metadata in audit['files'].items():
             if not (guest.startswith('/usr/lib/') or guest == '/bin/launchctl'):
@@ -88,6 +96,9 @@ def main():
         })
         if args.scenario == 'keepalive':
             files[target_job] = (temp / 'keepalive.plist', '644')
+        if args.scenario == 'ipc':
+            files['/sbin/sweet-ipc-client'] = (args.client, '755')
+            files['/System/Library/LaunchDaemons/org.sweet.qemu.ipc-client.plist'] = (temp / 'client.plist', '644')
         manifest = {}
         for guest, (source, mode) in files.items():
             run('add', str(source.resolve()), guest)
@@ -98,6 +109,8 @@ def main():
                 raise SystemExit(f'HFS byte verification failed: {guest}')
             manifest[guest] = hashlib.sha256(data).hexdigest()
         expected_jobs = ['org.sweet.qemu.c-service.plist', 'org.sweet.qemu.launchctl-control.plist']
+        if args.scenario == 'ipc':
+            expected_jobs.insert(1, 'org.sweet.qemu.ipc-client.plist')
         if jobs() != expected_jobs:
             raise SystemExit('unexpected daemon job set')
         (args.output.parent / 'launchctl-root-manifest.json').write_text(json.dumps({
@@ -106,6 +119,7 @@ def main():
             'base_target_job': plistlib.loads(target_data),
             'target_job_sha256': hashlib.sha256(installed_target_data).hexdigest(),
             'scenario': args.scenario,
+            'client_job': client_job,
             'files': manifest, 'jobs': expected_jobs, 'controller_job': controller_job,
         }, indent=2) + '\n')
     print(f'{args.output}: pinned Procursus launchctl, target and controller installed')

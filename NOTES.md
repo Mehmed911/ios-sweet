@@ -1,5 +1,63 @@
 # DUCHAMP update — 2026-10-22
 
+Two-service IPC milestone (2026-10-30, QEMU/RAM only; this commit):
+A separate Unix-domain socket server and client now exchange validated
+messages as root children of unchanged Apple launchd PID 1. A third
+observer uses pinned Procursus FOSS launchctl 1:1.1.1 for state/stop checks.
+Baseline commit: de31099d57f8b4dfa162ada21049fbbeec504206.
+No phone, USB, UFS or boot partition command was run.
+
+Actual result: work/launchctl-ipc, exit 0, 38/38 checks passed,
+428.675 host seconds, 33 sampled frames, zero unknown glyphs, no visible
+panic. Stopped on SWEET launchctl: heartbeat=2 before 720-second limit.
+Observer PID 3, server PID 4, client PID 5; all root children of PID 1.
+Both socket endpoints verified LOCAL_PEERPID and the peer executable path.
+Three 32-byte request/reply frames carried matching PIDs, sequence,
+version, payload and XOR checksum. Both independent saved logs matched:
+seq 1: 0x10203001 -> 0x4a7a6a5b
+seq 2: 0x10203002 -> 0x4a7a6a58
+seq 3: 0x10203003 -> 0x4a7a6a59
+The client closed its socket; the server observed EOF.
+The observer released the client via a RAM file; its main returned 0.
+It sent SIGTERM to the idle server; the handler only set a flag, then
+normal execution closed the listener, unlinked the socket and returned 0.
+Both PIDs were reaped. Final launchctl prints: not running, runs=1,
+last exit code=0. No signal death. Socket absent from saved RAM root.
+All five CLI children exited 0; later observer heartbeats confirmed
+both services stayed stopped. No kickstart/bootstrap/direct service exec.
+
+Replay tools/test-sweet-launchctl.sh with the prior six inputs, 720,
+then ipc. It builds sweet-ipc-server.c at the existing C-service path,
+adds sweet-ipc-client and its job, and selects SWEET_IPC_TEST=1 for the
+observer. All three jobs RunAtLoad=true / KeepAlive=false. The server
+job's plist stays byte-identical to the base. Fixture executables are
+new in this scenario; prior scenarios retain their original C target.
+ABI declarations checked against local XNU 22.6 CI source headers and
+uipc_usrreq.c. This is AF_UNIX SOCK_STREAM, not an XPC/Mach service test.
+Details/replay: duchamp/IPC-QEMU.md.
+Report: work/launchctl-ipc/run/verification.json.
+Raw peer logs, CLI stdout/stderr and listings: work/launchctl-ipc/guest/.
+
+SHA-256:
+server f89ef4d320f554bf13f5e284efb6f4ba4d61235c6d6cf5140fe91edc04f88972
+client fc9b79e2d48729ff45b6abe6909325b69a499e7660aabe821af5d1e605cf866f
+observer 2bc3845ccdfa148c36411c271046816ded93a732c1ae3b0844308dae41fc30f2
+input root aa4e450a621daa745ed915bc97fe3ce3dd605b7e25e5f4fa2bf9d3bbec8c53f0
+payload 55a093b2d3b86c5850bdad77a1d28d8eb0e024d326687d6ce409d7b493a034bf
+exported root 47800e98c2f14a64e2c8b5ee7a28164b370d5fc1afc4cb8575458e10237de9f7
+Original Apple launchd/xpcproxy and pinned CLI hashes passed.
+Rehashed unchanged Actions 104 kernel and initial base:
+kernel 82fc8fe1391bea90bcce9ed2d4e8a2ff8204667f6785857873717564ec9331c9
+base root 491aa78408c423c50e8b59644e416e94b643ed3eb119158d52684af4176c8b3f
+No new kernel CI build. Server/client and all four controller modes
+passed arm64 C checks with warnings as errors; shell/Python checks pass.
+The prior saved KeepAlive run still passes its 33 checks.
+
+Coverage: one connection and three request/reply pairs; normal client
+exit; SIGTERM cleanup of an idle server after peer EOF. Active-request
+cancellation, concurrent clients and XPC remain separate coverage.
+Full iOS and MT6897 UFS are not proven. Preserve all prior roots/results.
+
 KeepAlive milestone (2026-10-30, QEMU/RAM only; this commit):
 Unchanged Apple launchd/xpcproxy automatically restarted the diagnostic
 C service twice with KeepAlive=true, using pinned Procursus FOSS

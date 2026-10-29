@@ -143,3 +143,6 @@ print above intentionally tests a job that remains registered.
 
 For automatic restarts after SIGTERM and SIGKILL, see the separate
 [KeepAlive scenario](KEEPALIVE-QEMU.md).
+
+For two C services exchanging local socket messages, a normal client exit
+and a server that handles SIGTERM and cleans up, see [IPC-QEMU.md](IPC-QEMU.md).
