@@ -152,3 +152,6 @@ demand, see [XPC-QEMU.md](XPC-QEMU.md).
 
 For a program using the original Foundation and Objective-C runtime, see
 [FOUNDATION-QEMU.md](FOUNDATION-QEMU.md).
+
+For Foundation request/reply processing inside native XPC peers, see
+[FOUNDATION-XPC-QEMU.md](FOUNDATION-XPC-QEMU.md).

@@ -1,4 +1,7 @@
 #include "sweet-xpc.h"
+#if defined(SWEET_FOUNDATION_XPC_TEST)
+#include "sweet-foundation-xpc.h"
+#endif
 static volatile int stop_requested;
 static _Atomic int failed, messages, peer_closed, closing;
 static _Atomic(sweet_xpc_t) peer_connection;
@@ -37,6 +40,11 @@ int main(void) {
             if (!reply) { reject("XPC reply context"); return; }
             struct ipc_message response = ipc_message(2, seq, client, getpid());
             sweet_xpc_fill(reply, &response);
+#if defined(SWEET_FOUNDATION_XPC_TEST)
+            if (fnd_server(event, reply, seq, request.value, response.value)) {
+                xpc_release(reply); reject("Foundation XPC processing"); return;
+            }
+#endif
             xpc_connection_send_message(peer, reply); xpc_release(reply);
             ipc_note("XPC EXCHANGE seq=%u request=0x%08x response=0x%08x server=%d client=%d",
                      seq, request.value, response.value, getpid(), client);

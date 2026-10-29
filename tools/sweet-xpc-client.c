@@ -1,4 +1,7 @@
 #include "sweet-xpc.h"
+#if defined(SWEET_FOUNDATION_XPC_TEST)
+#include "sweet-foundation-xpc.h"
+#endif
 static _Atomic int closing, failed;
 int main(void) {
     if (ipc_identity("client")) return ipc_fail("identity");
@@ -23,6 +26,9 @@ int main(void) {
         sweet_xpc_t message = xpc_dictionary_create(0, 0, 0);
         if (!message) return ipc_fail("XPC request allocation");
         sweet_xpc_fill(message, &request);
+#if defined(SWEET_FOUNDATION_XPC_TEST)
+        if (fnd_request(message, seq, request.value)) return ipc_fail("Foundation XPC request");
+#endif
         /* Main is outside the event-handler queue. The VM bounds this sync wait. */
         sweet_xpc_t reply = xpc_connection_send_message_with_reply_sync(connection, message);
         xpc_release(message);
@@ -31,6 +37,9 @@ int main(void) {
         struct ipc_message response = ipc_message(2, seq, getpid(), server);
         if (failed || peer != server || !ipc_path_matches(server, IPC_SERVER_PATH) ||
             !sweet_xpc_valid(reply, &response)) return ipc_fail("XPC reply/peer");
+#if defined(SWEET_FOUNDATION_XPC_TEST)
+        if (fnd_client(reply, seq, response.value)) return ipc_fail("Foundation XPC reply");
+#endif
         xpc_release(reply);
         if (seq == 1) ipc_note("XPC PEER client=%d server=%d verified=xpc_connection_get_pid", getpid(), server);
         ipc_note("XPC EXCHANGE seq=%u request=0x%08x response=0x%08x server=%d client=%d",

@@ -18,7 +18,11 @@ static int ipc_stopped(const char *tag, const char *service) {
 static int ipc_lifecycle(void) {
     const char *client_target = "system/org.sweet.qemu.ipc-client";
 #if defined(SWEET_XPC_TEST)
+#if defined(SWEET_FOUNDATION_XPC_TEST)
+    note("SCENARIO foundation-xpc");
+#else
     note("SCENARIO xpc");
+#endif
     int waiting = -1;
     for (int i = 0; i < 180; ++i) {
         waiting = ipc_read_pid(IPC_CLIENT_PID);

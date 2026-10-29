@@ -16,13 +16,13 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     for key in ('base', 'runtime', 'audit', 'service', 'controller', 'hfsplus', 'output'):
         ap.add_argument('--' + key, type=Path, required=True)
-    ap.add_argument('--scenario', choices=('stop-restart', 'bootout-bootstrap', 'keepalive', 'ipc', 'xpc', 'foundation'),
+    ap.add_argument('--scenario', choices=('stop-restart', 'bootout-bootstrap', 'keepalive', 'ipc', 'xpc', 'foundation', 'foundation-xpc'),
                     default='stop-restart')
     ap.add_argument('--client', type=Path)
     ap.add_argument('--runtime-source', type=Path)
     args = ap.parse_args()
-    if args.scenario in ('ipc', 'xpc') and args.client is None:
-        ap.error('ipc/xpc requires --client')
+    if args.scenario in ('ipc', 'xpc', 'foundation-xpc') and args.client is None:
+        ap.error('ipc/xpc/foundation-xpc requires --client')
     if args.output.exists():
         raise SystemExit('refusing to overwrite previous image')
     audit = json.loads(args.audit.read_text())
@@ -42,7 +42,7 @@ def main():
         return re.findall(r'^\d{6}\s+\d+\s+\d+\s+\d+\s+\S+\s+\S+\s+(.*)$',
                           listing, re.MULTILINE)
 
-    if args.scenario == 'foundation':
+    if args.scenario in ('foundation', 'foundation-xpc'):
         foundation = '/System/Library/Frameworks/Foundation.framework/Foundation'
         if (audit['files'].get(foundation, {}).get('sha256') !=
                 '182a6fb6d6c51e8e1a70e9152c84cd9d1bd65d2a1f0bda21a4ebe1be446021f2'):
@@ -84,7 +84,7 @@ def main():
             properties['KeepAlive'] = True
             installed_target_data = plistlib.dumps(properties)
             (temp / 'keepalive.plist').write_bytes(installed_target_data)
-        if args.scenario == 'xpc':
+        if args.scenario in ('xpc', 'foundation-xpc'):
             properties['RunAtLoad'] = False
             properties['MachServices'] = {'org.sweet.qemu.mach-service': True}
             installed_target_data = plistlib.dumps(properties)
@@ -99,13 +99,13 @@ def main():
         job = temp / 'control.plist'
         job.write_bytes(plistlib.dumps(controller_job))
         client_job = None
-        if args.scenario in ('ipc', 'xpc'):
+        if args.scenario in ('ipc', 'xpc', 'foundation-xpc'):
             client_job = dict(plistlib.loads(target_data), Label='org.sweet.qemu.ipc-client',
                               ProgramArguments=['/sbin/sweet-ipc-client'])
             (temp / 'client.plist').write_bytes(plistlib.dumps(client_job))
         files = {}
         for guest, metadata in audit['files'].items():
-            framework = args.scenario == 'foundation' and guest.startswith(
+            framework = args.scenario in ('foundation', 'foundation-xpc') and guest.startswith(
                 ('/System/Library/Frameworks/', '/System/Library/PrivateFrameworks/'))
             if not (guest.startswith('/usr/lib/') or guest == '/bin/launchctl' or framework):
                 raise SystemExit(f'unexpected runtime path: {guest}')
@@ -113,7 +113,7 @@ def main():
             if hashlib.sha256(source.read_bytes()).hexdigest() != metadata['sha256']:
                 raise SystemExit(f'audited runtime changed: {guest}')
             files[guest] = (source, '755')
-        if args.scenario == 'foundation':
+        if args.scenario in ('foundation', 'foundation-xpc'):
             resources = json.loads(args.runtime_source.read_text())['resources']
             for guest, digest in resources.items():
                 if not guest.startswith(('/System/Library/Frameworks/', '/System/Library/PrivateFrameworks/')):
@@ -129,9 +129,9 @@ def main():
         })
         if args.scenario == 'keepalive':
             files[target_job] = (temp / 'keepalive.plist', '644')
-        if args.scenario == 'xpc':
+        if args.scenario in ('xpc', 'foundation-xpc'):
             files[target_job] = (temp / 'xpc.plist', '644')
-        if args.scenario in ('ipc', 'xpc'):
+        if args.scenario in ('ipc', 'xpc', 'foundation-xpc'):
             files['/sbin/sweet-ipc-client'] = (args.client, '755')
             files['/System/Library/LaunchDaemons/org.sweet.qemu.ipc-client.plist'] = (temp / 'client.plist', '644')
         manifest = {}
@@ -153,7 +153,7 @@ def main():
                 raise SystemExit(f'HFS byte verification failed: {guest}')
             manifest[guest] = hashlib.sha256(data).hexdigest()
         expected_jobs = ['org.sweet.qemu.c-service.plist', 'org.sweet.qemu.launchctl-control.plist']
-        if args.scenario in ('ipc', 'xpc'):
+        if args.scenario in ('ipc', 'xpc', 'foundation-xpc'):
             expected_jobs.insert(1, 'org.sweet.qemu.ipc-client.plist')
         if jobs() != expected_jobs:
             raise SystemExit('unexpected daemon job set')

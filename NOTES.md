@@ -1,5 +1,67 @@
 # DUCHAMP update — 2026-10-22
 
+Foundation/XPC integration milestone (2026-10-30, QEMU/RAM only; this commit):
+Original Apple Foundation now processes JSON in both native libxpc peers,
+with on-demand launchd MachServices activation and orderly exits.
+Baseline commit: 97d940bb47a0a3ce62fa62fc3aaea615eee3d3d7.
+No phone, USB, UFS or boot partition command was run.
+
+Actual result: work/launchctl-foundation-xpc, exit 0, 56/56 checks passed,
+95 installed file hashes plus original launchd/xpcproxy checks passed.
+531.312 host seconds, 40 sampled frames, zero unknown glyphs, no visible
+panic; stopped on second observer heartbeat before the 900-second limit.
+Observer PID 3, client PID 4, server PID 6, root children of launchd PID 1.
+Initial server print had runs=0 and no PID with its Mach name registered.
+Only after that print did the observer release the client; native XPC
+traffic activated the server without any manual start command.
+
+Both peers are Objective-C/MRC with blocks and exceptions. Three JSON
+requests passed through NSDictionary/NSJSONSerialization/NSData into
+native XPC data. Server checked received classes/fields against the
+integer envelope, uppercased duchamp to DUCHAMP, added fixture soc=6897
+and XOR-transformed values. Client parsed and validated every reply.
+Each request was 46 bytes, each reply 58 bytes. Nine atomically saved
+JSON files independently decoded correctly on the host; all three
+server/client reply pairs were byte-identical. All nine per-operation
+autorelease-pool drains appeared in order, including worker callbacks.
+
+Six launchctl commands exited 0. Client cancelled its connection and
+returned 0; server saw connection invalidation, handled SIGTERM,
+cancelled peer/listener and returned 0. Final prints: not running,
+runs=1, last exit code=0. Both PIDs reaped and stayed stopped through
+two heartbeats. The MachServices entry remained registered.
+Original Apple libraries, launchd and xpcproxy remained byte-identical.
+CLI remains pinned Procursus FOSS launchctl 1:1.1.1, not Apple's CLI.
+
+Replay: tools/test-sweet-launchctl.sh with the prior six inputs,
+research/foundation-runtime-20F66-v2/runtime-root, fresh output directory,
+900 and foundation-xpc. The copied HFS root is 128 MiB in RAM.
+Details/replay: duchamp/FOUNDATION-XPC-QEMU.md.
+Report: work/launchctl-foundation-xpc/run/verification.json.
+Raw logs, nine JSON files and file extractions are under its guest/.
+Earlier native-XPC saved guest recheck passed using a separate report
+work/xpc-integration-tools-recheck.json; original report preserved.
+Seven controller modes, both integrated Objective-C peers, old C XPC
+peers and standalone Foundation compile checks passed with -Werror.
+Python/shell checks passed. No kernel change or new Actions build.
+
+SHA-256:
+server 2a72fb59c4baa0228cd578639aedb851f131d05dccf057b2f6f1036200749926
+client ef5647df2d8ae691da4158ee99e6880fa7a65a5f5cec7fbcf031dab3bcb56870
+observer 3085749319a68c6865efc78da4fb9683808284776300a2d696eae38f37cfb694
+input root 236b7ff7bf6d753f9d70fd97c98f530198035b92da6f47d477ee7ac484ebd628
+payload a04f5a411feb1fc09183f9c315f0d6c89396d62b9c0892a097b4f5ab9d66c5b0
+exported root e44eddb4efe8a04e0bd9bfd1d91aa67fd8a7997251e6c503842c369d598d8032
+Rehashed unchanged kernel and original base:
+kernel 82fc8fe1391bea90bcce9ed2d4e8a2ff8204667f6785857873717564ec9331c9
+base 491aa78408c423c50e8b59644e416e94b643ed3eb119158d52684af4176c8b3f
+
+Coverage: one activation, one client, three valid Foundation JSON
+exchanges and graceful exits. This uses C libxpc data, not high-level
+NSXPCConnection. Malformed inputs, concurrent clients and repeated
+activation remain useful next grouped tests. UIKit, SpringBoard,
+full iOS and MT6897 storage/driver work remain unproven.
+
 Foundation milestone (2026-10-30, QEMU/RAM only; this commit):
 An Objective-C program now executes selected APIs in the original Apple
 iOS 16.5 Foundation/CoreFoundation and matching libobjc/Swift closure.
