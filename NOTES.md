@@ -1,5 +1,56 @@
 # DUCHAMP update — 2026-10-22
 
+Grouped live-preferences/restart milestone (2026-10-30; this commit):
+Baseline HEAD 8e7565855a862b5018c337d032f28dddedcd2e90. QEMU/RAM only.
+No phone, USB, UFS or boot-partition command; no new kernel build or CI run.
+
+Successful run: work/launchctl-cfprefs-batch-v2, exit 0, 72/72 checks.
+All 113 file hashes matched; unchanged Actions 104 kernel and original
+Apple launchd/xpcproxy/cfprefsd/notifyd/frameworks. Runtime audit: 92 binaries.
+1691.019 host seconds, 70 sampled frames, no visible panic,
+zero unknown glyphs, stopped on the second-heartbeat text (>=2 beats).
+Writer PID 7, first reader1 PID 5, new reader1 PID 16,
+reader2 PID 6. Original cfprefsd changed from PID 9 to 13,
+runs=2. Original notifyd stayed PID 8, runs=1.
+All ten real CLI calls exited 0. Writer and reader2 runs=1, reader1 runs=2,
+all normal exits=0 and reaped; old daemon was forcibly restarted, not graceful.
+
+Four ordered phases: set/read generation 1; live update to generation 2;
+after daemon restart plus orderly stop/restart of reader1, read generation 2
+without setters; then write/read generation 3 through the existing writer.
+Reader2 remained alive across all four phases. Both clients acknowledged
+every applicable phase. All four probe instances entered an empty chroot
+after independent-domain warmup; direct preference paths stayed ENOENT.
+Saved final plist exactly device=DUCHAMP-RECOVERED, integer soc=6897,
+boolean enabled=true, integer generation=3. Chroot directory stayed empty.
+Signals were explicit program posts through native notifyd after synchronize;
+notification state/control files carried only step numbers, never values.
+No automatic NSUserDefaultsDidChangeNotification or FSEvents delivery claim.
+
+First attempt work/launchctl-cfprefs-batch remains a failure: two live-update
+phases passed, then the test checked PID 13 while it was still xpcproxy.
+Bounded executable-transition waiting fixes this harness race. Its 113 file
+hashes matched; intermediate phase2.json proves actual saved false/generation 2.
+Sources/headers are frozen in each run's test-sources/ with input hashes.
+Basic writer, reader and controller rebuilt byte-identically to v5 in
+work/cfprefs-basic-build-check-v2/comparison.json; no baseline VM rerun.
+
+Parallel review: hakios-metal commit 54a46fadec5bd9684ebd77f3a0834c84b5eb01a6.
+make test CXX=clang++ passed 21 tests, 0 failed checks on Linux FakeGpu.
+Checkout clean, MIT, no iOS build or device GPU run. Parser/state semantics
+are useful references; actual transport/PM4 are Adreno-specific and the
+repo's shader pipeline is unfinished. See HAKIOS-METAL-REUSE.md.
+
+Initial root SHA256 89388d378c8d2fc66cf942d3c60647ad0579ebb29df629903a7bad0c44469a21.
+Payload 8c1c249fd0940b03bfca7ac7781d721e328230a680bb59427e93545177b08635.
+Saved root 03532c1d4e832f36ca6d3f992e1df619239afb364aa4b3ff5c9af9723658ed58.
+Full report: work/launchctl-cfprefs-batch-v2/run/verification.json; guest/ logs.
+Docs: duchamp/CFPREFS-BATCH-QEMU.md and HAKIOS-METAL-REUSE.md.
+Remaining: MediaTek platform/storage/graphics contracts and device tests.
+MT6897 root selection still returns kIOReturnUnsupported; RAM tests prove
+no UFS driver compatibility, phone full-boot or complete iOS readiness.
+All earlier local edits and 1689 old NOTES lines remain unstaged.
+
 Original cfprefsd / isolated NSUserDefaults milestone (2026-10-30; this commit):
 QEMU/RAM only. Baseline HEAD bea1e346cbd0ec005a5fc63dbd05cb504d90916e.
 No phone, USB, UFS, fastboot or boot partition command was run.

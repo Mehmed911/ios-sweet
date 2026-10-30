@@ -16,18 +16,19 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     for key in ('base', 'runtime', 'audit', 'service', 'controller', 'hfsplus', 'output'):
         ap.add_argument('--' + key, type=Path, required=True)
-    ap.add_argument('--scenario', choices=('stop-restart', 'bootout-bootstrap', 'keepalive', 'ipc', 'xpc', 'foundation', 'foundation-xpc', 'foundation-xpc-batch', 'syslogd', 'notifyd', 'cfprefsd'),
+    ap.add_argument('--scenario', choices=('stop-restart', 'bootout-bootstrap', 'keepalive', 'ipc', 'xpc', 'foundation', 'foundation-xpc', 'foundation-xpc-batch', 'syslogd', 'notifyd', 'cfprefsd', 'cfprefs-batch'),
                     default='stop-restart')
     ap.add_argument('--client', type=Path)
     ap.add_argument('--runtime-source', type=Path)
     args = ap.parse_args()
     batch = args.scenario == 'foundation-xpc-batch'
-    cfprefs = args.scenario == 'cfprefsd'
-    syslogd = args.scenario in ('syslogd', 'notifyd', 'cfprefsd')
-    notifyd = args.scenario in ('notifyd', 'cfprefsd')
-    foundation_scenario = args.scenario in ('foundation', 'foundation-xpc', 'foundation-xpc-batch', 'cfprefsd')
+    prefs_batch = args.scenario == 'cfprefs-batch'
+    cfprefs = args.scenario in ('cfprefsd', 'cfprefs-batch')
+    syslogd = args.scenario in ('syslogd', 'notifyd', 'cfprefsd', 'cfprefs-batch')
+    notifyd = args.scenario in ('notifyd', 'cfprefsd', 'cfprefs-batch')
+    foundation_scenario = args.scenario in ('foundation', 'foundation-xpc', 'foundation-xpc-batch', 'cfprefsd', 'cfprefs-batch')
     native_xpc = args.scenario in ('xpc', 'foundation-xpc', 'foundation-xpc-batch')
-    client_scenario = args.scenario in ('ipc', 'xpc', 'foundation-xpc', 'foundation-xpc-batch', 'syslogd', 'notifyd', 'cfprefsd')
+    client_scenario = args.scenario in ('ipc', 'xpc', 'foundation-xpc', 'foundation-xpc-batch', 'syslogd', 'notifyd', 'cfprefsd', 'cfprefs-batch')
     if client_scenario and args.client is None:
         ap.error('IPC scenarios require --client')
     if args.output.exists():
@@ -166,7 +167,16 @@ def main():
         job.write_bytes(plistlib.dumps(controller_job))
         client_job = None
         batch_client_jobs = []
-        if batch:
+        prefs_batch_jobs = []
+        if prefs_batch:
+            for number in (1, 2):
+                entry = dict(plistlib.loads(target_data), Label=f'org.sweet.qemu.prefs-reader{number}',
+                             ProgramArguments=['/sbin/sweet-ipc-client', str(number)],
+                             RunAtLoad=True, KeepAlive=False,
+                             EnvironmentVariables={'HOME': '/var/root', 'ASL_DISABLE': '0'})
+                prefs_batch_jobs.append(entry)
+                (temp / f'prefs-reader{number}.plist').write_bytes(plistlib.dumps(entry))
+        elif batch:
             for number in (1, 2):
                 entry = dict(plistlib.loads(target_data), Label=f'org.sweet.qemu.ipc-client{number}',
                              ProgramArguments=['/sbin/sweet-ipc-client', str(number)])
@@ -227,7 +237,10 @@ def main():
                 files['/System/Library/LaunchDaemons/' + name] = (temp / name, '644')
         if client_scenario:
             files['/sbin/sweet-ipc-client'] = (args.client, '755')
-        if batch:
+        if prefs_batch:
+            for number in (1, 2):
+                files[f'/System/Library/LaunchDaemons/org.sweet.qemu.prefs-reader{number}.plist'] = (temp / f'prefs-reader{number}.plist', '644')
+        elif batch:
             for number in (1, 2):
                 files[f'/System/Library/LaunchDaemons/org.sweet.qemu.ipc-client{number}.plist'] = (temp / f'client{number}.plist', '644')
         elif client_scenario:
@@ -251,7 +264,9 @@ def main():
                 raise SystemExit(f'HFS byte verification failed: {guest}')
             manifest[guest] = hashlib.sha256(data).hexdigest()
         expected_jobs = ['org.sweet.qemu.c-service.plist', 'org.sweet.qemu.launchctl-control.plist']
-        if batch:
+        if prefs_batch:
+            expected_jobs[1:1] = ['org.sweet.qemu.prefs-reader1.plist', 'org.sweet.qemu.prefs-reader2.plist']
+        elif batch:
             expected_jobs[1:1] = ['org.sweet.qemu.ipc-client1.plist', 'org.sweet.qemu.ipc-client2.plist']
         elif client_scenario:
             expected_jobs.insert(1, 'org.sweet.qemu.ipc-client.plist')
@@ -271,6 +286,7 @@ def main():
             'scenario': args.scenario,
             'client_job': client_job,
             'batch_client_jobs': batch_client_jobs,
+            'prefs_batch_jobs': prefs_batch_jobs,
             'syslogd_source': syslogd_source, 'syslogd_job': syslogd_job,
             'notifyd_job': notifyd_job,
             'cfprefsd_jobs': prefs_jobs,

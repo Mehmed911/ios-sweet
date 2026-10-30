@@ -168,3 +168,7 @@ ASL remote filters alongside syslogd, see [NOTIFYD-QEMU.md](NOTIFYD-QEMU.md).
 For original cfprefsd and shared NSUserDefaults values, with a second
 reader process, reader restart and filesystem isolation of the probes, see
 [CFPREFS-QEMU.md](CFPREFS-QEMU.md).
+
+For two live preference readers, explicit notifyd wakeups, daemon restart
+and saved-value recovery in one boot, see
+[CFPREFS-BATCH-QEMU.md](CFPREFS-BATCH-QEMU.md).

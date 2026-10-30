@@ -3,6 +3,9 @@
 This fixture is confined to QEMU and its HFS+ RAM root. It does not connect
 to a phone or access UFS, USB or boot partitions.
 
+The grouped live-update and service-restart scenario is documented in
+[CFPREFS-BATCH-QEMU.md](CFPREFS-BATCH-QEMU.md).
+
 ## Verified result — 2026-10-30
 
 The final run, work/launchctl-cfprefs-v5, exited 0 and passed **49/49

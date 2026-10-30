@@ -161,6 +161,9 @@ static int command(const char *tag, char *const *argv) {
 #if defined(SWEET_CFPREFS_TEST)
 #include "sweet-cfprefs-control.h"
 #endif
+#if defined(SWEET_CFPREFS_BATCH_TEST)
+#include "sweet-cfprefs-batch-control.h"
+#endif
 #if defined(SWEET_KEEPALIVE_TEST)
 static int keepalive_restarts(int initial) {
     int previous = initial;
@@ -205,6 +208,9 @@ int main(void) {
         proc_pidpath(1, parent, sizeof(parent)) <= 0 || strcmp(parent, "/sbin/launchd"))
         return fail("controller identity");
     note("controller pid=%d ppid=1 uid=0 parent=/sbin/launchd", getpid());
+#if defined(SWEET_CFPREFS_BATCH_TEST)
+    return cfprefs_batch_lifecycle();
+#endif
 #if defined(SWEET_CFPREFS_TEST)
     return cfprefs_lifecycle();
 #endif
