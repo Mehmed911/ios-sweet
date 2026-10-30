@@ -24,3 +24,8 @@ No MediaTek UFS access should be inferred from a successful RAM-root test.
 
 The pinned HakiOS Metal source review and local host-test result are in
 [HAKIOS-METAL-REUSE.md](HAKIOS-METAL-REUSE.md).
+
+Portable UFS read transport, software framebuffer operations, captured-DTB
+dependency resolution and their actual test results are documented in
+[DRIVER-CORES.md](DRIVER-CORES.md). These cores are not yet wired into XNU
+or a physical MT6897 backend.

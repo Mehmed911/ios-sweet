@@ -1,5 +1,67 @@
 # DUCHAMP update — 2026-10-22
 
+Portable storage/software-graphics cores (2026-10-31; this commit):
+Baseline HEAD 6b93481421300eeebc124813a2998bed140fda5f; branch duchamp-bootstrap.
+No phone/USB/UFS hardware or boot-partition command. No new XNU build or CI.
+
+Implemented independent portable C UFSHCI read transport and raw 32-bit
+software framebuffer fill/blit, with offline hardware-dependency extraction.
+These cores are NOT yet linked into XNU. MT6897 root selection stays
+kIOReturnUnsupported; there is no physical MediaTek power/DMA/MMIO backend.
+No complete iOS, accelerated GPU, DSI scanout or phone-UFS claim.
+
+Actual tests: research/mt6897-drivers/core-v6/result.json, exit 0,
+108/108 checks. Real QEMU UFS emulation/DMA via qtest, guest CPU stopped.
+Three cases: generated 16-MiB read-only disk at DMA 0x100000 and
+0x100100000, then existing 32-MiB HFS+ root at above-4GB DMA. Five exact
+byte-comparison reads per case, including 256 KiB and the last block.
+All images unchanged; HFS+ source SHA256
+491aa78408c423c50e8b59644e416e94b643ed3eb119158d52684af4176c8b3f.
+This is transport evidence, not an XNU UFS mount. Controller version 0x400.
+Injected task-tag and completion-mask faults are separately identified.
+No arbitrary CDB/SCSI WRITE API; only NOP, fDeviceInit queries and SCSI reads.
+Cold-device UNIT ATTENTION retry is bounded to three valid sense responses.
+Timeout/error poisons the host; API blocks rebind/resubmit. DMA storage stays
+reserved until a real platform proves quiescence; no automatic reset/abort.
+Readiness flag is a caller precondition, not proof of firmware compatibility.
+
+Same run: 78 native guard checks under ASan/UBSan, exit 0; freestanding
+AArch64 compile of both C cores passed, llvm-nm undefined imports empty.
+research/mt6897-drivers/framebuffer-arm-v2/result.json: 3/3 checks, exit 0.
+Actual ARM64 raster code ran at EL1, MMU/cache off, in ordinary guest RAM
+at Duchamp framebuffer address/geometry (1220x2712, stride 4992).
+Every pixel, row padding and outside guard matched; capture SHA256
+2be9fd76292a0edafb0fc52d54f2d3bf029911cfb6674554659d9a55df3ec3ac.
+No hardware GPU, framebuffer mapping/cache-on, vsync or scanout test.
+tools/test-inspect-duchamp-hardware.py: 20 tests, exit 0; actual phone DTB
+inspection succeeded; captured DTB SHA256
+9c49589f70044127be8941a9ea5537977f440ccd5ac15cfd24e120c8a1181d29.
+
+DTB facts: UFS 0x112b0000+0x3000, compatible mediatek,mt8183-ufshci;
+PHY 0x112a0000+0x10000; 12 named clocks, 3 resets, 9 four-cell IRQ tuples;
+Mali 0x13000000+0x480000, five named IRQs and memory-provider references.
+Absent iommus/dma-coherent is NOT proof of bypass/coherency. The inspector
+resolves variable provider cells and bus translations without bootargs/serials.
+Selected report research/mt6897-drivers/hardware-v1.json remains local.
+
+Read pinned MediaTek device modules a805f95d61dbf0b2959c9262acc626893114321d
+and vendor modules 6bceb1b8e3444dd6caf80ad7470c9e57bbdcd1ab. UFS variant
+needs PHY, clock/reset, power and SiP/RTFF-MTCMOS sequencing. GPU source
+has CSF/firmware/MMU requirements; installed phone DDK/firmware ABI remains
+unidentified. Independent implementations only; external sources stay ignored.
+QEMU reference source 7f36b1fbeb1f6f070cd5f8eddb3edbcafac15440 differs
+from tested installed QEMU 10.2.1; no firmware behavior equivalence claim.
+
+Failures retained: core-v1 wrong test PCI BAR-width assumption; core-v2
+unhandled cold UNIT ATTENTION. ARM-v1 overlapped the default QEMU DTB;
+ARM-v2 relocates its ELF. Later passing runs have exact input/object hashes.
+Replay/scope/pinned source links: duchamp/DRIVER-CORES.md.
+Next concrete work: XNU read/completion adapter in separate QEMU storage
+configuration while retaining md0; separately derive the MT6897 PHY/clock/
+reset/SiP and DMA/cache ownership sequence from matching firmware evidence.
+Physical backend stays disabled; Mali needs its own CSF/MMU/fence/power ABI.
+All pre-existing edits, untracked trees and 1689 old NOTES additions preserved.
+
 Grouped live-preferences/restart milestone (2026-10-30; this commit):
 Baseline HEAD 8e7565855a862b5018c337d032f28dddedcd2e90. QEMU/RAM only.
 No phone, USB, UFS or boot-partition command; no new kernel build or CI run.
