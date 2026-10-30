@@ -164,3 +164,7 @@ see [SYSLOGD-QEMU.md](SYSLOGD-QEMU.md).
 
 For original notifyd, notification state/cancellation and notifyd-backed
 ASL remote filters alongside syslogd, see [NOTIFYD-QEMU.md](NOTIFYD-QEMU.md).
+
+For original cfprefsd and shared NSUserDefaults values, with a second
+reader process, reader restart and filesystem isolation of the probes, see
+[CFPREFS-QEMU.md](CFPREFS-QEMU.md).

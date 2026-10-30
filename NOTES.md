@@ -1,5 +1,52 @@
 # DUCHAMP update — 2026-10-22
 
+Original cfprefsd / isolated NSUserDefaults milestone (2026-10-30; this commit):
+QEMU/RAM only. Baseline HEAD bea1e346cbd0ec005a5fc63dbd05cb504d90916e.
+No phone, USB, UFS, fastboot or boot partition command was run.
+No new kernel build or Actions run. The Actions 104 kernel is unchanged.
+
+Successful run: work/launchctl-cfprefs-v5, exit 0, 49/49 checks passed.
+112 file hashes matched: 110 installed files plus original launchd/xpcproxy.
+978.85 host seconds, 75 sampled frames, zero unknown glyphs, no visible panic;
+stopped on the second success heartbeat before the 1500-second limit.
+Observer PID 3; writer PID 5; separate reader runs PIDs 12 and 15.
+Original regular cfprefsd PID 7 stayed running, runs=1, same PID before/after.
+The separate system-session job stayed unstarted, runs=0; not exercised.
+Ten real Procursus launchctl invocations exited 0. All three probes exited 0,
+were reaped and stayed stopped for two heartbeats. Daemon shutdown not tested.
+
+Every probe warms only org.sweet.qemu.runtime-warmup (unset key, no setters),
+then enters an empty chroot and changes cwd to /. The actual fixture suite
+org.sweet.qemu.preferences is first accessed after isolation. Direct creation
+and later direct reading at all three standard preferences paths return ENOENT.
+Writer sets device=DUCHAMP, integer soc=6897, boolean enabled=true. Both fresh
+isolated readers obtain all three values without setters. The saved real-root
+plist contains exactly those values/types. The saved chroot directory is empty.
+Regular outside descriptors carry only console/log/PID/release data, not values.
+No injected library, fabricated XPC reply or per-message trace is claimed.
+
+Pinned original cfprefsd: 05e6c217284c2e4f669243fe24296f3ba9abb53a750c9d3860348b0b43c978e2.
+Runtime: research/cfprefs-runtime-20F66-v2/runtime-root, 92 audited binaries,
+107016192 bytes plus seven existing Foundation resources. Apple files local only.
+The first 85-file image crashed: CF dlopen of MobileCoreServices was missing.
+Debug PC=0/LR=0x100e22fd0 matched CF file offset 0xfafd0 (FSEventStreamCreate
+indirect call). Adding the original MobileCoreServices/CoreServices closure
+fixed this daemon crash. See duchamp/CFPREFS-QEMU.md for pins and exact replay.
+Attempts v1-v4 remain preserved and are failures, not successes. Interpose
+hooks never ran; that method was removed. Chroot-before-runtime-init also
+crashed; independent-domain warmup before chroot is verified in v5.
+The later chroot failure was FAR=8/nonzero ELR; its exact function is unknown.
+The periodic-frame debug observer caught a normal pause, not a null fault.
+
+Root SHA256: 14dde88259e13d1f5c352d7eee4ec1c7c02afd74305180626db54e119f86abba.
+Payload: 33579779ba49f0fb307bf9a0e7e5eee47c6f0fc7f70aec58f58234be1f399f68.
+Saved root: a648ed135606d03c51dcc1f838ce0310d936ea95b5c72ab78eabdac1bc2173f7.
+Full report: work/launchctl-cfprefs-v5/run/verification.json; guest logs in guest/.
+Next: live preference updates/notification invalidation between clients.
+FSEvents change delivery, reboot persistence, sandboxed app domains, UI and
+MT6897 hardware support are outside this test. No complete iOS claim.
+Pre-existing unrelated local edits and 1689 added NOTES lines stay unstaged.
+
 Original notifyd integration milestone (2026-10-30, QEMU/RAM only; this commit):
 Original iOS notifyd now runs beside original syslogd, with two-process
 notification state/post/cancel and notifyd-controlled ASL remote filters.
