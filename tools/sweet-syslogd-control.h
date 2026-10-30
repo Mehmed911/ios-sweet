@@ -1,4 +1,7 @@
 #include "sweet-ipc.h"
+#if defined(SWEET_NOTIFYD_TEST)
+#include "sweet-notify.h"
+#endif
 static char asl_output[32768];
 static int asl_read(const char *path, char *data, size_t capacity) {
     int fd = open(path, 0); if (fd < 0) return -1;
@@ -45,7 +48,12 @@ static int asl_received(int id, int seq, int pid) {
 }
 static int syslogd_lifecycle(void) {
     const char *service = "system/com.apple.syslogd";
-    note("SCENARIO syslogd");
+    const char *scenario = "syslogd";
+#if defined(SWEET_NOTIFYD_TEST)
+    scenario = "notifyd";
+    int notification_server = -1, remote_token = -1;
+#endif
+    note("SCENARIO %s", scenario);
     int server = -1, probes[2] = {-1, -1};
     for (int i = 0; i < 300; ++i) {
         server = ipc_read_pid("/private/var/run/syslog.pid");
@@ -55,7 +63,11 @@ static int syslogd_lifecycle(void) {
             path_matches(probes[0], "/sbin/sweet-launchd-service") &&
             path_matches(probes[1], "/sbin/sweet-ipc-client") &&
             !asl_read("/private/var/tmp/syslogd-debug.log", asl_output, sizeof(asl_output)) &&
-            strstr(asl_output, "starting work queue")) break;
+            strstr(asl_output, "starting work queue")
+#if defined(SWEET_NOTIFYD_TEST)
+            && nfy_exists("ready", 1) && nfy_exists("ready", 2)
+#endif
+            ) break;
         server = probes[0] = probes[1] = -1; pause_seconds(1);
     }
     if (server <= 1) return fail("syslogd/probe readiness");
@@ -64,6 +76,23 @@ static int syslogd_lifecycle(void) {
         !strstr(output, "state = running") || !strstr(output, "runs = 1\n") ||
         !strstr(output, "com.apple.system.logger")) return fail("syslogd initial print");
     note("SYSLOGD READY server=%d clients=%d,%d original=/usr/sbin/syslogd", server, probes[0], probes[1]);
+#if defined(SWEET_NOTIFYD_TEST)
+    char *notify_print[] = {"launchctl", "print", "system/com.apple.notifyd", 0};
+    if (command("notifyd-before", notify_print) || !strstr(output, "state = running") ||
+        !strstr(output, "runs = 1\n") || !strstr(output, "com.apple.system.notification_center"))
+        return fail("notifyd initial print");
+    notification_server = property_pid(output);
+    if (!path_matches(notification_server, "/usr/sbin/notifyd")) return fail("notifyd executable");
+    note("NOTIFYD READY server=%d clients=%d,%d", notification_server, probes[0], probes[1]);
+    if (nfy_mark("begin", 0) || nfy_wait("done", 1) || nfy_wait("done", 2))
+        return fail("notify notification/cancel test");
+    unsigned long long remote_state = 0;
+    if (notify_register_plain("com.apple.system.syslog.master", &remote_token) ||
+        notify_set_state(remote_token, 0x300ff) || notify_get_state(remote_token, &remote_state) ||
+        remote_state != 0x300ff || notify_post("com.apple.asl.remote"))
+        return fail("ASL remote master setup");
+    note("ASL REMOTE MASTER state=0x%llx notifyd=%d", remote_state, notification_server);
+#endif
     if (asl_gate("/private/var/tmp/asl-probes.begin", "begin\n")) return fail("ASL begin gate");
     int received = 0;
     for (int poll = 0; poll < 300; ++poll) {
@@ -77,6 +106,12 @@ static int syslogd_lifecycle(void) {
     }
     if (!received) return fail("six authenticated ASL messages not received");
     note("SYSLOGD RECEIVED server=%d clients=%d,%d messages=6", server, probes[0], probes[1]);
+#if defined(SWEET_NOTIFYD_TEST)
+    if (notify_set_state(remote_token, 0) || notify_get_state(remote_token, &remote_state) ||
+        remote_state || notify_post("com.apple.asl.remote") || notify_cancel(remote_token))
+        return fail("ASL remote master cleanup");
+    note("ASL REMOTE MASTER restored=0 token_cancelled=1");
+#endif
     if (asl_gate("/private/var/tmp/asl-probes.exit", "exit\n")) return fail("ASL exit gate");
     for (int id = 1; id <= 2; ++id) {
         int gone = 0;
@@ -93,11 +128,19 @@ static int syslogd_lifecycle(void) {
     }
     if (command("syslogd-after", before) || property_pid(output) != server ||
         !strstr(output, "state = running") || !strstr(output, "runs = 1\n")) return fail("syslogd final print");
+#if defined(SWEET_NOTIFYD_TEST)
+    if (command("notifyd-after", notify_print) || property_pid(output) != notification_server ||
+        !strstr(output, "state = running") || !strstr(output, "runs = 1\n")) return fail("notifyd final print");
+    note("NOTIFYD CONTROL PASS server=%d syslogd=%d clients=%d,%d", notification_server, server, probes[0], probes[1]);
+#endif
     note("SYSLOGD CONTROL PASS server=%d clients=%d,%d messages=6", server, probes[0], probes[1]);
     sync();
     for (unsigned int beat = 1;; ++beat) {
         pause_seconds(10);
         if (!path_matches(server, "/usr/sbin/syslogd")) return fail("syslogd lost");
+#if defined(SWEET_NOTIFYD_TEST)
+        if (!path_matches(notification_server, "/usr/sbin/notifyd")) return fail("notifyd lost");
+#endif
         for (int i = 0; i < 2; ++i)
             if (!kill(probes[i], 0) || *__error() != 3) return fail("ASL probe restarted");
         note("heartbeat=%u syslogd_running=1 server=%d probes_stopped=1", beat, server);

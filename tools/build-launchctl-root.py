@@ -16,22 +16,24 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     for key in ('base', 'runtime', 'audit', 'service', 'controller', 'hfsplus', 'output'):
         ap.add_argument('--' + key, type=Path, required=True)
-    ap.add_argument('--scenario', choices=('stop-restart', 'bootout-bootstrap', 'keepalive', 'ipc', 'xpc', 'foundation', 'foundation-xpc', 'foundation-xpc-batch', 'syslogd'),
+    ap.add_argument('--scenario', choices=('stop-restart', 'bootout-bootstrap', 'keepalive', 'ipc', 'xpc', 'foundation', 'foundation-xpc', 'foundation-xpc-batch', 'syslogd', 'notifyd'),
                     default='stop-restart')
     ap.add_argument('--client', type=Path)
     ap.add_argument('--runtime-source', type=Path)
     args = ap.parse_args()
     batch = args.scenario == 'foundation-xpc-batch'
-    syslogd = args.scenario == 'syslogd'
+    syslogd = args.scenario in ('syslogd', 'notifyd')
+    notifyd = args.scenario == 'notifyd'
     foundation_scenario = args.scenario in ('foundation', 'foundation-xpc', 'foundation-xpc-batch')
     native_xpc = args.scenario in ('xpc', 'foundation-xpc', 'foundation-xpc-batch')
-    client_scenario = args.scenario in ('ipc', 'xpc', 'foundation-xpc', 'foundation-xpc-batch', 'syslogd')
+    client_scenario = args.scenario in ('ipc', 'xpc', 'foundation-xpc', 'foundation-xpc-batch', 'syslogd', 'notifyd')
     if client_scenario and args.client is None:
         ap.error('IPC scenarios require --client')
     if args.output.exists():
         raise SystemExit('refusing to overwrite previous image')
     audit = json.loads(args.audit.read_text())
     syslogd_source, syslogd_job = None, None
+    notifyd_job = None
     if syslogd:
         if args.runtime_source is None:
             raise SystemExit('syslogd requires --runtime-source')
@@ -46,6 +48,15 @@ def main():
                           ProgramArguments=['/usr/sbin/syslogd', '-d', '/private/var/tmp/syslogd-debug.log',
                                             '-config', 'iphone', '-klog_in', '0', '-udp_in', '0',
                                             '-bsd_out', '0', '-remote', '0', '-launchd_in', '0', '-m', '0'])
+        if notifyd:
+            if audit['files'].get('/usr/sbin/notifyd', {}).get('sha256') != (
+                    '819c8ec6b3bee5cd2f1dcbe0b2b698418c411b4c126f2f97cbdae932c1972907'):
+                raise SystemExit('requires the pinned original notifyd')
+            notifyd_job = dict(syslogd_source['notifyd_source']['original_job'])
+            notifyd_job.update(RunAtLoad=True, KeepAlive=False, UserName='root', GroupName='wheel',
+                               StandardOutPath='/dev/console', StandardErrorPath='/dev/console',
+                               ProgramArguments=['/usr/sbin/notifyd', '-d', '-log_file',
+                                                 '/private/var/tmp/notifyd-debug.log', '-shm_pages', '0'])
     if not audit['passed'] or '/bin/launchctl' not in audit['files']:
         raise SystemExit('launchctl and required libraries must pass the dependency audit')
     if audit['files']['/bin/launchctl']['sha256'] != (
@@ -106,6 +117,8 @@ def main():
             installed_target_data = plistlib.dumps(properties)
             (temp / 'syslogd-probe.plist').write_bytes(installed_target_data)
             (temp / 'syslogd.plist').write_bytes(plistlib.dumps(syslogd_job))
+            if notifyd:
+                (temp / 'notifyd.plist').write_bytes(plistlib.dumps(notifyd_job))
         if args.scenario == 'keepalive':
             properties['KeepAlive'] = True
             installed_target_data = plistlib.dumps(properties)
@@ -144,7 +157,8 @@ def main():
             framework = foundation_scenario and guest.startswith(
                 ('/System/Library/Frameworks/', '/System/Library/PrivateFrameworks/'))
             if not (guest.startswith('/usr/lib/') or guest == '/bin/launchctl' or framework
-                    or (syslogd and guest == '/usr/sbin/syslogd')):
+                    or (syslogd and guest == '/usr/sbin/syslogd')
+                    or (notifyd and guest == '/usr/sbin/notifyd')):
                 raise SystemExit(f'unexpected runtime path: {guest}')
             source = args.runtime / guest.lstrip('/')
             if hashlib.sha256(source.read_bytes()).hexdigest() != metadata['sha256']:
@@ -175,6 +189,8 @@ def main():
             if 'No such file or directory' in run('ls', '/private/etc/asl'):
                 run('mkdir', '/private/etc/asl')
                 run('chmod', '755', '/private/etc/asl')
+        if notifyd:
+            files['/System/Library/LaunchDaemons/com.apple.notifyd.plist'] = (temp / 'notifyd.plist', '644')
         if client_scenario:
             files['/sbin/sweet-ipc-client'] = (args.client, '755')
         if batch:
@@ -207,6 +223,8 @@ def main():
             expected_jobs.insert(1, 'org.sweet.qemu.ipc-client.plist')
         if syslogd:
             expected_jobs.insert(0, 'com.apple.syslogd.plist')
+        if notifyd:
+            expected_jobs.insert(0, 'com.apple.notifyd.plist')
         if jobs() != expected_jobs:
             raise SystemExit('unexpected daemon job set')
         (args.output.parent / 'launchctl-root-manifest.json').write_text(json.dumps({
@@ -218,6 +236,7 @@ def main():
             'client_job': client_job,
             'batch_client_jobs': batch_client_jobs,
             'syslogd_source': syslogd_source, 'syslogd_job': syslogd_job,
+            'notifyd_job': notifyd_job,
             'volume_bytes': args.output.stat().st_size,
             'files': manifest, 'jobs': expected_jobs, 'controller_job': controller_job,
         }, indent=2) + '\n')

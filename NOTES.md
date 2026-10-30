@@ -1,5 +1,94 @@
 # DUCHAMP update — 2026-10-22
 
+Original notifyd integration milestone (2026-10-30, QEMU/RAM only; this commit):
+Original iOS notifyd now runs beside original syslogd, with two-process
+notification state/post/cancel and notifyd-controlled ASL remote filters.
+Baseline HEAD: 263e74fdd5d061528c2d5d9e75bf1799f9dd89c4.
+No phone, USB, UFS or boot partition command was run.
+
+Successful run: work/launchctl-notifyd-v3, exit 0, 74/74 checks passed.
+51 installed file hashes and original launchd/xpcproxy/syslogd/notifyd
+hashes matched. 536.613 host seconds, 42 sampled frames, zero unknown
+glyphs, no visible panic. Stopped on second heartbeat before 1500 sec.
+Observer PID 3, syslogd PID 4, probes PIDs 5/6, notifyd PID 7.
+All six real CLI print processes exited 0. Both daemon before/after
+prints matched: same PID, running, runs=1. Both probes returned 0,
+were reaped, runs=1, no restart through two heartbeats. Both daemons
+were alive at the stopped guest snapshot; graceful shutdown not tested.
+
+Both probes registered plain IPC tokens for the same non-self name.
+Initial state=0, initial changed=1 then quiet=0 were proven. Probe 1 set
+and posted 0x1020304050607001; both probes received the exact state.
+Probe 1 cancelled its check token (valid=0/check status=2), then set
+and posted 0x1020304050607002. Only probe 2 received it; the cancelled
+token stayed invalid. Remaining tokens were cancelled. The synchronization
+files carried only done tokens, not notification state. Daemon debug
+confirmed the name and cancellation calls; the real resolved name_id
+was 1, distinct from the internal IPC-version name.
+
+The observer set com.apple.system.syslog.master to 0x300ff, read it back,
+then posted com.apple.asl.remote. ASL probes used options 0x20000000
+(NO_REMOTE clear, SHIM_NO_TRACE retained). All six runtime evaluations
+were 0x00230005 with TUNNEL set, and six exact raw records reached the
+original syslogd file with expected root sender identities. The master
+state was restored to zero and its token cancelled. Modern os_log/logd
+and arbitrary credential-forgery behavior were not tested.
+
+Native source: research/notifyd-20F66/apple-extracted, selected from
+20F66 system-image member 096-04088-077.dmg with existing APFS range-cache
+helper/7z. Extraction exit 0: 2 files / 129501 bytes. notifyd is 128704
+bytes, plain arm64, iOS 16.5, libSystem/libbsm, dyld. Original job 797 bytes,
+MachServices com.apple.system.notification_center and PublishesEvents
+com.apple.notifyd.matching retained in the copied job. Test adds root/
+System, RunAtLoad=true/KeepAlive=false and -d/-log_file/-shm_pages 0.
+Original executable/library bytes are unchanged. Partial APFS cache is
+not a complete-image digest or independent Apple signature verification.
+
+Actual binary LC_SOURCE_VERSION/library PROJECT string identify 312.
+Matched Apple Libnotify-312 source commit:
+885677be0379101ccf37b46f8da81dbc17d6d301 (not exact build equivalence).
+The first two attempts, work/launchctl-notifyd and -v2, FAILED after
+298.05 and 297.615 sec. First combined assertion hid the native result;
+the second separately logged registration 0/token 2 and get_state 0 with
+0x0000000700000003. Server log showed get_state_2 name_id=0.
+Matched 312 source explains zero-page register_check delegates to plain
+without filling name_id, leaving zero; the client then reads IPC version
+(PID<<32|3). Final fixture uses notify_register_plain/NID_UNSET, preserving
+the exact-state assertions. No binary patch and no claim register_check/
+get_state works with zero shared pages. Failure diagnostics sync before
+FAIL to preserve newly created HFS entries; first attempt had missing
+new log entries despite visible console execution. All attempts retained.
+
+Runtime: research/notifyd-runtime-20F66-v2/runtime-root.
+42 binaries / 11006176 bytes, no missing strong dependencies.
+Replay: tools/test-sweet-launchctl.sh with original Actions 104 kernel,
+qemu-multiproc.adt, launchd-final/root.hfs, new runtime, HFS tool, fresh
+output, 1500 and notifyd. Details: duchamp/NOTIFYD-QEMU.md.
+Report: work/launchctl-notifyd-v3/run/verification.json; raw files in guest/.
+Old syslogd saved guest recheck passed 43/43 with final verifier:
+work/syslogd-notify-final-recheck.json; original report preserved.
+10 observer modes/probe compile checks, Python/shell checks passed.
+No kernel change or new CI. Pre-existing dirty files/NOTES edits preserved.
+
+SHA-256:
+notifyd 819c8ec6b3bee5cd2f1dcbe0b2b698418c411b4c126f2f97cbdae932c1972907
+notifyd original plist 627b24feb59a493a50f488bc62ec9e878c333757d4ddb7786a977650ed9b1a05
+probe1 d75e313663319e78e301954ece5698e8fc2c4f7527b8324494a9c82ff0003267
+probe2 4c75ae7555275a5cc7a906c408cb6944451979aafab3bdd56f62f0ef38555f7f
+observer f364f0dee8bef980589bdff407e35d7bb77e134248234967f9c7519513d23b28
+input root 3e800f071990192fefd69684477618532c85ab85accbd74f750a51c2f70e6baf
+payload eacdc56581aa13cc14c0fd36feb8041a1e71b0aacb14715793d4ece58e8a676e
+exported root e942200c5f595f8918aa7e39935d2e39bc4aea0999af57eac19d7f442e5b9583
+raw ASL log f41a71dafad74ffd53ecc98175fcf71957487dc4423cbe4010140f77f3c17bce
+Rehashed unchanged kernel/base:
+kernel 82fc8fe1391bea90bcce9ed2d4e8a2ff8204667f6785857873717564ec9331c9
+base 491aa78408c423c50e8b59644e416e94b643ed3eb119158d52684af4176c8b3f
+
+Coverage: plain/check polling over IPC, state and cancellation, and ASL
+remote-filter integration. Shared memory, dispatch callbacks, daemon
+restart recovery, UIKit, SpringBoard/full iOS and MT6897 drivers remain
+unproven. No VM is left running for this completed fixture.
+
 Original syslogd milestone (2026-10-30, QEMU/RAM only; this commit):
 Unmodified Apple iOS 16.5 restore syslogd now receives legacy ASL messages
 from two C programs and writes six real raw records to its own log file.

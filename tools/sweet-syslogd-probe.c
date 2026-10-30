@@ -5,6 +5,9 @@ extern asl_object_t asl_open(const char *, const char *, unsigned int), asl_new(
 extern int asl_set(asl_object_t, const char *, const char *), asl_send(asl_object_t, asl_object_t);
 extern void asl_close(asl_object_t), asl_release(asl_object_t);
 extern unsigned int _asl_evaluate_send(asl_object_t, asl_object_t, int), asl_core_get_service_port(int);
+#if defined(SWEET_NOTIFYD_TEST)
+#include "sweet-notify-probe.h"
+#endif
 static int token(const char *path, const char *expected) {
     char text[32] = {0}; int fd = open(path, 0);
     if (fd < 0) return -1;
@@ -23,12 +26,20 @@ int main(int argc, char **argv) {
     snprintf(sender, sizeof(sender), "sweet-asl%d", id);
     if (ipc_identity(role)) return ipc_fail("identity");
     snprintf(path, sizeof(path), "/private/var/tmp/asl-probe%d.pid", id);
-    if (ipc_publish_pid(path) || wait_token("/private/var/tmp/asl-probes.begin", "begin\n")) return ipc_fail("begin gate");
+    if (ipc_publish_pid(path)) return ipc_fail("pid publication");
+#if defined(SWEET_NOTIFYD_TEST)
+    if (nfy_sequence(id)) return 1;
+#endif
+    if (wait_token("/private/var/tmp/asl-probes.begin", "begin\n")) return ipc_fail("begin gate");
     /* Apple ASL private flags: NO_REMOTE | SHIM_NO_TRACE. No local file output. */
-    asl_object_t client = asl_open(sender, "local0", 0x20000004);
+    unsigned int options = 0x20000004;
+#if defined(SWEET_NOTIFYD_TEST)
+    options = 0x20000000;
+#endif
+    asl_object_t client = asl_open(sender, "local0", options);
     unsigned int port = asl_core_get_service_port(0);
     if (!client || !port) return ipc_fail("ASL client/service port");
-    ipc_note("ASL CONNECTED id=%d pid=%d port=0x%x options=0x20000004", id, getpid(), port);
+    ipc_note("ASL CONNECTED id=%d pid=%d port=0x%x options=0x%08x", id, getpid(), port, options);
     for (int seq = 1; seq <= 3; ++seq) {
         asl_object_t message = asl_new(0);
         char text[128], number[16];
@@ -39,6 +50,9 @@ int main(int argc, char **argv) {
             asl_set(message, "SweetSequence", number)) return ipc_fail("ASL fields");
         unsigned int eval = _asl_evaluate_send(client, message, -1);
         if (!(eval & 0x20000) || (eval & (0x40000 | 0x80000 | 0x100000))) return ipc_fail("ASL transport evaluation");
+#if defined(SWEET_NOTIFYD_TEST)
+        if (!(eval & 0x200000)) return ipc_fail("ASL notifyd remote filter not observed");
+#endif
         int status = asl_send(client, message);
         asl_release(message);
         if (status) return ipc_fail("ASL send");

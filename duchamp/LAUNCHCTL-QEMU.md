@@ -161,3 +161,6 @@ message responses in one run, see [XPC-BATCH-QEMU.md](XPC-BATCH-QEMU.md).
 
 For the original syslogd receiving native ASL messages from two programs,
 see [SYSLOGD-QEMU.md](SYSLOGD-QEMU.md).
+
+For original notifyd, notification state/cancellation and notifyd-backed
+ASL remote filters alongside syslogd, see [NOTIFYD-QEMU.md](NOTIFYD-QEMU.md).
