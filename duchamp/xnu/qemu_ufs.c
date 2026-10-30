@@ -119,6 +119,10 @@ static void qu_strategy(buf_t bp) {
     uint32_t count=buf_count(bp);
     buf_setresid(bp,count);
     if(!(buf_flags(bp)&B_READ)) { error=EROFS; goto done; }
+    /* Only mapped kernel buffer-cache I/O belongs here. Raw user I/O uses
+     * uiomove below; buf_map(B_PHYS) can return a user address under PAN.
+     */
+    if(buf_flags(bp)&B_PHYS) { error=EINVAL; goto done; }
     if(!qu.ready || minor(buf_device(bp))!=0) { error=ENXIO; goto done; }
     lck_mtx_lock(&qu_lock);
     int64_t block=buf_blkno(bp);
@@ -179,7 +183,33 @@ static int qu_psize(__unused dev_t dev) {
     return qu.ready?(int)MIN(qu.bytes/qu.sector_bytes,INT_MAX):-1;
 }
 static int qu_read(dev_t dev,struct uio *uio,__unused int flags) {
-    return physio(qu_strategy,NULL,dev,B_READ,minphys,uio,(int)qu.sector_bytes);
+    if(!qu.ready || minor(dev)!=0) return ENXIO;
+    if(uio_offset(uio)<0 || uio_resid(uio)<0) return EINVAL;
+    if(!uio_resid(uio)) return 0;
+    vm_offset_t scratch=0;
+    if(kmem_alloc(kernel_map,&scratch,PAGE_SIZE,KMA_DATA,VM_KERN_MEMORY_IOKIT)!=KERN_SUCCESS)
+        return ENOMEM;
+    int error=0;
+    while(uio_resid(uio)>0) {
+        uint64_t position=(uint64_t)uio_offset(uio);
+        if(position>=qu.bytes) break;
+        uint32_t skip=(uint32_t)(position%qu.physical_bytes);
+        uint32_t take=(uint32_t)MIN((uint64_t)uio_resid(uio),(uint64_t)PAGE_SIZE-skip);
+        take=(uint32_t)MIN((uint64_t)take,qu.bytes-position);
+        uint32_t blocks=(skip+take+qu.physical_bytes-1)/qu.physical_bytes;
+        lck_mtx_lock(&qu_lock);
+        int result=dufs_read(&qu.host,position/qu.physical_bytes,blocks,
+                             (void *)scratch,(size_t)blocks*qu.physical_bytes);
+        lck_mtx_unlock(&qu_lock);
+        if(result) { error=qu_error(result); break; }
+        /* Private CPU buffer: copyout may fault/re-enter VFS, so hold no
+         * controller lock across uiomove. It is never a DMA target.
+         */
+        error=uiomove((void *)(scratch+skip),(int)take,uio);
+        if(error) break;
+    }
+    kmem_free(kernel_map,scratch,PAGE_SIZE);
+    return error;
 }
 static int qu_write(__unused dev_t dev,__unused struct uio *uio,__unused int flags) { return EROFS; }
 static const struct bdevsw qu_bdevsw={

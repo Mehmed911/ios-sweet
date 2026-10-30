@@ -13,7 +13,19 @@ Local Actions-104-generated-header compilation passed for both C TUs;
 all their imports resolve against the baseline kernel/each other.
 Local IOKit C++ compile cannot validate Apple XNU compiler builtins on Linux;
 its failure is retained in research/xnu-ufs/compile/IOKitBSDInit.log.
-Full Xcode CI/build and QEMU mount/userland test are PENDING, not a pass.
+First full Xcode CI succeeded, but guest-v1 is a FAILED runtime test: UFS
+root mounted and PID1 entered, then raw character read panicked at memmove
++0x48 / qu_strategy+0x1c0, FAR=user stack. physio/buf_map returned a user VA
+that plain memcpy cannot access with PAN enabled. No complete guest pass.
+Fix now uses uiomove from a private CPU buffer outside the controller lock;
+B_PHYS strategy requests are rejected. Both C TUs recompiled successfully.
+Next full CI/kernel and repeated guest test are PENDING.
+CI source commit 51bd2ca39c97d441df912a9a12e31cf24ea7a601; run 41131664525.
+Virtual-UFS fixture prepared in research/xnu-ufs/fixture-v1 (no RAMDisk);
+tools/test-qemu-ufs-profile.py passed 19 rejection tests.
+Six MT6897 AO/PDN clock leaves implemented separately, not linked to a phone
+backend; 123 ASan/UBSan model checks and ARM64 compile passed in
+research/xnu-ufs/clocks-v2, including captured-FDT ID/provider matching.
 Baseline tree ZIP SHA256 b2cf5bc24205c978858eb8667d7a9c65dfe66a87d1d56399efda9c34c76da333.
 Native WSL build cache path is in research/xnu-ufs/base104-tree-path.txt.
 No phone/USB/UFS hardware/boot-partition command. Preserve all previous files.
