@@ -1,5 +1,77 @@
 # DUCHAMP update — 2026-10-22
 
+Original syslogd milestone (2026-10-30, QEMU/RAM only; this commit):
+Unmodified Apple iOS 16.5 restore syslogd now receives legacy ASL messages
+from two C programs and writes six real raw records to its own log file.
+Baseline commit: 9f101800fbbcf958c511ab7350d3853cd99aa374.
+No phone, USB, UFS or boot partition command was run.
+
+Actual result: work/launchctl-syslogd, exit 0, 43/43 checks passed,
+49 installed file hashes and original launchd/xpcproxy/syslogd hashes
+matched. 397.172 host seconds, 31 sampled frames, zero unknown glyphs,
+no visible panic; stopped on second observer heartbeat before 1200 sec.
+Observer PID 3; original syslogd PID 4; probe PIDs 5 and 6, root children
+of original launchd PID 1. All four CLI print processes exited 0.
+Server before/after prints were identical: running, PID 4, runs=1.
+Both probes sent three messages, returned 0, were reaped and stayed
+stopped. The original daemon remained alive through final heartbeats;
+the fixture does not test its graceful shutdown.
+
+Inspection: original syslogd is plain arm64, iOS 16.5, 166848 bytes,
+direct imports libbsm.0.dylib and libSystem.B.dylib; dyld /usr/lib/dyld.
+Original 347-byte job is Disabled=true, KeepAlive=true, MachServices
+com.apple.system.logger, daemon environment ASL_DISABLE=1.
+The RAM copy enables the job, disables KeepAlive, adds root/System
+identity, diagnostics and module flags; executable bytes are unchanged.
+Daemon ASL_DISABLE=1 is retained to avoid self-logging. Probe jobs set
+ASL_DISABLE=0 and open ASL with NO_REMOTE|SHIM_NO_TRACE=0x20000004.
+Actual runtime eval for all six messages: 0x00030005, SEND_ASL set,
+TRACE/local-file bits clear. No probe opens the daemon output path.
+
+Native daemon debug receipts contain all six tokens at
+__asl_server_message. Independent host parsing of sweet-asl.log verified
+exactly six records with expected Message/Sender/Facility/Level/custom
+fields and matching PID/UID/GID. This verifies expected root senders;
+forged credential fields and unprivileged senders were not tested.
+Readiness, begin/exit gates and actual job exit/PID files were checked.
+launchd still logged persona lookup and legacy launch(3) activation
+warnings; they did not prevent the observed legacy ASL path.
+
+Local runtime: research/syslogd-runtime-20F66/runtime-root.
+Preparer: tools/prepare-syslogd-runtime.py; 41 binaries / 10877472 bytes,
+no missing strong dependencies. Original extraction:
+research/syslogd-20F66/apple-extracted, from the pinned restore.apfs.
+Reference Apple syslog source commit 69d8586e9a599c304e1b702a9c2830e2f78126d5
+was read for flags/config/ABI, not claimed to exactly match this build.
+Required exports were separately checked in the real pinned library.
+Nine observer modes and the C probe passed arm64 checks with -Werror;
+shell/Python checks passed. One VM run, no kernel change or new CI.
+
+Replay: tools/test-sweet-launchctl.sh with Actions 104 kernel, existing
+qemu-multiproc.adt, original launchd-final/root.hfs, the new runtime,
+HFS tool, fresh output path, 1200 and syslogd.
+Details/replay: duchamp/SYSLOGD-QEMU.md.
+Report: work/launchctl-syslogd/run/verification.json.
+Raw log, daemon debug, CLI and extracted files: its guest/ directory.
+
+SHA-256:
+syslogd 86838d9149bb898e3d39266fea884c6c92eeac1e6486c072b135a879c9eeaabe
+original plist 86ce6512803e6a20c04834f155a38e1b1a24ff66c9452a57850f65bf2056d5fe
+probe1 81d467a90d7b76a5427b3c62832ec9589c9b6d8fa16e84a80726310ef813f6b8
+probe2 6b4b55dce920698153bbf6e56b09cff5c95890ae05a064c4f5d7b02279adf305
+observer b8731a57adffe79f10ddea2cffbb321635da1d3844659ba3e697d4ea1571ae26
+input root 24a366af70ac1e3d30cda31e6cad4708c80f47bb899f8278cd194f3df159cc7d
+payload 16c324fe03a318c8b2031e89c4f2407be0f2787ed64dab7eab7b1244b4b2bfee
+exported root bdf674d4e60e53d321aa98e38c39306846d323f2500cf67d7604c35d4ed056eb
+raw ASL log 1e4be882410f11880afc0e9821d7e55c51ce35eb1ecdd8ba0ded54103ffdb65a
+Rehashed unchanged kernel/base:
+kernel 82fc8fe1391bea90bcce9ed2d4e8a2ff8204667f6785857873717564ec9331c9
+base 491aa78408c423c50e8b59644e416e94b643ed3eb119158d52684af4176c8b3f
+
+Coverage is the original daemon's legacy ASL receive/file path. Modern
+os_log/logd, notifyd, rotation, arbitrary input, UIKit, SpringBoard,
+full iOS and MT6897 hardware compatibility remain unproven.
+
 Foundation/XPC batch milestone (2026-10-30, QEMU/RAM only; this commit):
 Two live clients now exercise two on-demand server generations and six
 representative malformed-request cases in one grouped QEMU boot.

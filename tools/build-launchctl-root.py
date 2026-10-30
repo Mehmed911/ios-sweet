@@ -16,20 +16,36 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     for key in ('base', 'runtime', 'audit', 'service', 'controller', 'hfsplus', 'output'):
         ap.add_argument('--' + key, type=Path, required=True)
-    ap.add_argument('--scenario', choices=('stop-restart', 'bootout-bootstrap', 'keepalive', 'ipc', 'xpc', 'foundation', 'foundation-xpc', 'foundation-xpc-batch'),
+    ap.add_argument('--scenario', choices=('stop-restart', 'bootout-bootstrap', 'keepalive', 'ipc', 'xpc', 'foundation', 'foundation-xpc', 'foundation-xpc-batch', 'syslogd'),
                     default='stop-restart')
     ap.add_argument('--client', type=Path)
     ap.add_argument('--runtime-source', type=Path)
     args = ap.parse_args()
     batch = args.scenario == 'foundation-xpc-batch'
+    syslogd = args.scenario == 'syslogd'
     foundation_scenario = args.scenario in ('foundation', 'foundation-xpc', 'foundation-xpc-batch')
     native_xpc = args.scenario in ('xpc', 'foundation-xpc', 'foundation-xpc-batch')
-    client_scenario = args.scenario in ('ipc', 'xpc', 'foundation-xpc', 'foundation-xpc-batch')
+    client_scenario = args.scenario in ('ipc', 'xpc', 'foundation-xpc', 'foundation-xpc-batch', 'syslogd')
     if client_scenario and args.client is None:
         ap.error('IPC scenarios require --client')
     if args.output.exists():
         raise SystemExit('refusing to overwrite previous image')
     audit = json.loads(args.audit.read_text())
+    syslogd_source, syslogd_job = None, None
+    if syslogd:
+        if args.runtime_source is None:
+            raise SystemExit('syslogd requires --runtime-source')
+        syslogd_source = json.loads(args.runtime_source.read_text())
+        if (audit['files'].get('/usr/sbin/syslogd', {}).get('sha256') !=
+                '86838d9149bb898e3d39266fea884c6c92eeac1e6486c072b135a879c9eeaabe'):
+            raise SystemExit('requires the pinned original syslogd')
+        syslogd_job = dict(syslogd_source['original_job'])
+        syslogd_job.update(Disabled=False, RunAtLoad=True, KeepAlive=False,
+                          UserName='root', GroupName='wheel', LimitLoadToSessionType='System',
+                          StandardOutPath='/dev/console', StandardErrorPath='/dev/console',
+                          ProgramArguments=['/usr/sbin/syslogd', '-d', '/private/var/tmp/syslogd-debug.log',
+                                            '-config', 'iphone', '-klog_in', '0', '-udp_in', '0',
+                                            '-bsd_out', '0', '-remote', '0', '-launchd_in', '0', '-m', '0'])
     if not audit['passed'] or '/bin/launchctl' not in audit['files']:
         raise SystemExit('launchctl and required libraries must pass the dependency audit')
     if audit['files']['/bin/launchctl']['sha256'] != (
@@ -84,6 +100,12 @@ def main():
                 or properties.get('KeepAlive') is not False):
             raise SystemExit('target must be the RunAtLoad, non-KeepAlive diagnostic service')
         installed_target_data = target_data
+        if syslogd:
+            properties['ProgramArguments'] = ['/sbin/sweet-launchd-service', '1']
+            properties['EnvironmentVariables'] = {'ASL_DISABLE': '0'}
+            installed_target_data = plistlib.dumps(properties)
+            (temp / 'syslogd-probe.plist').write_bytes(installed_target_data)
+            (temp / 'syslogd.plist').write_bytes(plistlib.dumps(syslogd_job))
         if args.scenario == 'keepalive':
             properties['KeepAlive'] = True
             installed_target_data = plistlib.dumps(properties)
@@ -113,12 +135,16 @@ def main():
         elif client_scenario:
             client_job = dict(plistlib.loads(target_data), Label='org.sweet.qemu.ipc-client',
                               ProgramArguments=['/sbin/sweet-ipc-client'])
+            if syslogd:
+                client_job.update(ProgramArguments=['/sbin/sweet-ipc-client', '2'],
+                                  EnvironmentVariables={'ASL_DISABLE': '0'})
             (temp / 'client.plist').write_bytes(plistlib.dumps(client_job))
         files = {}
         for guest, metadata in audit['files'].items():
             framework = foundation_scenario and guest.startswith(
                 ('/System/Library/Frameworks/', '/System/Library/PrivateFrameworks/'))
-            if not (guest.startswith('/usr/lib/') or guest == '/bin/launchctl' or framework):
+            if not (guest.startswith('/usr/lib/') or guest == '/bin/launchctl' or framework
+                    or (syslogd and guest == '/usr/sbin/syslogd')):
                 raise SystemExit(f'unexpected runtime path: {guest}')
             source = args.runtime / guest.lstrip('/')
             if hashlib.sha256(source.read_bytes()).hexdigest() != metadata['sha256']:
@@ -142,6 +168,13 @@ def main():
             files[target_job] = (temp / 'keepalive.plist', '644')
         if native_xpc:
             files[target_job] = (temp / 'xpc.plist', '644')
+        if syslogd:
+            files[target_job] = (temp / 'syslogd-probe.plist', '644')
+            files['/System/Library/LaunchDaemons/com.apple.syslogd.plist'] = (temp / 'syslogd.plist', '644')
+            files['/private/etc/asl.conf'] = (Path(__file__).resolve().parent.parent / 'duchamp/syslogd-asl.conf', '644')
+            if 'No such file or directory' in run('ls', '/private/etc/asl'):
+                run('mkdir', '/private/etc/asl')
+                run('chmod', '755', '/private/etc/asl')
         if client_scenario:
             files['/sbin/sweet-ipc-client'] = (args.client, '755')
         if batch:
@@ -172,6 +205,8 @@ def main():
             expected_jobs[1:1] = ['org.sweet.qemu.ipc-client1.plist', 'org.sweet.qemu.ipc-client2.plist']
         elif client_scenario:
             expected_jobs.insert(1, 'org.sweet.qemu.ipc-client.plist')
+        if syslogd:
+            expected_jobs.insert(0, 'com.apple.syslogd.plist')
         if jobs() != expected_jobs:
             raise SystemExit('unexpected daemon job set')
         (args.output.parent / 'launchctl-root-manifest.json').write_text(json.dumps({
@@ -182,6 +217,7 @@ def main():
             'scenario': args.scenario,
             'client_job': client_job,
             'batch_client_jobs': batch_client_jobs,
+            'syslogd_source': syslogd_source, 'syslogd_job': syslogd_job,
             'volume_bytes': args.output.stat().st_size,
             'files': manifest, 'jobs': expected_jobs, 'controller_job': controller_job,
         }, indent=2) + '\n')

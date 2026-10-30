@@ -2,7 +2,7 @@
 # Check service management using pinned Procursus launchctl and original Apple launchd.
 set -eu
 if [ "$#" -lt 6 ] || [ "$#" -gt 8 ]; then
-    echo "usage: test-sweet-launchctl.sh KERNEL ADT BASE_LAUNCHD_HFS RUNTIME_ROOT HFSPLUS NEW_OUTDIR [SECONDS] [stop-restart|bootout-bootstrap|keepalive|ipc|xpc|foundation|foundation-xpc|foundation-xpc-batch]" >&2
+    echo "usage: test-sweet-launchctl.sh KERNEL ADT BASE_LAUNCHD_HFS RUNTIME_ROOT HFSPLUS NEW_OUTDIR [SECONDS] [stop-restart|bootout-bootstrap|keepalive|ipc|xpc|foundation|foundation-xpc|foundation-xpc-batch|syslogd]" >&2
     exit 2
 fi
 kernel=$1
@@ -14,7 +14,7 @@ out=$6
 seconds=${7:-720}
 scenario=${8:-stop-restart}
 case "$scenario" in
-    stop-restart|bootout-bootstrap|keepalive|ipc|xpc|foundation|foundation-xpc|foundation-xpc-batch) ;;
+    stop-restart|bootout-bootstrap|keepalive|ipc|xpc|foundation|foundation-xpc|foundation-xpc-batch|syslogd) ;;
     *) echo "unknown launchctl scenario: $scenario" >&2; exit 2 ;;
 esac
 src=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -27,9 +27,10 @@ set --
 if [ "$scenario" = foundation ] || [ "$scenario" = foundation-xpc ] || [ "$scenario" = foundation-xpc-batch ]; then
     set -- --entry /System/Library/Frameworks/Foundation.framework/Foundation
 fi
+if [ "$scenario" = syslogd ]; then set -- --entry /usr/sbin/syslogd; fi
 python3 "$src/tools/audit-darwin-runtime.py" "$runtime" "$out/runtime-audit.json" --entry /bin/launchctl "$@"
 programs='sweet-launchd-service sweet-launchctl-control'
-case "$scenario" in ipc|xpc|foundation-xpc|foundation-xpc-batch) programs="$programs sweet-ipc-client" ;; esac
+case "$scenario" in ipc|xpc|foundation-xpc|foundation-xpc-batch|syslogd) programs="$programs sweet-ipc-client" ;; esac
 for program in $programs; do
     set --
     source="$src/tools/$program.c"
@@ -77,6 +78,12 @@ for program in $programs; do
     elif [ "$scenario" = ipc ] && [ "$program" = sweet-launchctl-control ]; then
         set -- -DSWEET_IPC_TEST=1
     fi
+    if [ "$scenario" = syslogd ]; then
+        case "$program" in
+            sweet-launchctl-control) set -- -DSWEET_SYSLOGD_TEST=1 ;;
+            *) source="$src/tools/sweet-syslogd-probe.c" ;;
+        esac
+    fi
     clang -target arm64-apple-ios16.5 -Wall -Wextra -Werror -O1 \
         -fno-stack-protector -fno-builtin "$@" -c "$source" -o "$out/$program.o"
     set --
@@ -91,10 +98,11 @@ for program in $programs; do
         -o "$out/$program" "$out/$program.o" "$@"
 done
 set --
-case "$scenario" in ipc|xpc|foundation-xpc|foundation-xpc-batch) set -- --client "$out/sweet-ipc-client" ;; esac
+case "$scenario" in ipc|xpc|foundation-xpc|foundation-xpc-batch|syslogd) set -- --client "$out/sweet-ipc-client" ;; esac
 if [ "$scenario" = foundation ] || [ "$scenario" = foundation-xpc ] || [ "$scenario" = foundation-xpc-batch ]; then
     set -- "$@" --runtime-source "$runtime/../source.json"
 fi
+if [ "$scenario" = syslogd ]; then set -- "$@" --runtime-source "$runtime/../source.json"; fi
 python3 "$src/tools/build-launchctl-root.py" --base "$base" --runtime "$runtime" \
     --audit "$out/runtime-audit.json" --service "$out/sweet-launchd-service" \
     --controller "$out/sweet-launchctl-control" --hfsplus "$hfsplus" --output "$out/root.hfs" \
@@ -103,6 +111,10 @@ python3 "$src/tools/mkpayload.py" "$kernel" "$adt" "$out/payload.bin" --ramdisk 
     --cmdline 'debug=0xc serial=3 cpus=1 keepsyms=1 -enable_kprintf_spam -noprogress rd=md0 rootrw=1 sweet_console_fb=1 unentitled_ios_sim_launch=1 launchdsuffix=sweet launchd_log_serial=1'
 qemu_status=0
 set --
+if [ "$scenario" = syslogd ]; then
+    set -- --stop-on-text 'SWEET ipc asl1: FAIL' --stop-on-text 'SWEET ipc asl2: FAIL' \
+        --stop-on-text 'Library not loaded:' --stop-on-text 'Symbol not found:'
+fi
 if [ "$scenario" = ipc ] || [ "$scenario" = xpc ] || [ "$scenario" = foundation-xpc ]; then
     set -- --stop-on-text 'SWEET ipc server: FAIL' --stop-on-text 'SWEET ipc client: FAIL'
 fi
@@ -122,7 +134,9 @@ python3 "$src/tools/qemu-sweet.py" "$out/payload.bin" "$out/run" --secs "$second
     --stop-on-text 'SWEET EARLY PANIC:' --stop-on-text 'SWEET launchctl: FAIL' \
     --stop-on-text 'SWEET launchctl: heartbeat=2 ' \
     --save-ramdisk --fail-on-panic "$@" || qemu_status=$?
-if [ "$scenario" = foundation-xpc-batch ]; then
+if [ "$scenario" = syslogd ]; then
+    python3 "$src/tools/verify-sweet-syslogd.py" "$out" --hfsplus "$hfsplus"
+elif [ "$scenario" = foundation-xpc-batch ]; then
     python3 "$src/tools/verify-sweet-xpc-batch.py" "$out" --hfsplus "$hfsplus"
 elif [ "$scenario" = foundation ]; then
     python3 "$src/tools/verify-sweet-foundation.py" "$out" --hfsplus "$hfsplus"

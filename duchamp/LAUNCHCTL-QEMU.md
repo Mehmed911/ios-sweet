@@ -158,3 +158,6 @@ For Foundation request/reply processing inside native XPC peers, see
 
 For two live clients, a second on-demand server instance and malformed
 message responses in one run, see [XPC-BATCH-QEMU.md](XPC-BATCH-QEMU.md).
+
+For the original syslogd receiving native ASL messages from two programs,
+see [SYSLOGD-QEMU.md](SYSLOGD-QEMU.md).

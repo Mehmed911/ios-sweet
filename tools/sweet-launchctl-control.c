@@ -155,6 +155,9 @@ static int command(const char *tag, char *const *argv) {
 #if defined(SWEET_XPC_BATCH_TEST)
 #include "sweet-xpc-batch-control.h"
 #endif
+#if defined(SWEET_SYSLOGD_TEST)
+#include "sweet-syslogd-control.h"
+#endif
 #if defined(SWEET_KEEPALIVE_TEST)
 static int keepalive_restarts(int initial) {
     int previous = initial;
@@ -199,6 +202,9 @@ int main(void) {
         proc_pidpath(1, parent, sizeof(parent)) <= 0 || strcmp(parent, "/sbin/launchd"))
         return fail("controller identity");
     note("controller pid=%d ppid=1 uid=0 parent=/sbin/launchd", getpid());
+#if defined(SWEET_SYSLOGD_TEST)
+    return syslogd_lifecycle();
+#endif
 #if defined(SWEET_XPC_BATCH_TEST)
     return batch_lifecycle();
 #endif
