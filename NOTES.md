@@ -1,3 +1,46 @@
+Saved-UFS firmware/DMA contract — verified local milestone (2026-10-31):
+Baseline cb57481f071b3d94f0a21433e0f56dbc243638d2, duchamp-bootstrap.
+No phone, USB, ADB, fastboot, module loading or partition action. Inputs preserved.
+New tools audit-duchamp-saved-ufs.py / duchamp_saved_ufs.py verify saved boot-v4,
+vendor-boot-v4, captured FDT, LK/preloader and 13 exact public source blobs.
+Public fetch-duchamp-contract-sources.py reproduces downloads without replacing
+differing files; extracted modules/fragments/images stay outside Git.
+boot_a SHA1b972f4f1c98428f2fca1e7c1c8cf463e0122a70a290e482be3230c7838e3e12;
+vendor_boot_a SHAd1d1887eba4f7b4920fc4292de5cf4e9aa6e7ce474a6b45ffeb4141434743e49.
+Captured release6.1.57-android14-11-gcf2c2dc91b9e-ab11782407 resolves to public
+GKI cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6. Stamp correlation only, not
+byte-identical rebuild/current running state. Modules say maybe-dirty, no srcversion.
+Saved IKCONFIG: IOMMU_DMA/default DMA strict=y, passthrough=n, SWIOTLB=y,
+XEN=n, standard ARM_SMMU/ARM_SMMU_V3=n, ARM64 4K/PA48. modules.load requests
+all six inspected UFS/PHY/IOMMU modules; load intent is not runtime evidence.
+UFS module SHA7043e1109b4c356a914fdc92ffbe463c0c43cb27342f6ccce1517a2086b02493.
+Binary ufshcd_init has 64->32 streaming-mask fallback; coherent setter's return
+is ignored. Captured live HCCAP/effective post-quirk caps/masks are still absent.
+No UFS iommus/iommu-map on saved ancestry; /soc DMA window remains64GiB.
+Candidate: direct DMA, possibly SWIOTLB; inherited dma_ops/fwspec/vendor/secure
+overrides still need proof. NULL IOMMU does not clear inherited dma_ops.
+ARM_V7S display-table OAS35 is NOT the UFS mask or its IOMMU route.
+Saved SMC fragments confirm client x0=c2000276, selector512(op0/1), selector8
+(off/on,PRE/POST). Actual BL31 effects/return semantics remain unverified.
+LK/preloader have BL31 loader/reservation strings; these are not monitor identity.
+research/mt6897-contract/audit-v3/result.json: audit complete, all physical flags false.
+check-v4/result.json PASS, exit0:216 source ASan/UBSan checks; same216 on ARM64;
+244 saved DMA instruction checks +96 saved SMC instruction/policy checks.
+12 actual SMC calls to a QEMU-only EL3 monitor, not installed MT6897 firmware.
+Fifteen unchanged source function bodies; allocations/kernel DMA/SWIOTLB/cache
+callbacks are fixture models. Saved .text fragments have relocated external
+calls/exit branches and synthetic frames. Original MMIO/registration is not run.
+guards-v2.log:8 guard tests PASS. Final ELF SHA256
+7663c6219f988f3af04fbcf0d70df81cbc6385a6e93c0c170e6aa04d7146d1ea.
+QEMU10.2.1 Debian1:10.2.1+ds-1ubuntu3.3. Sources/module hashes unchanged.
+No production XNU backend modified; no new full-kernel CI/boot in this milestone.
+Earlier XNU24/20 results belong to the previous d51e7db kernel, not this fixture.
+See duchamp/SAVED-UFS-CONTRACT.md for exact scope, pins, replays and remaining gaps.
+Next physical authorization needs matched monitor/build/effect and secure ownership
+plus runtime ops/fwspec/domain/SWIOTLB, HCCAP and both effective masks. None can
+be inferred from the saved files/QEMU results, so physical providers stay closed.
+End of saved-UFS contract handoff.
+
 XNU backend/table integration — active work (2026-10-31):
 Baseline 116fef581bb1d756d82604029309580f56ab4b8b, duchamp-bootstrap.
 No phone/USB/ADB/fastboot/partition commands. Preserve all existing files.

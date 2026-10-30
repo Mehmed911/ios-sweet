@@ -190,3 +190,9 @@ python3 tools/test-duchamp-ufs-xnu.py --backends \
 Next physical work requires resolving those specific evidence gaps before
 installing a DMA route or invoking firmware. No phone, USB, ADB, fastboot or
 boot-partition operation is part of this milestone.
+
+The subsequent [saved-image contract audit](SAVED-UFS-CONTRACT.md) identifies
+the captured kernel's closer source stamp and configuration, checks actual
+vendor client fragments in QEMU and adds the SWIOTLB/inherited-DMA-ops caveats.
+It supersedes the broad source-profile assumptions above, while physical
+firmware and DMA authorization remain unverified.

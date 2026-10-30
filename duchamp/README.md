@@ -48,3 +48,9 @@ The subsequent opt-in XNU integration, offline ARM_V7S/MTK table builder,
 guest selftest and source-pinned UFS DMA/firmware audit are tracked in
 [XNU-TABLES-QEMU.md](XNU-TABLES-QEMU.md). Peripheral callbacks remain RAM
 models and the physical UFS route remains disabled.
+
+The follow-up audit of saved boot/vendor-boot images, the closer kernel source
+stamp, actual vendor UFS instruction fragments and local EL1/EL3 fixture is in
+[SAVED-UFS-CONTRACT.md](SAVED-UFS-CONTRACT.md). It narrows the DMA candidate to
+direct mapping with possible SWIOTLB under explicit conditions; it does not
+verify the installed monitor's effects or enable a physical UFS backend.

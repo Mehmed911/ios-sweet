@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "kernel_stamp_commit": "cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6",
+  "kernel_stamp_scope": "release stamp correlation only; no byte-identical rebuild or running-device proof",
+  "files": [
+    {
+      "repository": "aosp-mirror/kernel_common",
+      "commit": "cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6",
+      "path": "drivers/of/device.c",
+      "git_blob": "ce225d2590b540377302aa1fca26dda7cea966ef"
+    },
+    {
+      "repository": "aosp-mirror/kernel_common",
+      "commit": "cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6",
+      "path": "drivers/iommu/of_iommu.c",
+      "git_blob": "47bf96fc0c455db0d61f98f02dac6ba692b40b56"
+    },
+    {
+      "repository": "aosp-mirror/kernel_common",
+      "commit": "cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6",
+      "path": "arch/arm64/mm/dma-mapping.c",
+      "git_blob": "f011f4c2c968e6ed87c2f75b55d6d50be24f4ace"
+    },
+    {
+      "repository": "aosp-mirror/kernel_common",
+      "commit": "cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6",
+      "path": "include/linux/dma-direct.h",
+      "git_blob": "80f0dbac77c450041596d8181ebad2c743b5189e"
+    },
+    {
+      "repository": "aosp-mirror/kernel_common",
+      "commit": "cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6",
+      "path": "drivers/ufs/core/ufshcd.c",
+      "git_blob": "0f0cfea31cbff1bec0c447077bd8146e0efbebaf"
+    },
+    {
+      "repository": "aosp-mirror/kernel_common",
+      "commit": "cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6",
+      "path": "drivers/ufs/host/ufshcd-pltfrm.c",
+      "git_blob": "5739ff0078287bc6c3ce15fb23219cb7b4398a10"
+    },
+    {
+      "repository": "aosp-mirror/kernel_common",
+      "commit": "cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6",
+      "path": "kernel/dma/direct.c",
+      "git_blob": "09ca202ac4801208581773cbf5e9b25b7ced44f1"
+    },
+    {
+      "repository": "aosp-mirror/kernel_common",
+      "commit": "cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6",
+      "path": "kernel/dma/mapping.c",
+      "git_blob": "03c7211f7e439edefbeb42aed8891790808ad22a"
+    },
+    {
+      "repository": "mt6897-devs/android_kernel_device_modules_6.1",
+      "commit": "a805f95d61dbf0b2959c9262acc626893114321d",
+      "path": "drivers/ufs/vendor/Makefile",
+      "git_blob": "1884ca2c5b90730f8422fd9f355ddd2c70071836"
+    },
+    {
+      "repository": "aosp-mirror/kernel_common",
+      "commit": "cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6",
+      "path": "include/linux/dma-mapping.h",
+      "git_blob": "7a94663e10665e10ee86d5b41f00d34bd5b039b5"
+    },
+    {
+      "repository": "aosp-mirror/kernel_common",
+      "commit": "cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6",
+      "path": "kernel/dma/direct.h",
+      "git_blob": "e38ffc5e6bdd797937126584e39493765d97acc4"
+    },
+    {
+      "repository": "aosp-mirror/kernel_common",
+      "commit": "cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6",
+      "path": "include/ufs/ufshci.h",
+      "git_blob": "9d291ca7f31d6ea0d3c2c7f7a82213a48b8c5296"
+    },
+    {
+      "repository": "mt6897-devs/android_kernel_device_modules_6.1",
+      "commit": "a805f95d61dbf0b2959c9262acc626893114321d",
+      "path": "drivers/ufs/ufs-mediatek-sip.h",
+      "git_blob": "28a3a4f3c13ff4a94c1d90e29717b2428c7588e8"
+    }
+  ]
+}
