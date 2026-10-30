@@ -1,3 +1,56 @@
+MT6897 power/PHY policy and DMA ownership — verified local milestone (2026-10-31):
+Baseline a15c2e59f212e530c600201034db6450eaa5a336; branch duchamp-bootstrap.
+Source-pinned subset: duchamp/drivers/mt6897_ufs_platform.c/.h and
+mt6897_ufs_dma.c/.h. Neither linked into XNU nor bound to physical callbacks.
+No phone/USB/ADB/fastboot/boot-partition commands; old files preserved.
+Captured DTB SHA256 9c49589f70044127be8941a9ea5537977f440ccd5ac15cfd24e120c8a1181d29.
+The PHY has mphy-ver=1: vendor phy_power_on/off returns without old ver=0
+register programming. The new subset deliberately has no PHY MMIO callbacks.
+Captured policy: RTFF enabled, no VA09 flag, IDs UniPro0/crypto1/HCI2.
+Implements guarded SiP request encoding (no SMC instruction/provider),
+RTFF restore/on, reference-clock PRE/request/ACK/32us/POST, bounded 3000us
+and 32-poll timeout, explicit source-defined timeout notification, host-reset
+order with 100us delay and captured masked-register descriptors.
+Prerequisites require exclusive ownership, stable rails and all correct
+parent/leaf clocks, matched SiP/PHY firmware, link off and DMA quiescence.
+These are caller attestations, NOT firmware verification or physical readiness.
+DMA API separates CPU VA/PA/device IOVA, refuses unknown routing, validates
+alignment/aperture/overflow/mask, synchronizes private full-pool ownership
+through callbacks, refuses completion/unmap while active and pins poisoned
+allocations. No IOMMU table/stream-ID or bypass/coherency guess.
+Saved /soc dma-ranges declares a zero-to-zero 64-GiB window; no inspected
+UFS ancestor iommus/iommu-map/dma-coherent. Actual route/mask stays unknown.
+
+research/mt6897-platform/check-v6/result.json: PASS, exit 0.
+176 power-sequence + 149 DMA-ownership checks under native ASan/UBSan.
+SAME 325 checks passed during actual ARM64 QEMU CPU execution of models;
+MT6897 ARM64 MODEL PASS + semihost exit 0. No MediaTek peripheral or XNU run.
+ARM model MMU/cache off, strict-alignment build, explicit byte-wise runtime.
+Normal-RAM production objects compiled freestanding ARM64, general registers
+only, no undefined imports. They use default alignment flags separately.
+ARM model ELF SHA256 3788be0f0ab3f952abf38de62f00bfbb75714a5a9b262f37518a146bead8d378.
+Six downloaded vendor files verified against exact upstream Git blob IDs.
+Pinned vendor a805f95d61dbf0b2959c9262acc626893114321d; Linux v6.1 commit
+830b3c68c1fb1e9176028d02ef86f3cf76aa2476. Source catalog in
+duchamp/drivers/mt6897-platform-sources.json; sources/dumps stay ignored.
+Report includes source/object hashes, selected DTB facts and upstream receipts.
+Test sources still match report hashes at staging time.
+
+Preserved failures: check-v3 timeout; check-v4 diagnosed unaligned model
+pbarrier trace-store (ESR 0x96000061, ELR 0x4020486c, FAR 0x40246fcc) with
+MMU-off memory attributes. Fixture now compiles strict-alignment code.
+check-v5 exposed memcpy lowering with strict-alignment code; final harness
+checks normal-RAM standalone objects separately and supplies an explicit
+runtime for its ARM fixture. These failures are not counted as passes.
+Reference/replay: duchamp/MT6897-PLATFORM.md, tools/test-mt6897-platform.py.
+No new full XNU CI/kernel/phone image was required or built in this milestone.
+Physical PMIC/topckgen/masked-reset providers, matched SiP return/authorization,
+delegated PHY ownership, effective DMA mask/domain/stream/cache and hardware
+quiescence/recovery remain unimplemented/unverified. MT6897 root stays disabled.
+Next: establish those provider contracts before physical transport integration;
+GPU/Mali/CSF remains separate. Do not turn model success into a phone-ready claim.
+End of MT6897 platform handoff.
+
 # DUCHAMP update — 2026-10-22
 
 QEMU UFS / XNU integration — verified milestone (2026-10-31):

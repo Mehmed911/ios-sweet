@@ -1,0 +1,44 @@
+{
+  "vendor": {
+    "repository": "mt6897-devs/android_kernel_device_modules_6.1",
+    "commit": "a805f95d61dbf0b2959c9262acc626893114321d",
+    "files": [
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-ufs.c",
+        "git_blob": "c64d2d26228fe0d7f2146495b3ee134d341a43dc"
+      },
+      {
+        "path": "drivers/ufs/ufs-mediatek.c",
+        "git_blob": "d3b2c29796245e87ab4bc54800fd8fd3138882f9"
+      },
+      {
+        "path": "drivers/ufs/ufs-mediatek.h",
+        "git_blob": "c2d27bc27dec490d6c8b88679da7952a2c7dfea4"
+      },
+      {
+        "path": "drivers/ufs/ufs-mediatek-sip.h",
+        "git_blob": "28a3a4f3c13ff4a94c1d90e29717b2428c7588e8"
+      },
+      {
+        "path": "include/linux/soc/mediatek/mtk_sip_svc.h",
+        "git_blob": "75225b1697dc66c4ed064230d6a585465aee9547"
+      },
+      {
+        "path": "drivers/reset/reset-ti-syscon.c",
+        "git_blob": "e36a3dd09cfab9382ee5b58a49e02ece1cfa15e1"
+      }
+    ]
+  },
+  "linux": {
+    "repository": "torvalds/linux",
+    "commit": "830b3c68c1fb1e9176028d02ef86f3cf76aa2476",
+    "tag": "v6.1",
+    "files": [
+      "Documentation/core-api/dma-api-howto.rst",
+      "drivers/of/device.c",
+      "include/linux/arm-smccc.h"
+    ]
+  },
+  "captured_fdt_sha256": "9c49589f70044127be8941a9ea5537977f440ccd5ac15cfd24e120c8a1181d29",
+  "scope": "Source profile only; not firmware/SiP or physical DMA ownership evidence"
+}

@@ -191,3 +191,8 @@ then connect a physical backend to the tested transport. Keep MediaTek root
 selection unsupported until then. Mali still needs a matched CSF firmware,
 GPU MMU, queues/fences/power and an iOS graphics interface; the existing
 software raster test is not GPU acceleration.
+
+Subsequent local sequencing and DMA-ownership work is documented in
+[MT6897-PLATFORM.md](MT6897-PLATFORM.md). It implements and tests the captured
+version-1 PHY delegation policy and power/reference-clock/reset sequence,
+while leaving physical firmware, regulator and IOMMU providers unimplemented.

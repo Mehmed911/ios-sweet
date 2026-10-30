@@ -33,3 +33,8 @@ virtual-UFS XNU adapter; a physical MT6897 backend is still unfinished.
 The opt-in XNU BSD adapter and the implemented MT6897 leaf-clock subset are
 tracked in [QEMU-UFS-XNU.md](QEMU-UFS-XNU.md), with emulator and model evidence
 kept separate from physical-device compatibility.
+
+The source-pinned version-1 PHY policy, RTFF/reference-clock and reset
+sequencing, DMA ownership API and their native/ARM64 model tests are in
+[MT6897-PLATFORM.md](MT6897-PLATFORM.md). Firmware/PMIC/IOMMU providers are
+still required before a physical backend can use these APIs.
