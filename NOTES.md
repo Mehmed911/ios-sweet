@@ -1,3 +1,31 @@
+XNU backend/table integration — active work (2026-10-31):
+Baseline 116fef581bb1d756d82604029309580f56ab4b8b, duchamp-bootstrap.
+No phone/USB/ADB/fastboot/partition commands. Preserve all existing files.
+New offline 4-KiB ARM_V7S table builder: IAS34/OAS35, NS/NO_PERMS/MTK_EXT/
+MTK_TTBR_EXT, finite caller-owned L2 pool, whole-operation preflight,
+nonidentity CPU/physical addresses, sealed immutable tables and cache-sync
+failure poisoning. No live unmap or UFS stream-routing assumption.
+Pinned Android source commit 498f91c17b0822a09aede17d26a63bf8c6813725,
+drivers/iommu/io-pgtable-arm-v7s.c blob08ec39111e608f6405a5777889d6ac2eda561506.
+research/mt6897-xnu/tables-v2/result.json PASS:11476 ASan/UBSan checks
+against six unchanged upstream encoding/decode/install function bodies,
+with allocator/cache/atomic fixture helpers; no hardware table walk.
+tables-v1 extractor regex failed before any C test; failure retained.
+research/mt6897-xnu/compile-v2:9 C TUs compiled against real generated XNU
+headers; staging-v1 has6 checks, idempotence/change rejection and all imports
+resolved against the prior kernel plus the new objects. Full CI PENDING.
+
+tools/stage-duchamp-qemu-backends.py stages eight cores and one XNU adapter.
+Only rd=qufs0 calls the new adapter; boot argument sweet-qemu-backends=1 and
+exact QEMU firmware/ADT+Cortex-A76 gate required. No flag returns without work.
+The opt-in kernel selftest uses real XNU contiguous allocation, PA validation,
+cache cleaning, clocks, mutexes and read-only /dev/mbtest diagnostic output.
+Peripheral callbacks are private RAM models only. Actual UFS remains QEMU PCI
+read-only through the established driver. Unknown firmware contract and UFS
+IOMMU selection are required to fail closed. No physical SMC is wired.
+Full new kernel + guest tests and offline DMA/firmware evidence audit remain.
+End of active XNU-table handoff.
+
 MT6897 PMIF/PMIC, SMC and partial IOMMU register backends — local milestone (2026-10-31):
 Baseline f323908cbe1173c6241cf6b3ff47761d96327559; branch duchamp-bootstrap.
 No phone/USB/ADB/fastboot/partition command. All previous files preserved.

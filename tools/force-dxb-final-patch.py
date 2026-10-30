@@ -39,6 +39,8 @@ replacement = '''        done
         fi
         running "Staging opt-in Duchamp QEMU UFS read transport"
         python3 "${WORK_DIR}/../tools/stage-duchamp-qemu-ufs.py" "${WORK_DIR}/xnu"
+        running "Staging opt-in Duchamp QEMU backend/table selftest"
+        python3 "${WORK_DIR}/../tools/stage-duchamp-qemu-backends.py" "${WORK_DIR}/xnu"
         cd "${WORK_DIR}"
     fi
 }

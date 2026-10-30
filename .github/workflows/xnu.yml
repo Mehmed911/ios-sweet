@@ -21,9 +21,12 @@ on:
       - "xnu/patches/**"
       - "tools/apply-duchamp-pid1-heartbeat-console.py"
       - "tools/stage-duchamp-qemu-ufs.py"
+      - "tools/stage-duchamp-qemu-backends.py"
       - "tools/force-dxb-final-patch.py"
       - "duchamp/drivers/ufs_readonly.c"
       - "duchamp/drivers/ufs_readonly.h"
+      - "duchamp/drivers/mt6897*.c"
+      - "duchamp/drivers/mt6897*.h"
       - "duchamp/xnu/**"
       - ".github/workflows/xnu.yml"
 
@@ -111,6 +114,11 @@ jobs:
           grep -Fq 'DUCHAMP QUFS READY' xnu/bsd/dev/duchamp_qemu_ufs.c
           cmp ../duchamp/drivers/ufs_readonly.c xnu/bsd/dev/duchamp_ufs_core.c
           cmp ../duchamp/drivers/ufs_readonly.h xnu/bsd/dev/ufs_readonly.h
+          grep -Fq 'DUCHAMP QEMU backend selftest failed' xnu/iokit/bsddev/IOKitBSDInit.cpp
+          grep -Fq 'QEMU XNU BACKENDS SELFTEST PASS' xnu/bsd/dev/duchamp_qemu_backends.c
+          for source in ../duchamp/drivers/mt6897*.c ../duchamp/drivers/mt6897*.h; do
+            cmp "$source" "xnu/bsd/dev/$(basename "$source")"
+          done
           grep -Fq 'QEMU RAM ROOT MOUNTED' xnu/bsd/kern/bsd_init.c
           grep -Fq 'QEMU RAM ROOT MOUNT FAILED' xnu/bsd/kern/bsd_init.c
           grep -Fq 'QEMU ROOTVNODE READY' xnu/bsd/kern/bsd_init.c
