@@ -37,6 +37,8 @@ replacement = '''        done
             running "Applying Duchamp PID 1 heartbeat and console framebuffer support"
             python3 "${WORK_DIR}/../tools/apply-duchamp-pid1-heartbeat-console.py" "${WORK_DIR}/xnu"
         fi
+        running "Staging opt-in Duchamp QEMU UFS read transport"
+        python3 "${WORK_DIR}/../tools/stage-duchamp-qemu-ufs.py" "${WORK_DIR}/xnu"
         cd "${WORK_DIR}"
     fi
 }

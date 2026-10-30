@@ -20,6 +20,11 @@ on:
     paths:
       - "xnu/patches/**"
       - "tools/apply-duchamp-pid1-heartbeat-console.py"
+      - "tools/stage-duchamp-qemu-ufs.py"
+      - "tools/force-dxb-final-patch.py"
+      - "duchamp/drivers/ufs_readonly.c"
+      - "duchamp/drivers/ufs_readonly.h"
+      - "duchamp/xnu/**"
       - ".github/workflows/xnu.yml"
 
 concurrency:
@@ -102,6 +107,10 @@ jobs:
           grep -Fq 'stage > 196' xnu/osfmk/arm64/sweet_early.c
           grep -Fq 'QEMU RAM BLOCK READY' xnu/iokit/bsddev/IOKitBSDInit.cpp
           grep -Fq 'MT6897 BACKEND STUB' xnu/iokit/bsddev/IOKitBSDInit.cpp
+          grep -Fq 'DUCHAMP QUFS ROOT SELECTED' xnu/iokit/bsddev/IOKitBSDInit.cpp
+          grep -Fq 'DUCHAMP QUFS READY' xnu/bsd/dev/duchamp_qemu_ufs.c
+          cmp ../duchamp/drivers/ufs_readonly.c xnu/bsd/dev/duchamp_ufs_core.c
+          cmp ../duchamp/drivers/ufs_readonly.h xnu/bsd/dev/ufs_readonly.h
           grep -Fq 'QEMU RAM ROOT MOUNTED' xnu/bsd/kern/bsd_init.c
           grep -Fq 'QEMU RAM ROOT MOUNT FAILED' xnu/bsd/kern/bsd_init.c
           grep -Fq 'QEMU ROOTVNODE READY' xnu/bsd/kern/bsd_init.c

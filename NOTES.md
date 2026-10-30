@@ -1,5 +1,26 @@
 # DUCHAMP update — 2026-10-22
 
+QEMU UFS / XNU integration — active work (2026-10-31):
+Baseline HEAD 62c91492b0bda5a764f202349b5e2141a5ee48ec.
+Source adapter duchamp/xnu/qemu_ufs.c stages with the unchanged portable core
+via tools/stage-duchamp-qemu-ufs.py after the existing BSD checkpoints.
+Opt-in root qufs0; separate virtual firmware/ADT profile, Cortex-A76 gate,
+PCI ECAM 0x3f000000/slot4, BAR 0x10000000; physical MT6897 remains unsupported.
+BSD strategy has bounds, read-only policy, serialized bounce reads, residuals
+and biodone completion. DMA allocation is permanent; callbacks clean/flush
+physical cache lines and preserve poisoned/in-flight memory ownership.
+Local Actions-104-generated-header compilation passed for both C TUs;
+all their imports resolve against the baseline kernel/each other.
+Local IOKit C++ compile cannot validate Apple XNU compiler builtins on Linux;
+its failure is retained in research/xnu-ufs/compile/IOKitBSDInit.log.
+Full Xcode CI/build and QEMU mount/userland test are PENDING, not a pass.
+Baseline tree ZIP SHA256 b2cf5bc24205c978858eb8667d7a9c65dfe66a87d1d56399efda9c34c76da333.
+Native WSL build cache path is in research/xnu-ufs/base104-tree-path.txt.
+No phone/USB/UFS hardware/boot-partition command. Preserve all previous files.
+Next: obtain the exact new CI kernel; build a read-only HFS+/PID1 fixture,
+run the QEMU UFS profile and require actual root mount + userspace reads.
+End of active XNU-UFS handoff.
+
 Portable storage/software-graphics cores (2026-10-31; this commit):
 Baseline HEAD 6b93481421300eeebc124813a2998bed140fda5f; branch duchamp-bootstrap.
 No phone/USB/UFS hardware or boot-partition command. No new XNU build or CI.
