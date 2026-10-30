@@ -2,8 +2,10 @@
 
 This milestone adds real command/register encoders and an AArch64 SMC
 instruction conduit. They are exercised by native/ARM64 register models and
-a separate QEMU EL3 monitor. They are **not linked into XNU or bound to phone
-MMIO**. Installed firmware identity, active secure-resource ownership and an
+a separate QEMU EL3 monitor. At this milestone they were not linked into XNU.
+The later [XNU table/integration milestone](XNU-TABLES-QEMU.md) links the C
+modules with opt-in RAM models; neither milestone binds them to phone MMIO.
+Installed firmware identity, active secure-resource ownership and an
 UFS-to-IOMMU route remain unverified. The physical UFS root path stays disabled.
 
 ## Pinned evidence
@@ -177,7 +179,9 @@ The optional inputs are existing saved files only. The script does not
 discover a device, use ADB/fastboot, write partitions, mount a real disk or
 install firmware. Existing output directories are refused.
 
-Next physical work remains a matched installed-firmware contract and effect
-verification, trusted XNU MMIO/cache/locking adapters, PMIF error handling and
-resource/vote ownership. A full IOMMU driver additionally needs the matching
-table builder and actual client routing; the UFS route is still unresolved.
+The later [table/integration milestone](XNU-TABLES-QEMU.md) supplies an offline
+table builder and opt-in XNU cache/clock/locking integration for RAM models.
+Physical work still requires a matched installed-firmware contract and effect
+verification, authorized MMIO mappings, the DMA cache/ownership contract,
+PMIF error handling and resource/vote ownership. A full IOMMU driver needs
+actual client routing and fault handling; the UFS route is still unresolved.

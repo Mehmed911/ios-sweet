@@ -13,7 +13,8 @@ with allocator/cache/atomic fixture helpers; no hardware table walk.
 tables-v1 extractor regex failed before any C test; failure retained.
 research/mt6897-xnu/compile-v3:9 C TUs compiled against real generated XNU
 headers; staging-v1 has6 checks, idempotence/change rejection and all imports
-resolved against the prior kernel plus the new objects. Full CI PENDING.
+resolved against the prior kernel plus the new objects. All8 staging unit
+tests pass, including changed-file/partial-stage rejection and ownership.
 
 tools/stage-duchamp-qemu-backends.py stages eight cores and one XNU adapter.
 Only rd=qufs0 calls the new adapter; boot argument sweet-qemu-backends=1 and
@@ -23,14 +24,38 @@ cache cleaning, clocks, mutexes and read-only /dev/mbtest diagnostic output.
 Peripheral callbacks are private RAM models only. Actual UFS remains QEMU PCI
 read-only through the established driver. Unknown firmware contract and UFS
 IOMMU selection are required to fail closed. No physical SMC is wired.
-Integration committed as 0a947b6, run41140465715 still building.
+Integration 0a947b6: run41140465715 built successfully, artifact13019651368,
+ZIP SHA d82a04411baafd27230be3fabc45f15726271da2449e2cd32fea401ddebc811b;
+kernel fd75b80bfcef016eb37cd52b285be3b577bbff018911b517f2fb928883baf2f3.
+guest-ci107-v1 FAILED before tables marker, EIO5. Read-only monitor replay
+guest-ci107-diagnostic confirmed root VA0xfffffe78672a0000, physical
+PA0x1c281c000 (low16bits0xc000), while table context remained fresh.
 Source review found kmem_alloc_contig's VA mask does not constrain physical
 alignment. Follow-up explicitly supplies a page-number mask and a 35-bit PA
 limit, with PA alignment/range readback checks. Compile-v3 PASS for all9 TUs.
-Full new kernel + guest tests remain pending.
+Fix d51e7db compiled all9 TUs locally. Parallel CI41142122133 on temporary
+branch codex/mt6897-xnu-tables-d51e7db SUCCEEDED (avoided cancelling CI107).
+Active branch remains duchamp-bootstrap; corrected guest results follow.
+Artifact13019712695 ZIP SHA256
+4dfb5b7194e18c3e2f4185e91ed5457a44c071cf09ede0eaf53c609367a8ac80 verified.
+Extracted kernel matches SHA256SUMS:
+fdbbca3def13fddcbef77d01504aeaabe41bfb3a7b7df94b4d7fd03fd015b92d.
+guest-backends-v1/verification.json PASS24/24, exit0, 81.580s,16frames.
+guest-baseline-v1/verification.json PASS20/20, exit0, 81.570s,16frames.
+All backend checkpoint groups observed. PID1 exact /dev/mbtest receipt, EOF,
+EROFS, root identity, raw UFS/offset/EFAULT/HFS bytes and heartbeat passed.
+Read-only stopped-guest physical monitor confirmed root PA0x1c2830000,
+pool PA0x1c2840000, data PA0x1c2844000; root64KiB alignment/range PASS.
+Both runs zero unknown glyphs/no observed panic/unchanged images and sources,
+read-only/no RAMDisk. Sampling limits and existing local runner classifier
+are recorded in duchamp/XNU-TABLES-QEMU.md. All old failures retained.
 Offline contract-v2 audit matched three exact GKI Git blobs, captured DTB and
 saved LK/preloader hashes. UFS direct/bus-window DMA is a conditional source
 candidate only; no installed BL31 contract or actual DMA route verified.
+Three deliberately mutated source copies were refused by exact blob pins.
+Next: resolve matching installed GKI/runtime fwspec/vendor overrides, actual
+controller DMA mask/cache/ownership and matched BL31 effect semantics before
+binding physical providers. No display/MDP IOMMU assignment to UFS.
 End of active XNU-table handoff.
 
 MT6897 PMIF/PMIC, SMC and partial IOMMU register backends — local milestone (2026-10-31):

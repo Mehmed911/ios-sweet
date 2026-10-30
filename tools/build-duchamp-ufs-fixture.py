@@ -16,6 +16,7 @@ def main():
     ap.add_argument('--base-root',type=Path,required=True)
     ap.add_argument('--adt',type=Path,required=True)
     ap.add_argument('--hfsplus',type=Path,required=True)
+    ap.add_argument('--init-source',type=Path,default=Path(__file__).with_name('duchamp-ufs-init.S'))
     args=ap.parse_args()
     out=args.output.resolve(); out.mkdir(parents=True,exist_ok=False)
     repo=Path(__file__).resolve().parent.parent
@@ -25,7 +26,8 @@ def main():
     root=out/'root.hfs'; root.write_bytes(original)
     expected=hashlib.sha256(b'duchamp-ufs-read-only-fixture-v1').digest()*32
     (out/'ufs-expected.bin').write_bytes(expected)
-    subprocess.run(['clang','-target','arm64-apple-ios16.0','-c',str(repo/'tools/duchamp-ufs-init.S'),
+    init_source=args.init_source.resolve()
+    subprocess.run(['clang','-target','arm64-apple-ios16.0','-c',str(init_source),
                     '-o',str(out/'init.o')],cwd=out,check=True)
     subprocess.run(['python3',str(repo/'tools/mkinit.py'),str(out/'init.o'),str(out/'launchd')],check=True)
     def hfs(*command):
@@ -52,7 +54,8 @@ def main():
         'sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in
                   [root,out/'launchd',out/'ufs-expected.bin',out/'qemu-ufs.adt']},
         'root_bytes':len(original),'no_ramdisk':True,'readonly_backend':True,
-        'init_source_sha256':hashlib.sha256((repo/'tools/duchamp-ufs-init.S').read_bytes()).hexdigest()}
+        'init_source':str(init_source),
+        'init_source_sha256':hashlib.sha256(init_source.read_bytes()).hexdigest()}
     if not report['base_unchanged']: raise RuntimeError('base root changed')
     (out/'fixture.json').write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps(report,indent=2))

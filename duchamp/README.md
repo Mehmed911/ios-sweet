@@ -43,3 +43,8 @@ The subsequent PMIF/PMIC command programmers, guarded raw SMC transport and
 partial multimedia-IOMMU TTBR/TLB programmer are documented in
 [MT6897-BACKENDS.md](MT6897-BACKENDS.md). Their local tests do not resolve
 the installed firmware contract or establish a UFS-to-IOMMU route.
+
+The subsequent opt-in XNU integration, offline ARM_V7S/MTK table builder,
+guest selftest and source-pinned UFS DMA/firmware audit are tracked in
+[XNU-TABLES-QEMU.md](XNU-TABLES-QEMU.md). Peripheral callbacks remain RAM
+models and the physical UFS route remains disabled.
