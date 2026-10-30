@@ -28,12 +28,20 @@ static void wr(struct dufs_host *h, uint32_t off, uint32_t v) {
 static void fence(struct dufs_host *h) { h->config.io.barrier(h->config.io.context); }
 static uint64_t now(struct dufs_host *h) { return h->config.io.milliseconds(h->config.io.context); }
 static int bad(struct dufs_host *h, int code) { h->state=3; return code; }
+static int timeout(struct dufs_host *h,unsigned reason) {
+    h->timeout_reason=(uint8_t)reason;return bad(h,DUFS_TIMEOUT);
+}
+static void begin(struct dufs_host *h) {
+    h->poll_remaining=h->config.poll_limit;h->timeout_reason=DUFS_WAIT_NONE;
+}
 static int wait_bits(struct dufs_host *h, uint32_t off, uint32_t mask, uint32_t value) {
     uint64_t start=now(h);
     do {
+        if(!h->poll_remaining) return timeout(h,DUFS_WAIT_POLLS);
+        h->poll_remaining--;
         if((rd(h,off)&mask)==value) return 0;
     } while(now(h)-start < h->config.timeout_ms);
-    return bad(h,DUFS_TIMEOUT);
+    return timeout(h,DUFS_WAIT_DEADLINE);
 }
 static int inside(uint64_t a, uint64_t n, uint64_t lo, uint64_t hi) {
     return lo<hi && a>=lo && a<hi && n<=hi-a;
@@ -42,13 +50,15 @@ static int separate(uint64_t a, uint64_t n, uint64_t b, uint64_t m) {
     return a<b ? n<=b-a : m<=a-b;
 }
 size_t dufs_host_size(void) { return sizeof(struct dufs_host); }
+unsigned dufs_timeout_cause(const struct dufs_host *h) { return h?h->timeout_reason:DUFS_WAIT_NONE; }
 int dufs_bind(struct dufs_host *h, const struct dufs_config *c) {
     if(!h || !c) return DUFS_ARGUMENT;
     if(h->state) return DUFS_STATE;
     if(c->exclusive_platform_ready!=1) return DUFS_PLATFORM;
     if(!c->io.read32 || !c->io.write32 || !c->io.dma_write || !c->io.dma_read ||
        !c->io.barrier || !c->io.milliseconds || !c->timeout_ms ||
-       c->timeout_ms>60000 || c->lun>7 || (c->list_dma&1023) ||
+       c->timeout_ms>60000 || !c->poll_limit || c->poll_limit>DUFS_MAX_POLLS ||
+       c->lun>7 || (c->list_dma&1023) ||
        (c->command_dma&127) || (c->data_dma&3)) return DUFS_ARGUMENT;
     const uint64_t a[]={c->list_dma,c->command_dma,c->data_dma};
     const uint64_t n[]={DUFS_LIST_BYTES,DUFS_COMMAND_BYTES,DUFS_MAX_TRANSFER};
@@ -61,6 +71,7 @@ int dufs_bind(struct dufs_host *h, const struct dufs_config *c) {
 }
 int dufs_start(struct dufs_host *h) {
     if(!h || h->state!=1) return DUFS_STATE;
+    begin(h);
     /* Cold, exclusively assigned host only. Do not steal inherited queues. */
     if(rd(h,HCE) || rd(h,DOORBELL) || rd(h,RUN)) return bad(h,DUFS_STATE);
     uint32_t cap=rd(h,CAP);
@@ -92,6 +103,7 @@ int dufs_start(struct dufs_host *h) {
  */
 static int request(struct dufs_host *h, const uint8_t *cdb, uint32_t bytes, uint8_t query) {
     if(h->state!=2) return DUFS_STATE;
+    if(!h->poll_remaining) return timeout(h,DUFS_WAIT_POLLS);
     if(!(rd(h,HCE)&1) || (rd(h,HCS)&3)!=3 || rd(h,DOORBELL) ||
        rd(h,LIST_LO)!=(uint32_t)h->config.list_dma ||
        rd(h,LIST_HI)!=(uint32_t)(h->config.list_dma>>32) || !(rd(h,RUN)&1))
@@ -141,7 +153,11 @@ static int request(struct dufs_host *h, const uint8_t *cdb, uint32_t bytes, uint
     if(bytes && io->dma_read(io->context,h->config.data_dma,h->data,bytes)) return bad(h,DUFS_DMA);
     wr(h,IS,1); return 0;
 }
-int dufs_nop(struct dufs_host *h) { return h ? request(h,0,0,0) : DUFS_ARGUMENT; }
+int dufs_nop(struct dufs_host *h) {
+    if(!h)return DUFS_ARGUMENT;
+    if(h->state!=2)return DUFS_STATE;
+    begin(h);return request(h,0,0,0);
+}
 static int scsi_read(struct dufs_host *h, const uint8_t *cdb, uint32_t bytes) {
     for(int attempt=0;attempt<3;attempt++) {
         int r=request(h,cdb,bytes,0);
@@ -152,6 +168,7 @@ static int scsi_read(struct dufs_host *h, const uint8_t *cdb, uint32_t bytes) {
 }
 int dufs_device_init(struct dufs_host *h) {
     if(!h || h->state!=2 || h->device_ready) return DUFS_STATE;
+    begin(h);
     int r=request(h,0,0,6); if(r) return r; /* SET_FLAG fDeviceInit, no user-data write */
     uint64_t start=now(h);
     do {
@@ -161,12 +178,14 @@ int dufs_device_init(struct dufs_host *h) {
         uint64_t value=getbe(rsp+20,4);
         if(!value) { h->device_ready=1; return 0; }
         if(value!=1) return bad(h,DUFS_RESPONSE);
+        /* Every READ_FLAG request consumes the same operation-wide budget. */
     } while(now(h)-start<h->config.timeout_ms);
-    return bad(h,DUFS_TIMEOUT);
+    return timeout(h,DUFS_WAIT_DEADLINE);
 }
 int dufs_capacity(struct dufs_host *h, uint64_t *blocks, uint32_t *block_bytes) {
     if(!h || !blocks || !block_bytes) return DUFS_ARGUMENT;
-    if(!h->device_ready) return DUFS_STATE;
+    if(h->state!=2 || !h->device_ready) return DUFS_STATE;
+    begin(h);
     uint8_t cdb[16]={0x9e,0x10}; be32(cdb+10,32);
     int r=scsi_read(h,cdb,32); if(r) return r;
     uint64_t last=getbe(h->data,8); uint32_t size=(uint32_t)getbe(h->data+8,4);
@@ -179,6 +198,7 @@ int dufs_read(struct dufs_host *h, uint64_t lba, uint32_t blocks, void *dest, si
     uint64_t bytes=(uint64_t)blocks*h->block_bytes;
     if(lba>=h->blocks || blocks>h->blocks-lba || bytes>DUFS_MAX_TRANSFER || bytes!=n)
         return DUFS_ARGUMENT;
+    begin(h);
     uint8_t cdb[16]={0x88}; be64(cdb+2,lba); be32(cdb+10,blocks);
     int r=scsi_read(h,cdb,(uint32_t)bytes); if(r) return r;
     copy(dest,h->data,n); return 0;

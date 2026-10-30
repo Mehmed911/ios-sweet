@@ -33,7 +33,7 @@ class IO(C.Structure):
 class Config(C.Structure):
     _fields_ = [('io', IO), ('begin', U64), ('end', U64), ('list', U64),
                 ('command', U64), ('data', U64), ('timeout', U32),
-                ('ready', C.c_uint8), ('lun', C.c_uint8)]
+                ('ready', C.c_uint8), ('lun', C.c_uint8), ('poll_limit', U32)]
 
 
 class Surface(C.Structure):
@@ -144,6 +144,8 @@ class Qtest:
 def configure_library(path):
     lib = C.CDLL(str(path))
     lib.dufs_host_size.restype = SIZE
+    lib.dufs_timeout_cause.argtypes = [PTR]
+    lib.dufs_timeout_cause.restype = U32
     lib.dufs_bind.argtypes = [PTR, C.POINTER(Config)]
     for name in ('dufs_start', 'dufs_nop', 'dufs_device_init'):
         getattr(lib, name).argtypes = [PTR]
@@ -163,7 +165,7 @@ def ufs_checks(lib, q, base, original, fault):
         operations.append(('r', offset))
         try:
             value = q.read(offset)
-            return value | 1 if inject[0] == 'timeout' and offset == 0x58 else value
+            return value | 1 if inject[0] in ('timeout','frozen') and offset == 0x58 else value
         except Exception as e:
             errors.append(str(e)); return 0xffffffff
 
@@ -172,7 +174,7 @@ def ufs_checks(lib, q, base, original, fault):
         try:
             q.write(offset, value)
             if timeout_arm[0] and offset == 0x58:
-                inject[0] = 'timeout'
+                inject[0] = fault
         except Exception as e:
             errors.append(str(e))
 
@@ -199,9 +201,9 @@ def ufs_checks(lib, q, base, original, fault):
             errors.append(str(e)); return -1
 
     callbacks = [RD(rd), WR(wr), DMA(put), DMA(get), FENCE(lambda _: None),
-                 TICK(lambda _: time.monotonic_ns() // 1_000_000)]
+                 TICK(lambda _: 1 if inject[0]=='frozen' else time.monotonic_ns() // 1_000_000)]
     cfg = Config(IO(None, *callbacks), base, base+0x100000,
-                 base, base+0x1000, base+0x10000, 500, 1, 0)
+                 base, base+0x1000, base+0x10000, 500, 1, 0, 64 if fault=='frozen' else 1000000)
     host = C.create_string_buffer(lib.dufs_host_size())
     cfg.ready = 0
     checks['unproven_platform_no_io'] = lib.dufs_bind(host, C.byref(cfg)) == -2 and not operations
@@ -243,13 +245,15 @@ def ufs_checks(lib, q, base, original, fault):
     # Software-injected faults are separate from successful emulation checks.
     # Tag fault alters a returned copy; timeout masks completion only AFTER
     # the doorbell write, so this exercises the bounded wait, not the busy gate.
-    if fault == 'timeout':
+    if fault in ('timeout','frozen'):
         timeout_arm[0] = True
     else:
         inject[0] = fault
     before = len(operations)
     rc = lib.dufs_read(host, 0, 1, target, 4096)
-    checks['injected_'+fault+'_rejected'] = rc == (-4 if fault == 'timeout' else -6)
+    checks['injected_'+fault+'_rejected'] = rc == (-4 if fault in ('timeout','frozen') else -6)
+    if fault in ('timeout','frozen'):
+        checks['timeout_reason_matches'] = lib.dufs_timeout_cause(host)==(2 if fault=='frozen' else 1)
     checks['failed_read_destination_unchanged'] = target.raw == b'\xcc'*4096
     after = len(operations)
     checks['poisoned_host_no_further_io'] = lib.dufs_read(host, 0, 1, target, 4096) == -3 and len(operations) == after
@@ -315,7 +319,7 @@ def main():
     subprocess.run(command, check=True)
     guards = out/'guard-tests'
     subprocess.run([args.cc,'-std=c11','-O1','-g','-Wall','-Wextra','-Werror',
-                    '-fsanitize=address,undefined','-fno-omit-frame-pointer',
+                    '-fsanitize=address,undefined','-fno-sanitize-recover=all','-fno-omit-frame-pointer',
                     str(repo/'duchamp/drivers/test_guards.c'),
                     *(str(repo/'duchamp/drivers'/s) for s in sources),'-o',str(guards)],check=True)
     guard_run=subprocess.run([str(guards)],check=True,capture_output=True,text=True)
@@ -340,7 +344,8 @@ def main():
               'cross_compile_only':cross_objects,
               'source_hashes': {str(p.relative_to(repo)): hashlib.sha256(p.read_bytes()).hexdigest()
                                 for p in (repo/'duchamp/drivers').glob('*.[ch]')}, 'ufs': []}
-    cases=[(0x100000,'tag',image,original),(0x100100000,'timeout',image,original)]
+    cases=[(0x100000,'tag',image,original),(0x100100000,'timeout',image,original),
+           (0x100100000,'frozen',image,original)]
     if args.root_image:
         root=args.root_image.resolve()
         if not stat.S_ISREG(root.stat().st_mode):

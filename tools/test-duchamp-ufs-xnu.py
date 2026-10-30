@@ -39,7 +39,7 @@ def main():
         if digest(fixture/name)!=expected: ap.error('fixture changed: '+name)
     symbols=subprocess.check_output(['llvm-nm','--defined-only',str(kernel)],text=True)
     names={line.split()[-1] for line in symbols.splitlines() if line.split()}
-    required={'_duchamp_qemu_ufs_rootdev','_dufs_bind','_dufs_read','_dufs_start'}
+    required={'_duchamp_qemu_ufs_rootdev','_dufs_bind','_dufs_read','_dufs_start','_dufs_timeout_cause'}
     if args.backends:
         required|={'_duchamp_qemu_backends_prepare','_mv7_map','_mv7_seal','_mb_iommu_install',
                    '_mb_pmic_voltage','_mb_pmif_transfer','_mb_firmware_ufs','_mp_prepare',

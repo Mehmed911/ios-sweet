@@ -253,7 +253,7 @@ int duchamp_qemu_ufs_rootdev(dev_t *device) {
         .io={NULL,qu_read32,qu_write32,qu_dma_write,qu_dma_read,qu_barrier,qu_milliseconds},
         .dma_begin=qu.dma_pa,.dma_end=qu.dma_pa+QU_DMA_BYTES,
         .list_dma=qu.dma_pa,.command_dma=qu.dma_pa+0x1000,.data_dma=qu.dma_pa+0x10000,
-        .timeout_ms=3000,.exclusive_platform_ready=1,.lun=0
+        .timeout_ms=3000,.exclusive_platform_ready=1,.lun=0,.poll_limit=DUFS_MAX_POLLS
     };
     int result=dufs_bind(&qu.host,&setup);
     if(!result) result=dufs_start(&qu.host);
@@ -261,7 +261,8 @@ int duchamp_qemu_ufs_rootdev(dev_t *device) {
     if(!result) result=dufs_device_init(&qu.host);
     uint64_t blocks=0;
     if(!result) result=dufs_capacity(&qu.host,&blocks,&qu.physical_bytes);
-    if(result) { printf("DUCHAMP QUFS ATTACH FAILED result=%d\n",result); return qu_error(result); }
+    if(result) { printf("DUCHAMP QUFS ATTACH FAILED result=%d timeout_cause=%u\n",
+                       result,dufs_timeout_cause(&qu.host)); return qu_error(result); }
     if(qu.physical_bytes!=4096 || blocks>UINT64_MAX/qu.physical_bytes) return ENXIO;
     qu.bytes=blocks*qu.physical_bytes; qu.sector_bytes=DEV_BSIZE;
     qu.bmajor=bdevsw_add(-1,&qu_bdevsw);

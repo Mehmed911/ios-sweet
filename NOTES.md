@@ -1,3 +1,24 @@
+Bounded UFS waits / saved boot policy — active work (2026-10-31):
+Baseline 50f15c39241565cdb4a87921b0fe949af2f8f4d7, duchamp-bootstrap.
+No phone/USB/ADB/fastboot/partition access. Existing user changes preserved.
+Fixed unbounded frozen-clock UFS waits with a mandatory finite, operation-wide
+poll budget. Timeout poisons the host without reset/rebind or DMA reclamation;
+deadline versus budget exhaustion is exposed to XNU diagnostics.
+research/mt6897-policy/poll-v1/result.json PASS:67 native ASan/UBSan checks
+and the same67 on ARM64 in QEMU (register/DMA fixture model).
+transport-v1/result.json PASS:142 actual QEMU UFS/qtest host-core checks,
+including a frozen timer above4GiB;78 native sanitizer guards also pass.
+compile-v1/result.json:both changed C TUs compile with real XNU generated
+headers, new timeout-cause core definition resolves the adapter import.
+Full XNU CI/guest boots are PENDING for this change; previous24/20 belong
+to the old d51e7db kernel. Do not use those results for the changed core.
+Saved Linux boot-policy analysis is in progress, only allowlisted args should
+be reported; never expose full bootargs/calibration identifiers. SWIOTLB=noforce
+and disable_dma32=on require source interpretation before DMA assumptions.
+Physical firmware identity/effects, DMA ownership and effective masks remain
+unverified. No physical MT6897 backend enabled by these local tests.
+End of bounded-UFS handoff.
+
 Saved-UFS firmware/DMA contract — verified local milestone (2026-10-31):
 Baseline cb57481f071b3d94f0a21433e0f56dbc243638d2, duchamp-bootstrap.
 No phone, USB, ADB, fastboot, module loading or partition action. Inputs preserved.
