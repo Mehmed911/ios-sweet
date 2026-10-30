@@ -11,7 +11,7 @@ research/mt6897-xnu/tables-v2/result.json PASS:11476 ASan/UBSan checks
 against six unchanged upstream encoding/decode/install function bodies,
 with allocator/cache/atomic fixture helpers; no hardware table walk.
 tables-v1 extractor regex failed before any C test; failure retained.
-research/mt6897-xnu/compile-v2:9 C TUs compiled against real generated XNU
+research/mt6897-xnu/compile-v3:9 C TUs compiled against real generated XNU
 headers; staging-v1 has6 checks, idempotence/change rejection and all imports
 resolved against the prior kernel plus the new objects. Full CI PENDING.
 
@@ -23,7 +23,14 @@ cache cleaning, clocks, mutexes and read-only /dev/mbtest diagnostic output.
 Peripheral callbacks are private RAM models only. Actual UFS remains QEMU PCI
 read-only through the established driver. Unknown firmware contract and UFS
 IOMMU selection are required to fail closed. No physical SMC is wired.
-Full new kernel + guest tests and offline DMA/firmware evidence audit remain.
+Integration committed as 0a947b6, run41140465715 still building.
+Source review found kmem_alloc_contig's VA mask does not constrain physical
+alignment. Follow-up explicitly supplies a page-number mask and a 35-bit PA
+limit, with PA alignment/range readback checks. Compile-v3 PASS for all9 TUs.
+Full new kernel + guest tests remain pending.
+Offline contract-v2 audit matched three exact GKI Git blobs, captured DTB and
+saved LK/preloader hashes. UFS direct/bus-window DMA is a conditional source
+candidate only; no installed BL31 contract or actual DMA route verified.
 End of active XNU-table handoff.
 
 MT6897 PMIF/PMIC, SMC and partial IOMMU register backends — local milestone (2026-10-31):

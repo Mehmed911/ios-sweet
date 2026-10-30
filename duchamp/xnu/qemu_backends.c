@@ -41,10 +41,12 @@ static vm_offset_t root_va,pool_va,data_va;
 static uint64_t root_pa,pool_pa,data_pa;
 
 static int contiguous(vm_offset_t *va,uint64_t *pa,vm_size_t bytes,vm_size_t mask) {
-    if(kmem_alloc_contig(kernel_map,va,bytes,mask,0,0,KMA_DATA|KMA_ZERO|KMA_PERMANENT,
+    /* mask aligns the VA; pnum_mask separately aligns physical page numbers. */
+    if(kmem_alloc_contig(kernel_map,va,bytes,mask,atop_64((1ull<<35)-1),atop_64(mask),
+                        KMA_DATA|KMA_ZERO|KMA_PERMANENT,
                         VM_KERN_MEMORY_IOKIT)!=KERN_SUCCESS) return ENOMEM;
     *pa=ptoa_64(pmap_find_phys(kernel_pmap,(addr64_t)*va));
-    if(!*pa) return EIO;
+    if(!*pa || (*pa&mask) || *pa>=(1ull<<35) || bytes>(1ull<<35)-*pa) return EIO;
     for(vm_size_t off=0;off<bytes;off+=PAGE_SIZE)
         if(ptoa_64(pmap_find_phys(kernel_pmap,(addr64_t)*va+off))!=*pa+off) return EIO;
     return 0;
