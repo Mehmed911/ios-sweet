@@ -1,3 +1,70 @@
+MT6897 PMIF/PMIC, SMC and partial IOMMU register backends — local milestone (2026-10-31):
+Baseline f323908cbe1173c6241cf6b3ff47761d96327559; branch duchamp-bootstrap.
+No phone/USB/ADB/fastboot/partition command. All previous files preserved.
+New code is NOT linked into XNU or bound to phone MMIO; physical UFS remains
+disabled. No installed firmware compatibility or physical regulator/IOMMU test.
+
+duchamp/drivers/mt6897_pmif.c: matched mt6xxx SWINF2 command/data programmer,
+1-4 bytes, SIDs4/8 only, 16-bit register bounds, explicit little endian,
+initialized controller and route mask0 guard, finite idle/valid polling,
+no stolen inherited reply, no auto retry after a transport fault.
+PMIF idle is NOT PMIC ACK/NACK proof; physical error IRQ handling is absent.
+mt6897_pmic.c: VEMC SID4 exact voltage table/trap-selected nibble, TMA
+unlock/write/relock, factory trim preserved, enable bit only/680us delay;
+SID8 vbuck3 uses matched mt6315_8-regulator ABI, selector and SET enable,
+256us delay. No disable/global shutdown/mode/guessed voltage target.
+Matched n_voltages=0xbf means selector191/1193750uV refused, even though
+DTB and linear endpoint include it; max accepted selector190/1187500uV.
+Relock is attempted even after a partial failure. Poisoned bus may prevent
+it: failure remains latched, not claimed recovered. Readback is programmed
+bits only, not actual measured rail voltage or PHY readiness.
+
+mt6897_smc.S: raw SMCCC SMC#0, x0-x7 input/x0-x3 output, no default binding.
+mt6897_firmware.c: whitelisted UFS requests, per-call authorization and
+mandatory matched-firmware reply verification; unknown zero results refused.
+Separate reference ATF f3083e2e6c508d58f9bce1b2fce5eeb0903a4c6d UFS handler
+returns zero when CONFIG_MTK_MTCMOS handling is compiled out. This is NOT
+installed MT6897 firmware identity. Existing LK evidence also does not prove
+the installed UFS SiP effect/return contract.
+
+mt6897_iommu.c: actual TTBR write/readback and GEN2 full/range TLB register
+programming for source-defined display/MDP banks, 34-bit address encoding,
+fresh-status and TLB_SYNC guards, finite CPE wait, failures pin state/tables.
+Requires a preconfigured powered exclusive domain and externally built/
+synchronized encoded ARM_V7S/MTK_TTBR_EXT tables. Table allocation/encoding,
+SMI/stream routing, shared-domain coordination and full HW init are NOT done.
+UFS client unconditionally refused before any authorization or register I/O.
+No documented UFS-to-IOMMU route was found in source/inspected DTB ancestry.
+
+research/mt6897-backends/check-v2/result.json: PASS, exit0:
+105 PMIF +193 PMIC +39 firmware +87 IOMMU =424 native ASan/UBSan model checks.
+SAME424 checks passed during actual ARM64 CPU execution of models in QEMU.
+12 additional checks of TWO actual SMC calls from NS EL1 into a QEMU EL3 test
+monitor passed, then MT6897 ARM64 MODEL PASS and semihost exit0.
+This is no MT6897 peripheral/secure-firmware or XNU execution.
+Freestanding ARM64 compilation of four C backends +raw SMC object passed;
+all five normal-RAM objects have no undefined imports. Secure fixture uses
+strict alignment, explicit byte-wise runtime, MMU/cache off.
+ELF SHA256 8dba37ef2d3ca4c44c559623fe86be0346b6e79b048e36ffca28fea763fd607d.
+Seven source files matched exact vendor Git blobs at commit
+a805f95d61dbf0b2959c9262acc626893114321d; source catalog
+duchamp/drivers/mt6897-backend-sources.json. Sources stay ignored.
+Saved DTB SHA256 9c49589f70044127be8941a9ea5537977f440ccd5ac15cfd24e120c8a1181d29
+matched before resolving rails/PMIC IDs/SPMI offsets/IOMMU nodes.
+All11 selected production/test input hashes unchanged during run and staging.
+QEMU10.2.1 Debian1:10.2.1+ds-1ubuntu3.3; version log and exact commands local.
+check-v1 is an earlier passing subset; check-v2 adds protected-write
+enforcement and every fallible PMIF-write/PMIC transaction point.
+No new XNU kernel/CI or phone image was built in this milestone.
+Reference/replay: duchamp/MT6897-BACKENDS.md, tools/test-mt6897-backends.py.
+
+Next: match installed firmware identity/SiP semantics/effects and delegated PHY
+ownership; supply trusted XNU MMIO/cache/locking and regulator-vote/resource
+adapters, PMIF error IRQ handling and controller quiescence/recovery.
+A full IOMMU driver still needs matching table builder and actual client
+routing; do not wire UFS to display/MDP/APU IOMMU based on guessed stream IDs.
+End of MT6897 backend handoff.
+
 MT6897 power/PHY policy and DMA ownership — verified local milestone (2026-10-31):
 Baseline a15c2e59f212e530c600201034db6450eaa5a336; branch duchamp-bootstrap.
 Source-pinned subset: duchamp/drivers/mt6897_ufs_platform.c/.h and

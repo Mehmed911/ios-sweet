@@ -144,3 +144,8 @@ verified bypass, cache policy, and a quiescence/recovery mechanism. Then adapt
 those providers to XNU and the tested read-only transport. The default
 physical backend stays disabled until those facts are established. GPU/Mali
 power and CSF submission remain a separate driver task.
+
+Subsequent source-pinned PMIF/PMIC register algorithms, a raw SMC conduit
+tested across EL1/EL3 and a partial multimedia-IOMMU register programmer are
+in [MT6897-BACKENDS.md](MT6897-BACKENDS.md). Physical provider ownership,
+installed firmware verification and UFS routing remain outstanding.

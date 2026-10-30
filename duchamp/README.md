@@ -38,3 +38,8 @@ The source-pinned version-1 PHY policy, RTFF/reference-clock and reset
 sequencing, DMA ownership API and their native/ARM64 model tests are in
 [MT6897-PLATFORM.md](MT6897-PLATFORM.md). Firmware/PMIC/IOMMU providers are
 still required before a physical backend can use these APIs.
+
+The subsequent PMIF/PMIC command programmers, guarded raw SMC transport and
+partial multimedia-IOMMU TTBR/TLB programmer are documented in
+[MT6897-BACKENDS.md](MT6897-BACKENDS.md). Their local tests do not resolve
+the installed firmware contract or establish a UFS-to-IOMMU route.

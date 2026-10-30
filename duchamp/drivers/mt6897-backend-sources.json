@@ -1,0 +1,41 @@
+{
+  "repository": "mt6897-devs/android_kernel_device_modules_6.1",
+  "commit": "a805f95d61dbf0b2959c9262acc626893114321d",
+  "files": [
+    {
+      "path": "drivers/regulator/mt6363-regulator.c",
+      "git_blob": "1069f505b7ed29646c732e147441dca3df50a345"
+    },
+    {
+      "path": "include/linux/regulator/mt6363-regulator.h",
+      "git_blob": "bd3bf1cc7e8a6a19f168813a056ca09849b25955"
+    },
+    {
+      "path": "drivers/regulator/mt6315-regulator.c",
+      "git_blob": "ecfe202be7933f7cf2bece313c53b78afa0b12cc"
+    },
+    {
+      "path": "include/linux/regulator/mt6315-regulator.h",
+      "git_blob": "9e97ea02dffb3b89b1bafd323fadafad2be81bdc"
+    },
+    {
+      "path": "drivers/spmi/spmi-mtk-pmif-core.c",
+      "git_blob": "4efffa438ec69ee365dff08381044c20bba4aaf1"
+    },
+    {
+      "path": "drivers/iommu/mtk_iommu.c",
+      "git_blob": "a0ad7cddc99071516336dfa348f31a45d5b3a478"
+    },
+    {
+      "path": "include/dt-bindings/memory/mt6897-larb-port.h",
+      "git_blob": "76c5ef1ab8447cd163942cb9cced36b08c49c46f"
+    }
+  ],
+  "captured_fdt_sha256": "9c49589f70044127be8941a9ea5537977f440ccd5ac15cfd24e120c8a1181d29",
+  "firmware_reference": {
+    "url": "https://chromium.googlesource.com/chromiumos/third_party/arm-trusted-firmware/+/f3083e2e6c508d58f9bce1b2fce5eeb0903a4c6d/plat/mediatek/drivers/ufs/ufs_ctrl.c",
+    "git_blob": "5cb9eb7f5f683a9d3c8f99be6dc209f27b7af266",
+    "scope": "different reference firmware; not installed MT6897 firmware identity or compatibility proof"
+  },
+  "scope": "Source profile only. UFS-to-IOMMU route and physical firmware identity remain unverified."
+}
