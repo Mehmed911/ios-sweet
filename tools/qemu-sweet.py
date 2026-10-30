@@ -249,6 +249,7 @@ def main():
     ap.add_argument('--kernel', help='matching unstripped kernel, for exact framebuffer text decoding (uses llvm-nm)')
     ap.add_argument('--fail-on-panic', action='store_true', help='exit 2 for a visible panic, 3 for incomplete/blank decoding; requires --kernel')
     ap.add_argument('--live-serial', action='store_true', help='stream serial console output to stdout in real time')
+    ap.add_argument('--ufs-image', help='opt-in read-only HFS+ file for the strict virtual UFS profile')
     ap.add_argument('--check-env', action='store_true', help='check QEMU installation and dependencies without running a payload')
     a = ap.parse_args()
 
@@ -277,6 +278,15 @@ def main():
         return 1
 
     payload = open(a.payload, 'rb').read()
+    ufs_options = []
+    if a.ufs_image:
+        import qemu_ufs
+        if a.save_ramdisk:
+            ap.error('--ufs-image cannot be combined with --save-ramdisk')
+        try:
+            ufs_options, ufs_metadata = qemu_ufs.runner_options(payload, a.ufs_image, a.cpu, a.framebuffer)
+        except (ValueError, OSError, struct.error) as error:
+            ap.error(str(error))
     font = None
     if a.kernel:
         symbols = subprocess.check_output(['llvm-nm', '--defined-only', a.kernel], text=True)
@@ -287,6 +297,9 @@ def main():
         font = payload_data(payload, fonts[0], 256 * 16)
     os.makedirs(a.outdir, exist_ok=True)
     out = os.path.abspath(a.outdir)
+    if a.ufs_image:
+        with open(os.path.join(out, 'ufs-input.json'), 'w') as output:
+            json.dump(ufs_metadata, output, indent=2)
 
     framebuffer = FRAMEBUFFERS[a.framebuffer]
     phys_base, img, ba_pa, entry_pa = build_image(payload, framebuffer)
@@ -329,6 +342,9 @@ def main():
            '-device', f'loader,file={out}/ram.bin,addr={phys_base:#x},force-raw=on',
            '-device', f'loader,file={out}/stub.bin,addr={STUB_PA:#x},force-raw=on',
            '-device', f'loader,addr={STUB_PA:#x},cpu-num=0']
+    if a.ufs_image:
+        cmd[2] = 'virt,gic-version=3,highmem-ecam=off'
+        cmd += ufs_options
     if a.gdb:
         cmd += ['-S', '-gdb', 'tcp::1234']
 

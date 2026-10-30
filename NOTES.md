@@ -1,6 +1,6 @@
 # DUCHAMP update — 2026-10-22
 
-QEMU UFS / XNU integration — active work (2026-10-31):
+QEMU UFS / XNU integration — verified milestone (2026-10-31):
 Baseline HEAD 62c91492b0bda5a764f202349b5e2141a5ee48ec.
 Source adapter duchamp/xnu/qemu_ufs.c stages with the unchanged portable core
 via tools/stage-duchamp-qemu-ufs.py after the existing BSD checkpoints.
@@ -16,12 +16,40 @@ its failure is retained in research/xnu-ufs/compile/IOKitBSDInit.log.
 First full Xcode CI succeeded, but guest-v1 is a FAILED runtime test: UFS
 root mounted and PID1 entered, then raw character read panicked at memmove
 +0x48 / qu_strategy+0x1c0, FAR=user stack. physio/buf_map returned a user VA
-that plain memcpy cannot access with PAN enabled. No complete guest pass.
+that plain memcpy cannot access with PAN enabled. Its failed outputs remain.
 Fix now uses uiomove from a private CPU buffer outside the controller lock;
 B_PHYS strategy requests are rejected. Both C TUs recompiled successfully.
-Next full CI/kernel and repeated guest test are PENDING.
+Full Xcode fix CI succeeded; exact new kernel passed both guest tests below.
 CI source commit 51bd2ca39c97d441df912a9a12e31cf24ea7a601; run 41131664525.
-Virtual-UFS fixture prepared in research/xnu-ufs/fixture-v1 (no RAMDisk);
+PAN fix commit 9a10068375fa1320d802e3d30fe951f8b1a07f4f; run 41133993461.
+Kernel artifact ID 13015622163, ZIP SHA256
+cb11ed54942844c14f12346a1c3c8121d90777a9038896442e4c1be5181c668f,
+matched GitHub digest. research/xnu-ufs/kernel-fix-ci/kernel.development.sweet
+SHA256 c40bebddeaea04c11ca8f4812de8160490ba8933ee68bc63a9481ed257d82109,
+matched artifact SHA256SUMS. No kernel stubs/rebuild after download.
+research/xnu-ufs/guest-v2/verification.json: PASS 20/20, exit 0,
+80.493 host seconds, 16 sampled frames. Real XNU HFS+ mount/rootvnode via
+qufs0 (no ADT RAMDisk), PID1, root st_dev matches qufs0 st_rdev with valid
+inode types, raw header and offset reads, invalid user pointer returns
+EFAULT without panic, write-open returns EROFS, exact 1024 file bytes,
+and later heartbeat. Zero unknown glyphs/no observed panic. Read-only host
+image unchanged, kernel pin and all five test-source hashes preserved.
+Early QUFS printf/IOLog is not framebuffer-visible; stat64 device identity
+and no-RAMDisk gates establish the root source. The legacy marker
+QEMU RAM ROOT MOUNTED alone does not establish its source.
+Fixture research/xnu-ufs/fixture-v4 root SHA256
+5f4f6b5c5a7947dcab9e2c56f668b719053b89a5f07dc256f255e11fdbec3440.
+research/xnu-ufs/md0-regression-v1/verification.json: PASS 10/10, exit 0,
+89.932 host seconds, 18 sampled frames. SAME new kernel, old RAM root/static
+PID1 and later heartbeat, no UFS-image option, zero unknown glyphs/no observed
+panic, kernel/root unchanged. Base HFS+ SHA256
+e5b5c1b68c00db65ae31d8d29baef6ab88c8131e29940d8ce7b810536726414a.
+These sampled short boots are not long-term stress or phone tests.
+The existing 7-line uncommitted qemu-sweet MEMORY READY diagnostic remains;
+its classification branch was not exercised. Exact working hashes are in report.
+The new qu_read/qu_error bodies passed 18 ASan/UBSan control-flow model checks
+in research/xnu-ufs/uio-model-v1. This is not XNU VM/PAN execution proof.
+Virtual-UFS fixture prepared with no fallback ADT RAMDisk;
 tools/test-qemu-ufs-profile.py passed 19 rejection tests.
 Six MT6897 AO/PDN clock leaves implemented separately, not linked to a phone
 backend; 123 ASan/UBSan model checks and ARM64 compile passed in
@@ -29,8 +57,12 @@ research/xnu-ufs/clocks-v2, including captured-FDT ID/provider matching.
 Baseline tree ZIP SHA256 b2cf5bc24205c978858eb8667d7a9c65dfe66a87d1d56399efda9c34c76da333.
 Native WSL build cache path is in research/xnu-ufs/base104-tree-path.txt.
 No phone/USB/UFS hardware/boot-partition command. Preserve all previous files.
-Next: obtain the exact new CI kernel; build a read-only HFS+/PID1 fixture,
-run the QEMU UFS profile and require actual root mount + userspace reads.
+Reference/replay: duchamp/QEMU-UFS-XNU.md; scripts refuse output overwrite.
+No complete physical power/PHY/reset/SiP, topckgen mux, DMA/IOMMU backend or
+Mali CSF acceleration. Six model-tested clock leaves do not power on UFS.
+Next: match firmware ownership/SiP/PHY/reset and DMA mapping/cache contracts
+before connecting physical MT6897 transport; identify selected Mali DDK/CSF
+firmware and design MMU/queue/fence/power backend independently of Adreno.
 End of active XNU-UFS handoff.
 
 Portable storage/software-graphics cores (2026-10-31; this commit):

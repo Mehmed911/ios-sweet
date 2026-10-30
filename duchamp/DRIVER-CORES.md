@@ -1,9 +1,11 @@
 # Storage and software graphics cores — 2026-10-31
 
-This milestone implements and tests portable C cores. They are not yet linked
-into the XNU kernel and there is no MT6897 physical MMIO backend. The current
-MT6897 root-device selection still returns `kIOReturnUnsupported`. No phone,
-USB, UFS hardware or boot partition was accessed during this work.
+This milestone implements and tests portable C cores. Its original tests
+below predate XNU integration. The subsequent virtual-UFS BSD adapter and
+separate MT6897 leaf-clock work are tracked in [QEMU-UFS-XNU.md](QEMU-UFS-XNU.md).
+There is no MT6897 physical MMIO backend; its root-device selection still
+returns `kIOReturnUnsupported`. No phone, USB, UFS hardware or boot partition
+was accessed during either milestone.
 
 ## What now runs
 
@@ -147,11 +149,12 @@ real platform backend proves quiescence. No automatic abort/reset or buffer
 reclamation is attempted. An emulator barrier callback is not cache handling
 for MT6897.
 
-Next: wire an XNU-facing read/completion adapter to this core in a separate
-QEMU configuration; retain the working md0 baseline. In parallel, derive
-the board-specific PHY/clock/reset/SiP and DMA/cache sequence from the pinned
-vendor source and matching firmware evidence. Keep the phone backend disabled
-until that entry/ownership contract is established. Mali acceleration needs
+The XNU-facing read/completion adapter now has a separate QEMU configuration;
+its runtime results and md0 regression belong to [QEMU-UFS-XNU.md](QEMU-UFS-XNU.md),
+not to the qtest results above. Physical work still requires the board-specific
+PHY/clock/reset/SiP and DMA/cache sequence from the pinned vendor source and
+matching firmware evidence. Keep the phone backend disabled until that
+entry/ownership contract is established. Mali acceleration needs
 its own firmware/MMU/CSF/fence and power backend before any GPU submission.
 Neither the software raster core nor virtual HFS+ reads establish SpringBoard
 readiness, touchscreen support or complete iOS on Duchamp.

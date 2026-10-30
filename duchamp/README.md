@@ -27,5 +27,9 @@ The pinned HakiOS Metal source review and local host-test result are in
 
 Portable UFS read transport, software framebuffer operations, captured-DTB
 dependency resolution and their actual test results are documented in
-[DRIVER-CORES.md](DRIVER-CORES.md). These cores are not yet wired into XNU
-or a physical MT6897 backend.
+[DRIVER-CORES.md](DRIVER-CORES.md). Its original core tests predate the separate
+virtual-UFS XNU adapter; a physical MT6897 backend is still unfinished.
+
+The opt-in XNU BSD adapter and the implemented MT6897 leaf-clock subset are
+tracked in [QEMU-UFS-XNU.md](QEMU-UFS-XNU.md), with emulator and model evidence
+kept separate from physical-device compatibility.
