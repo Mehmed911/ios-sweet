@@ -69,3 +69,9 @@ drivers and full iOS/UI remain unverified milestones.
 scan/wake integration, architected ARM CPU matching, and isolated phone/QEMU
 ADT descriptions derived from the saved FDT. Runtime phone ownership and
 interrupt/timer delivery remain unverified.
+
+[FIRMWARE-DMA-FOLLOWUP.md](FIRMWARE-DMA-FOLLOWUP.md) adds independent
+descriptor/payload DMA limits to the read-only transport, saved MCQ/allocation
+instruction evidence, and execution of a pinned comparison firmware handler
+with its MTCMOS option both absent and present. Installed BL31 effects and
+physical DMA ownership remain unverified.

@@ -7,12 +7,32 @@ Each allocation's full extent is checked, including crossing4GiB; CAP64 is
 a separate controller ceiling. Large bus aperture alone no longer rejects
 an otherwise valid low32-bit pool. QEMU-only adapter supplies64/64 explicitly.
 research/mt6897-routing/poll-v1 PASS:79 native ASan/UBSan +79 ARM64 model checks.
-transport-v1 PASS:242 qtest/core checks,78 sanitizer guards;6 read-only images/
-controller cases,including control32/data64 and control64/data32 with actual
+transport-v1 PASS:242 qtest/core checks,78 sanitizer guards;6 cases on read-only
+images,including control32/data64 and control64/data32 with actual
 emulated DMA below/above4GiB. Model CAP32/aperture and extent bounds also pass.
 compile-v1:both UFS core and XNU adapter compile against generated XNU headers.
-Full new XNU CI/guest test PENDING. New firmware/source/saved client follow-up
-IN PROGRESS. Existing reference firmware is not identified as installed BL31.
+Full XNU CI41156122045 SUCCESS at8bdc1633f1180b77a732def92be54501b9251eef.
+Artifact13025606915 archive SHA83d290efcbdad3363ab4bf2abc576ad66eb0ba2dc56d0a9499d77a733f7216ae;
+kernel SHA8d47bba9d1f097cba15a4d4747ed28cc7f4026a7b65d87ad472eb6f8a83d731a.
+API digest/internal SHA256SUMS verified. Both strict guest replays PASS:
+guest-backends-v1 24/24,36.569hostsec;guest-baseline-v1 20/20,36.376hostsec.
+Both17frames,defaultclock,zero unknown glyphs,no observed panic;HFS+ root,
+PID1,read/error/EROFS checks;image/kernel/harness pins unchanged. First guest
+also passes backend/table RAM receipt fw_verified=0 physical=0. No phone claim.
+firmware-check-v1 PASS:90 native ASan/UBSan +90 ARM64 checks,28 actual SMCs
+to a QEMU fixture monitor; unchanged comparison ufs_knl_ctrl() compiled twice.
+MTCMOS-disabled reference returns0 without a hook call; no installed effect proof.
+Comparison firmware f3083e2 blob5cb9eb7 is not identified as installed BL31.
+client-audit-v1 validates13 existing source pins and saved module7043e110.
+Saved query at.text0x1e80 passes selector1024 and consumes a1; comparison
+handler does not implement that selector. This is a coverage gap, not proof
+of the installed firmware's behavior. Saved allocation function has3
+dmam_alloc_attrs calls,attrs0,alignment128/1024/1024. No module was loaded.
+client-guards-v1:9 mutation/provenance/output-preservation tests PASS.
+research/mt6897-routing/final-verification.json PASS:all test/source/module
+pins,5 saved phone input hashes,user changes preserved;no QEMU remains.
+See duchamp/FIRMWARE-DMA-FOLLOWUP.md for source offsets,pins,reproduction
+and unresolved physical prerequisites. No new physical provider is installed.
 Installed monitor effects/ownership and physical DMA route remain unverified;
 the physical backend stays disabled. Do not infer UFS uses display/MDP IOMMU.
 End of MT6897 firmware/DMA follow-up.
