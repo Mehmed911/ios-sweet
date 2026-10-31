@@ -1,14 +1,35 @@
 #include "mt6897_backends.h"
 static int fault(struct mb_iommu *m,int error) { m->state=3; return error; }
+static int client(struct mb_iommu *m,unsigned *bank,unsigned *resource) {
+    if(m->client==MB_CLIENT_DISP) {
+        if(bank) *bank=0;
+        if(resource) *resource=MB_DISP_IOMMU;
+        return 0;
+    }
+    if(m->client==MB_CLIENT_MDP) {
+        if(bank) *bank=1;
+        if(resource) *resource=MB_MDP_IOMMU;
+        return 0;
+    }
+    return MB_UNVERIFIED;
+}
 static int allowed(struct mb_iommu *m) {
-    unsigned resource=m->client==MB_CLIENT_DISP?MB_DISP_IOMMU:MB_MDP_IOMMU;
+    unsigned resource;
+    int r=client(m,0,&resource);
+    if(r) return r;
     return m->io.authorise(m->io.context,resource)==1?0:MB_UNVERIFIED;
 }
 static int rd(struct mb_iommu *m,uint32_t off,uint32_t *v) {
-    return m->io.read32(m->io.context,m->client-1,off,v)?MB_IO:0;
+    unsigned bank;
+    int r=client(m,&bank,0);
+    if(r) return r;
+    return m->io.read32(m->io.context,bank,off,v)?MB_IO:0;
 }
 static int wr(struct mb_iommu *m,uint32_t off,uint32_t v) {
-    return m->io.write32(m->io.context,m->client-1,off,v)?MB_IO:0;
+    unsigned bank;
+    int r=client(m,&bank,0);
+    if(r) return r;
+    return m->io.write32(m->io.context,bank,off,v)?MB_IO:0;
 }
 static int done(struct mb_iommu *m) {
     uint64_t start=m->io.microseconds(m->io.context);

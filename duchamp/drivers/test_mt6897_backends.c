@@ -214,8 +214,8 @@ static void firmware_tests(void) {
         CHECK(mb_firmware_ufs(&f,q,r)==MB_ARGUMENT && !m.calls);
     }
 }
-struct mm_model { unsigned calls,fail_at,writes;uint32_t ttbr,ctrl,status,start,end,command;uint64_t time;int permit,stall,frozen; };
-static int ma(void *v,unsigned r) { assert(r==MB_DISP_IOMMU || r==MB_MDP_IOMMU);return ((struct mm_model *)v)->permit; }
+struct mm_model { unsigned calls,fail_at,writes,auth_calls;uint32_t ttbr,ctrl,status,start,end,command;uint64_t time;int permit,stall,frozen; };
+static int ma(void *v,unsigned r) { struct mm_model *m=v;m->auth_calls++;assert(r==MB_DISP_IOMMU || r==MB_MDP_IOMMU);return m->permit; }
 static int mr(void *v,unsigned bank,uint32_t off,uint32_t *out) {
     struct mm_model *m=v;assert(bank<2);if(++m->calls==m->fail_at)return -1;
     if(off==0)*out=m->ttbr;else if(off==0x110)*out=m->ctrl;else{assert(off==0x12c);*out=m->status;}return 0;
@@ -251,7 +251,25 @@ static void iommu_tests(void) {
     {
         struct mm_model mm={.permit=1,.ctrl=8};struct mb_io io=mio(&mm);struct mb_iommu m={0};
         CHECK(mb_iommu_bind(&m,&io,MB_CLIENT_UNVERIFIED_UFS,0,1ull<<34)==MB_UNVERIFIED);
-        CHECK(!mm.calls && !mm.writes && !m.state);
+        CHECK(!mm.calls && !mm.writes && !mm.auth_calls && !m.state);
+    }
+    for(unsigned invalid=0;invalid<3;invalid++) {
+        static const unsigned clients[]={MB_CLIENT_UNVERIFIED_UFS,3,~0u};
+        struct mm_model mm={.permit=1,.ctrl=8};struct mb_io io=mio(&mm);struct mb_iommu m={0};
+        CHECK(mb_iommu_bind(&m,&io,MB_CLIENT_DISP,0,1ull<<34)==0);
+        m.client=clients[invalid];
+        CHECK(mb_iommu_install(&m,0x12340000,1)==MB_UNVERIFIED && m.state==1);
+        CHECK(!mm.calls && !mm.writes && !mm.auth_calls);
+    }
+    for(unsigned invalid=0;invalid<3;invalid++) {
+        static const unsigned clients[]={MB_CLIENT_UNVERIFIED_UFS,3,~0u};
+        struct mm_model mm={.permit=1,.ctrl=8};struct mb_io io=mio(&mm);struct mb_iommu m={0};
+        CHECK(mb_iommu_bind(&m,&io,MB_CLIENT_DISP,0,1ull<<34)==0);
+        CHECK(mb_iommu_install(&m,0x12340000,1)==0 && m.state==2);
+        unsigned calls=mm.calls,writes=mm.writes,auth=mm.auth_calls;
+        m.client=clients[invalid];
+        CHECK(mb_iommu_invalidate(&m,0,4096)==MB_UNVERIFIED && m.state==3);
+        CHECK(mm.calls==calls && mm.writes==writes && mm.auth_calls==auth);
     }
     for(unsigned at=1;at<=total;at++) {
         struct mm_model mm={.permit=1,.ctrl=8,.fail_at=at};struct mb_io io=mio(&mm);struct mb_iommu m={0};
