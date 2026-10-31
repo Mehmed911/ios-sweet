@@ -30,7 +30,7 @@ if($LASTEXITCODE -ne 0 -or $taskNative -notmatch '^/tmp/duchamp-ufs-[A-Za-z0-9]+
 $taskUnc='\\wsl.localhost\Ubuntu'+$taskNative.Replace('/','\')
 New-Item -ItemType Directory -Path (Join-Path $taskUnc 'tools'),(Join-Path $taskUnc 'fixture') | Out-Null
 $taskSources=[ordered]@{}
-foreach($taskName in @('qemu-sweet.py','qemu_ufs.py','duchamp-ufs-init.S','duchamp-backend-init.S','test-duchamp-ufs-xnu.py','build-duchamp-ufs-fixture.py','mkpayload.py','adt.py')){
+foreach($taskName in @('qemu-sweet.py','qemu_ufs.py','duchamp-ufs-init.S','duchamp-backend-init.S','test-duchamp-ufs-xnu.py','build-duchamp-ufs-fixture.py','mkpayload.py','adt.py','verify-duchamp-timer-irq-witness.py')){
     $taskSource=Join-Path $PSScriptRoot $taskName
     $taskSources[$taskName]=(Get-FileHash -LiteralPath $taskSource -Algorithm SHA256).Hash.ToLowerInvariant()
     Copy-Item -LiteralPath $taskSource -Destination (Join-Path $taskUnc ('tools/'+$taskName))

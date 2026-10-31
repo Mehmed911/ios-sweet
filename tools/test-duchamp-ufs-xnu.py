@@ -27,7 +27,8 @@ def main():
     out=args.output.resolve(); out.mkdir(parents=True,exist_ok=False)
     kernel=args.kernel.resolve(); fixture=args.fixture.resolve()
     test_paths=[repo/'tools'/name for name in ('qemu-sweet.py','qemu_ufs.py','duchamp-ufs-init.S',
-        'test-duchamp-ufs-xnu.py','build-duchamp-ufs-fixture.py','mkpayload.py')]
+        'test-duchamp-ufs-xnu.py','build-duchamp-ufs-fixture.py','mkpayload.py',
+        'verify-duchamp-timer-irq-witness.py')]
     init_name='duchamp-backend-init.S' if args.backends else 'duchamp-ufs-init.S'
     if args.backends: test_paths.append(repo/'tools'/init_name)
     source_hashes={str(p.relative_to(repo)):digest(p) for p in test_paths}
@@ -76,6 +77,16 @@ def main():
     rc=subprocess.run(command).returncode
     result=json.loads((run/'result.json').read_text())
     metadata=json.loads((run/'ufs-input.json').read_text())
+    witness_process=subprocess.run(
+        ['python3',str(repo/'tools/verify-duchamp-timer-irq-witness.py'),str(run/'fb.png')],
+        text=True,capture_output=True)
+    try:
+        timer_witness=json.loads(witness_process.stdout)
+    except (json.JSONDecodeError,TypeError):
+        timer_witness={'passed':False,'error':'timer witness verifier emitted invalid JSON'}
+    timer_witness['process_exit']=witness_process.returncode
+    if witness_process.stderr:
+        timer_witness['stderr']=witness_process.stderr[-2000:]
     frames=sorted((run/'frames').glob('*.txt'))
     screen='\n'.join(p.read_text() for p in frames)
     if (run/'fb.txt').exists(): screen+='\n'+(run/'fb.txt').read_text()
@@ -97,7 +108,8 @@ def main():
         'host_image_unchanged':digest(fixture/'root.hfs')==manifest['sha256']['root.hfs']==metadata['sha256'],
         'readonly_no_ramdisk':metadata['readonly'] and metadata['no_ramdisk'],
         'kernel_pin_preserved':digest(kernel)==args.kernel_sha256,
-        'compiled_adapter_symbols_present':required<=names})
+        'compiled_adapter_symbols_present':required<=names,
+        'virtual_timer_irq_witness':witness_process.returncode==0 and timer_witness.get('passed') is True})
     checks['test_sources_unchanged']=source_hashes=={str(p.relative_to(repo)):digest(p) for p in test_paths}
     physical_addresses={}
     if args.backends:
@@ -114,10 +126,11 @@ def main():
         'payload_sha256':digest(payload),'source_root_unchanged':checks['host_image_unchanged'],
         'elapsed_host_seconds':result.get('elapsed_host_seconds'),'sampled_frames':len(frames),
         'execution':result.get('execution'),
+        'timer_irq_witness':timer_witness,
         'framebuffer_is_sampled':True,'backend_selftest_requested':args.backends,
         'stopped_guest_physical_addresses':{name:hex(value) for name,value in physical_addresses.items()},
         'physical_diagnostics_read_only':True,
-        'scope':'XNU + read-only virtual UFS/HFS+ + diagnostic PID1; optional in-kernel backend/table RAM models, no physical phone/backend'}
+        'scope':'XNU + virtual timer IRQ witness + read-only virtual UFS/HFS+ + diagnostic PID1; optional in-kernel backend/table RAM models, no physical phone/backend'}
     (out/'verification.json').write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps(report,indent=2))
     return 0 if report['passed'] else 1
