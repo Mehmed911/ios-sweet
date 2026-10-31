@@ -12,7 +12,7 @@ int printf(const char *,...);void *memset(void *,int,unsigned long);
 static unsigned checks;
 #define CHECK(x) do{checks++;assert(x);}while(0)
 struct model {uint64_t offset[8],typer[8],seen[8],tick;unsigned count,reads64,reads32,writes,
-    barriers,clock,clear_at,fail_read,fail_write,ignore_write;uint32_t waker,written;};
+    barriers,clock,clear_at,fail_read,fail_write,ignore_write,ids;uint32_t waker,written,pidr;};
 static struct model m;
 static int read64(void *ctx,uint64_t off,uint64_t *value) {
     struct model *x=ctx;CHECK(x->reads64<8);x->seen[x->reads64++]=off;
@@ -21,7 +21,9 @@ static int read64(void *ctx,uint64_t off,uint64_t *value) {
     return -1;
 }
 static int read32(void *ctx,uint64_t off,uint32_t *value) {
-    struct model *x=ctx;CHECK(off==0x14);x->reads32++;
+    struct model *x=ctx;
+    if(off==0xffe8){x->ids++;*value=x->pidr;return 0;}
+    CHECK(off==0x14);x->reads32++;
     if(x->fail_read && x->reads32==x->fail_read)return -1;
     if(x->clear_at && x->reads32>=x->clear_at)x->waker&=~4u;
     *value=x->waker;return 0;
@@ -35,7 +37,7 @@ static int write32(void *ctx,uint64_t off,uint32_t value) {
 static uint64_t now(void *ctx){struct model *x=ctx;uint64_t t=x->tick;if(x->clock)x->tick+=x->clock==2?UINT64_MAX:1;return t;}
 static void barrier(void *ctx){((struct model *)ctx)->barriers++;}
 static struct dgic_io io={&m,read32,read64,write32,now,barrier};
-static void reset(void){memset(&m,0,sizeof(m));}
+static void reset(void){memset(&m,0,sizeof(m));m.pidr=0x3b;}
 static uint64_t type(uint64_t mpidr,unsigned flags){return (uint64_t)dgic_affinity(mpidr)<<32|flags;}
 static void scans(void) {
     CHECK(dgic_regions_valid(0,0xc400000,0x40000,0xc440000,0x200000));
@@ -69,6 +71,10 @@ static void scans(void) {
     CHECK(dgic_find(&io,0x20000,0,0,8,&found)==DGIC_RANGE);
     CHECK(dgic_find(NULL,0x20000,0,0,8,&found)==DGIC_ARGUMENT);
     CHECK(dgic_find(&io,0x20000,0,0,DGIC_MAX_FRAMES+1,&found)==DGIC_ARGUMENT);
+    reset();m.count=1;m.typer[0]=type(0,16);m.pidr=0;
+    CHECK(dgic_find(&io,0x20000,0,0,8,&found)==DGIC_ID && !m.reads64 && !m.writes);
+    m.pidr=0x40;
+    CHECK(dgic_find(&io,0x20000,0,0,8,&found)==0 && found==0);
 }
 static void wakes(void) {
     struct dgic_wake_result d;

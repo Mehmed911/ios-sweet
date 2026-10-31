@@ -10,7 +10,7 @@
 #define DGIC_MAX_FRAMES 256u
 #define DGIC_MAX_POLLS 1000000u
 enum dgic_result {DGIC_OK=0,DGIC_ARGUMENT=-1,DGIC_RANGE=-2,DGIC_IO=-3,
-                  DGIC_NOT_FOUND=-4,DGIC_LIMIT=-5,DGIC_TIMEOUT=-6};
+                  DGIC_NOT_FOUND=-4,DGIC_LIMIT=-5,DGIC_TIMEOUT=-6,DGIC_ID=-7};
 enum dgic_timeout {DGIC_WAIT_NONE=0,DGIC_WAIT_CLOCK=1,DGIC_WAIT_POLLS=2};
 struct dgic_io {
     void *context;
@@ -35,9 +35,12 @@ static inline uint32_t dgic_affinity(uint64_t mpidr) {
 }
 static inline int dgic_find(const struct dgic_io *io,uint64_t bytes,uint64_t stride,
                            uint64_t mpidr,unsigned frames,uint64_t *found) {
-    if(!io || !io->read64 || !found || !frames || frames>DGIC_MAX_FRAMES)return DGIC_ARGUMENT;
+    if(!io || !io->read32 || !io->read64 || !found || !frames || frames>DGIC_MAX_FRAMES)return DGIC_ARGUMENT;
     if(bytes<2*DGIC_FRAME || (bytes&(DGIC_FRAME-1)) ||
        (stride && (stride<2*DGIC_FRAME || (stride&(DGIC_FRAME-1)))))return DGIC_RANGE;
+    uint32_t pidr2;
+    if(io->read32(io->context,0xffe8,&pidr2))return DGIC_IO;
+    if((pidr2&0xf0)!=0x30 && (pidr2&0xf0)!=0x40)return DGIC_ID;
     uint64_t offset=0;
     for(unsigned n=0;n<frames;n++) {
         if(offset>bytes-2*DGIC_FRAME)return DGIC_RANGE;

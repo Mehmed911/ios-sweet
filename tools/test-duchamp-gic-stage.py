@@ -9,6 +9,8 @@ class Guards(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
         self.path=self.root/'pexpert/arm/pe_fiq.c';self.path.parent.mkdir(parents=True);self.path.write_bytes(self.source.read_bytes())
+        for name in ['iokit/Kernel/arm/SweetCPU.cpp','iokit/KernelConfigTables.cpp']:
+            target=self.root/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes((self.source.parents[2]/name).read_bytes())
         self.header=self.path.with_name('duchamp_gic_boot.h')
     def test_idempotence(self):
         self.assertFalse(mod.stage(self.root)['already_staged'])
@@ -38,6 +40,14 @@ class Guards(unittest.TestCase):
         start=old.index('\t// Mark this PE to be awake\n');end=old.index('#if defined(SWEET)\n\t/*',start)
         self.assertIn('#else\n'+old[start:end]+'#endif /* DUCHAMP */',new)
         self.assertIn('if (phys_id == aff_value)',new)
+    def test_cpu_binding_corruption_rejected(self):
+        mod.stage(self.root);c=self.root/'iokit/KernelConfigTables.cpp';c.write_text(c.read_text().replace('arm,cortex-a510','bad,cpu'))
+        with self.assertRaises(ValueError):mod.stage(self.root)
+    def test_late_cpu_anchor_failure_no_writes(self):
+        c=self.root/'iokit/Kernel/arm/SweetCPU.cpp';c.write_text(c.read_text().replace('Kryo 470','changed CPU'))
+        before=self.path.read_bytes()
+        with self.assertRaises(ValueError):mod.stage(self.root)
+        self.assertEqual(self.path.read_bytes(),before);self.assertFalse(self.header.exists())
 if __name__=='__main__':
     ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--source',type=Path,required=True);a=ap.parse_args()
     Guards.source=a.source;unittest.main(argv=[sys.argv[0]])

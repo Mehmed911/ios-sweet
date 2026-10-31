@@ -12,12 +12,20 @@ No Distributor or ICC ownership policy changes; no SMC or physical provider.
 stage-duchamp-gic-boot.py patches only DUCHAMP branch of existing pe_fiq.c,
 retains non-Duchamp bodies, rejects changed/partial staging via source receipt.
 Mandatory final dxb staging and CI header comparison added.
-research/mt6897-boot/check-v1 PASS:125 native ASan/UBSan and125 ARM64 model
-checks, plus4 actual QEMU GICR scan/wake checks; no MT6897 hardware equivalence.
-ELF SHA dd1b0d45ab205c260dd0adf45326f3fb28e22d41caf70b1bd17c1395322fd8c1.
-7 staging guards PASS. compile-v1:real generated XNU PEXPERT headers compile
-the modified pe_fiq.c successfully. Full new XNU CI/guest tests PENDING.
-FDT-derived ADT boot profile and pinned source receipts are IN PROGRESS.
+bb15237 CI41152464883 SUCCESS (intermediate scan/wake version only).
+Latest check-v2 PASS:128 native ASan/UBSan and128 ARM64 model checks,
+plus4 actual QEMU GICR checks; added PIDR2 validation before TYPER scan.
+ELF SHA d83344e72f0180ccc7c9d05e77dce7318171149d275dc4a2e8572e4ccd71f06e.
+9 staging guards and17 saved-FDT/profile tests PASS. pe_fiq.c cross-compiles
+against real generated XNU headers. Local C++ compile-v2 is BLOCKED by Linux
+clang lacking Apple's __builtin_xnu_type_summary/signature, not a compile pass;
+full Apple-toolchain CI is required for final CPU/config changes.
+New separate phone/QEMU ADTs derive saved-FDT GIC/timer/CPU facts, preserve
+template software identities, omit unknown phone clocks and enable one CPU only.
+Public GIC/timer source blobs pinned at kernel_common cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6.
+New QEMU-profile baseline FAILED on old f6dfc1e kernel (no BSD/root/PID1);
+SweetCPU only matched qcom,kryo470. Added DUCHAMP-only ARM A510/A715/A76
+bindings and neutral CPU name. Final new-kernel build/guest tests PENDING.
 VLPIS behavior on the actual phone is not captured or asserted by these tests.
 Physical GIC/timer/scheduler/firmware readiness still unverified; no phone image
 or test was deployed. Preserve1689 old notes,7 qemu classifier lines and loader edits.
