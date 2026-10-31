@@ -59,3 +59,8 @@ verify the installed monitor's effects or enable a physical UFS backend.
 the timer stalls, plus a pinned saved-boot-policy audit. The captured
 `swiotlb=noforce` request skips the matching source's default bounce-pool
 initialization; runtime DMA/firmware ownership is still unverified.
+
+[FAST-SYSTEM-BOOT.md](FAST-SYSTEM-BOOT.md) records the new kernel running
+the original Apple-service fixture: 72/72 checks in 86.819 host seconds on
+a Linux-local RAM workspace with QEMU's default clock. Physical phone
+drivers and full iOS/UI remain unverified milestones.

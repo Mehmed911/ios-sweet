@@ -244,6 +244,8 @@ def main():
     ap.add_argument('--gdb', action='store_true', help='start halted, gdb stub on :1234, no timeout')
     ap.add_argument('--hmp', action='append', default=[], help='extra monitor command run after stop (repeatable), e.g. "x /8gx 0xfffffe..."')
     ap.add_argument('--cpu', default='cortex-a76', help='QEMU CPU model (default: cortex-a76)')
+    ap.add_argument('--icount-shift', type=int, choices=range(11),
+                    help='experimental TCG virtual-clock profile, 0..10 ns shift; sleep=off, not hardware timing')
     ap.add_argument('--framebuffer', choices=FRAMEBUFFERS, default='sweet',
                     help='framebuffer geometry passed to XNU and captured after the run (default: sweet)')
     ap.add_argument('--kernel', help='matching unstripped kernel, for exact framebuffer text decoding (uses llvm-nm)')
@@ -345,6 +347,14 @@ def main():
     if a.ufs_image:
         cmd[2] = 'virt,gic-version=3,highmem-ecam=off'
         cmd += ufs_options
+    execution = {'clock': 'default', 'hardware_timing_claimed': False}
+    if a.icount_shift is not None:
+        cmd += ['-accel', 'tcg,thread=single', '-icount',
+                f'shift={a.icount_shift},align=off,sleep=off']
+        execution.update(clock='icount', shift=a.icount_shift, sleep=False,
+                         align=False, tcg_thread='single')
+    with open(f'{out}/execution.json', 'w') as output:
+        json.dump(execution, output, indent=2)
     if a.gdb:
         cmd += ['-S', '-gdb', 'tcp::1234']
 
@@ -408,7 +418,8 @@ def main():
         else:
             print(f'qemu exited early: {p.returncode}', file=sys.stderr)
 
-        result.update(elapsed_host_seconds=round(time.time() - t0, 3), stop_marker=stop_marker)
+        result.update(elapsed_host_seconds=round(time.time() - t0, 3), stop_marker=stop_marker,
+                      execution=execution)
         open(f'{out}/result.json', 'w').write(json.dumps(result, indent=2) + '\n')
         print(json.dumps(result), file=sys.stderr)
         print(f'{out}/fb.png  {out}/regs.txt  {out}/qemu.log', file=sys.stderr)

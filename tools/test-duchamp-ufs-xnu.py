@@ -20,6 +20,7 @@ def main():
     ap.add_argument('--output',type=Path,required=True)
     ap.add_argument('--ci-run'); ap.add_argument('--ci-head')
     ap.add_argument('--seconds',type=int,default=180)
+    ap.add_argument('--icount-shift',type=int,choices=range(11))
     ap.add_argument('--backends',action='store_true',help='require the opt-in kernel backend/table selftest and devfs receipt')
     args=ap.parse_args()
     repo=Path(__file__).resolve().parent.parent
@@ -68,6 +69,7 @@ def main():
         '--secs',str(args.seconds),'--snapshot-interval','2','--fail-on-panic',
         '--stop-on-text','SWEET EARLY PANIC:','--stop-on-text','DUCHAMP UFS PID1 FAIL',
         '--stop-on-text','DUCHAMP UFS PID1 heartbeat']
+    if args.icount_shift is not None: command+=['--icount-shift',str(args.icount_shift)]
     # Read stopped-guest globals through the monitor; do not alter guest state.
     for address in physical_locations.values():
         command+=['--hmp',f'xp/1gx 0x{address:x}']
@@ -111,6 +113,7 @@ def main():
         'ci_run':args.ci_run,'ci_head':args.ci_head,'fixture':manifest,
         'payload_sha256':digest(payload),'source_root_unchanged':checks['host_image_unchanged'],
         'elapsed_host_seconds':result.get('elapsed_host_seconds'),'sampled_frames':len(frames),
+        'execution':result.get('execution'),
         'framebuffer_is_sampled':True,'backend_selftest_requested':args.backends,
         'stopped_guest_physical_addresses':{name:hex(value) for name,value in physical_addresses.items()},
         'physical_diagnostics_read_only':True,

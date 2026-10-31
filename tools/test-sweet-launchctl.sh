@@ -135,6 +135,9 @@ fi
 if [ "$scenario" = foundation ]; then
     set -- --stop-on-text 'SWEET ipc foundation: FAIL' --stop-on-text 'Library not loaded:' --stop-on-text 'Symbol not found:'
 fi
+if [ -n "${SWEET_QEMU_ICOUNT_SHIFT:-}" ]; then
+    set -- "$@" --icount-shift "$SWEET_QEMU_ICOUNT_SHIFT"
+fi
 python3 "$src/tools/qemu-sweet.py" "$out/payload.bin" "$out/run" --secs "$seconds" \
     --framebuffer duchamp --kernel "$kernel" --snapshot-interval 10 \
     --stop-on-text 'SWEET EARLY PANIC:' --stop-on-text 'SWEET launchctl: FAIL' \

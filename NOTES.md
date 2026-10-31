@@ -1,3 +1,35 @@
+Fast system bootstrap — verified local milestone (2026-10-31):
+Baseline1dae03f, duchamp-bootstrap. Host/QEMU/RAM only; no phone/USB/partitions.
+New tools/test-duchamp-system-boot.py reuses the unchanged proven RAM fixture
+with an explicit kernel pin; Windows test-duchamp-system-native.ps1 copies via
+UNC and performs all high-frequency VM trace/snapshot/HFS work on Linux ext4.
+No Apple executables/libraries modified or added to Git; copied evidence retained.
+Kernel remains f6dfc1e CI41147308270, SHA
+f86bd430b9fdb58d93c0f38d2009b71a7d1b5f15107ea9656c045c5a2eea99ca.
+Reference RAM root89388d378c8d2fc66cf942d3c60647ad0579ebb29df629903a7bad0c44469a21.
+research/fast-boot/system-native-unc-v1:72/72 actual service checks+6 wrapper
+checks PASS;113 installed hashes;86.819hostsec,17frames,default QEMU clock.
+Original launchd PID1/notifyd/cfprefsd/Foundation clients;4 ordered phases,
+10 native launchctl calls and daemon/reader restart recovery observed.
+Kernel/root/reference/sources unchanged; no complete iOS or physical device claim.
+Prior same-root/probe run1691.019s used old kernel/different host workload;
+about19.5x historical comparison, not controlled hardware timing/speed guarantee.
+Short UFS diagnostics:default20/20 at77.515s;icount0 same fixture20/20 at32.237s;
+icount4 backend fixture24/24 at39.414s. Clock selection optional/default unchanged.
+Broader /mnt/c experiments interrupted during p9_client_rpc stalls, NOT passes.
+User explicitly approved Ubuntu/WSL restart; shutdown/start completed, no old
+QEMU processes remain and repo filesystem access recovered. Saved evidence intact.
+All4 Python execution/preservation guards+2 native launcher guards/parser PASS.
+Linux Python --native-workspace replay after restart:system-native-python-v2
+72/72 service checks+6 wrapper checks,113 hashes,86.674sec,default clock PASS.
+research/fast-boot/final-verification.json PASS:all5 positive reports/current
+source closures,5 saved boot/FDT/firmware hashes,user1689+7 edits preserved;
+no QEMU process left. Interrupted experiments retained, not counted as passes.
+Docs duchamp/FAST-SYSTEM-BOOT.md; physical GIC/timer/scheduler, firmware/DMA/UFS,
+Mali/input and SpringBoard still require separate actual validation/development.
+Keep prior1689-line notes tail,7-line qemu classifier edit and loader/user files.
+End of fast-system boot handoff.
+
 Bounded UFS waits / saved boot policy — verified milestone (2026-10-31):
 Baseline 50f15c39241565cdb4a87921b0fe949af2f8f4d7, duchamp-bootstrap.
 No phone/USB/ADB/fastboot/partition access. Existing user changes preserved.

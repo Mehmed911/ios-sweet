@@ -14,6 +14,8 @@ def main():
     ap.add_argument('output', type=Path)
     ap.add_argument('--hfsplus', type=Path, required=True)
     ap.add_argument('--report', type=Path)
+    ap.add_argument('--kernel-sha256', default='82fc8fe1391bea90bcce9ed2d4e8a2ff8204667f6785857873717564ec9331c9',
+                    help='explicit expected kernel pin; legacy fixture pin remains the default')
     args = ap.parse_args()
     root = args.output
     result = json.loads((root / 'run/result.json').read_text())
@@ -105,7 +107,7 @@ def main():
         'runtime_dependency_audit': audit['passed'] and len(audit['files']) == 92,
         'pinned_apple_binaries': all(audit['files'].get(path, {}).get('sha256') == digest for path, digest in expected_pins.items()),
         'all_installed_hashes_preserved': all(installed.values()),
-        'unchanged_kernel': inputs['input_hashes']['kernel'] == '82fc8fe1391bea90bcce9ed2d4e8a2ff8204667f6785857873717564ec9331c9',
+        'unchanged_kernel': inputs['input_hashes']['kernel'] == args.kernel_sha256,
         'fresh_original_base': inputs['input_hashes']['base'] == '491aa78408c423c50e8b59644e416e94b643ed3eb119158d52684af4176c8b3f',
         'source_snapshot_intact': all(hashlib.sha256((root / 'test-sources' / name).read_bytes()).hexdigest() == digest
             for name, digest in inputs['compiled_source_snapshot'].items()),
