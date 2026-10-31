@@ -9,7 +9,7 @@ class Guards(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
         self.path=self.root/'pexpert/arm/pe_fiq.c';self.path.parent.mkdir(parents=True);self.path.write_bytes(self.source.read_bytes())
-        for name in ['iokit/Kernel/arm/SweetCPU.cpp','iokit/KernelConfigTables.cpp']:
+        for name in ['iokit/Kernel/arm/SweetCPU.cpp','iokit/KernelConfigTables.cpp','pexpert/arm/pe_identify_machine.c']:
             target=self.root/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes((self.source.parents[2]/name).read_bytes())
         self.header=self.path.with_name('duchamp_gic_boot.h')
     def test_idempotence(self):
@@ -45,6 +45,14 @@ class Guards(unittest.TestCase):
         with self.assertRaises(ValueError):mod.stage(self.root)
     def test_late_cpu_anchor_failure_no_writes(self):
         c=self.root/'iokit/Kernel/arm/SweetCPU.cpp';c.write_text(c.read_text().replace('Kryo 470','changed CPU'))
+        before=self.path.read_bytes()
+        with self.assertRaises(ValueError):mod.stage(self.root)
+        self.assertEqual(self.path.read_bytes(),before);self.assertFalse(self.header.exists())
+    def test_clock_corruption_rejected(self):
+        mod.stage(self.root);c=self.root/'pexpert/arm/pe_identify_machine.c';c.write_text(c.read_text()+'\n/* changed */')
+        with self.assertRaises(ValueError):mod.stage(self.root)
+    def test_late_clock_anchor_failure_no_writes(self):
+        c=self.root/'pexpert/arm/pe_identify_machine.c';c.write_text(c.read_text().replace('bus_to_cpu_rate_num','changed_ratio'))
         before=self.path.read_bytes()
         with self.assertRaises(ValueError):mod.stage(self.root)
         self.assertEqual(self.path.read_bytes(),before);self.assertFalse(self.header.exists())

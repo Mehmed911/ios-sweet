@@ -16,7 +16,7 @@ bb15237 CI41152464883 SUCCESS (intermediate scan/wake version only).
 Latest check-v2 PASS:128 native ASan/UBSan and128 ARM64 model checks,
 plus4 actual QEMU GICR checks; added PIDR2 validation before TYPER scan.
 ELF SHA d83344e72f0180ccc7c9d05e77dce7318171149d275dc4a2e8572e4ccd71f06e.
-9 staging guards and17 saved-FDT/profile tests PASS. pe_fiq.c cross-compiles
+11 staging guards and17 saved-FDT/profile tests PASS. pe_fiq.c cross-compiles
 against real generated XNU headers. Local C++ compile-v2 is BLOCKED by Linux
 clang lacking Apple's __builtin_xnu_type_summary/signature, not a compile pass;
 full Apple-toolchain CI is required for final CPU/config changes.
@@ -26,6 +26,13 @@ Public GIC/timer source blobs pinned at kernel_common cf2c2dc91b9e9f016dc25cf095
 New QEMU-profile baseline FAILED on old f6dfc1e kernel (no BSD/root/PID1);
 SweetCPU only matched qcom,kryo470. Added DUCHAMP-only ARM A510/A715/A76
 bindings and neutral CPU name. Final new-kernel build/guest tests PENDING.
+Clock consumer audit found undefined division with missing bus-frequency.
+DUCHAMP-only ratio guards retain unknown clocks as zero and use nonzero
+ratio denominators. clock-consumer-v1 executes the real transformed function:
+baseline UBSan division-by-zero reproduced; unknown/zero and legacy known
+clock cases PASS after change. compile-v3 cross-compiles both pe_fiq.c and
+pe_identify_machine.c against generated XNU headers. No synthetic clock added.
+654a3c9 CI41153721164 superseded by this clock fix; final build required.
 VLPIS behavior on the actual phone is not captured or asserted by these tests.
 Physical GIC/timer/scheduler/firmware readiness still unverified; no phone image
 or test was deployed. Preserve1689 old notes,7 qemu classifier lines and loader edits.

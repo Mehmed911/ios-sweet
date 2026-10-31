@@ -68,6 +68,34 @@ find_gicr_pe_base()
 '''+old+'#endif /* DUCHAMP */\n\n'
     return once(text,old,new)
 
+def clock_source(text):
+    old='''\tgPEClockFrequencyInfo.bus_to_cpu_rate_num =
+\t    (2 * gPEClockFrequencyInfo.cpu_clock_rate_hz) / gPEClockFrequencyInfo.bus_clock_rate_hz;
+\tgPEClockFrequencyInfo.bus_to_cpu_rate_den = 2;
+
+\tgPEClockFrequencyInfo.bus_to_dec_rate_num = 1;
+\tgPEClockFrequencyInfo.bus_to_dec_rate_den =
+\t    gPEClockFrequencyInfo.bus_clock_rate_hz / gPEClockFrequencyInfo.dec_clock_rate_hz;'''
+    new='''#if defined(DUCHAMP)
+    /* DUCHAMP UNKNOWN CLOCK RATIOS V1: zero numerator means unavailable.
+     * Do not invent core/bus/DDR clocks to satisfy legacy informational ratios.
+     * The architected counter frequency remains a separate required contract. */
+    gPEClockFrequencyInfo.bus_to_cpu_rate_num = gPEClockFrequencyInfo.bus_clock_rate_hz ?
+        (2 * gPEClockFrequencyInfo.cpu_clock_rate_hz) / gPEClockFrequencyInfo.bus_clock_rate_hz : 0;
+    gPEClockFrequencyInfo.bus_to_cpu_rate_den = 2;
+    if (gPEClockFrequencyInfo.dec_clock_rate_hz &&
+        gPEClockFrequencyInfo.bus_clock_rate_hz >= gPEClockFrequencyInfo.dec_clock_rate_hz) {
+        gPEClockFrequencyInfo.bus_to_dec_rate_num = 1;
+        gPEClockFrequencyInfo.bus_to_dec_rate_den =
+            gPEClockFrequencyInfo.bus_clock_rate_hz / gPEClockFrequencyInfo.dec_clock_rate_hz;
+    } else {
+        gPEClockFrequencyInfo.bus_to_dec_rate_num = 0;
+        gPEClockFrequencyInfo.bus_to_dec_rate_den = 1;
+    }
+#else
+'''+old+'\n#endif'
+    return once(text,old,new)
+
 def stage(root):
     repo=Path(__file__).resolve().parent.parent
     source=repo/'duchamp/drivers/duchamp_gic_boot.h';target=root/'pexpert/arm/duchamp_gic_boot.h'
@@ -75,6 +103,7 @@ def stage(root):
     path=root/'pexpert/arm/pe_fiq.c';old=path.read_text()
     cpu=root/'iokit/Kernel/arm/SweetCPU.cpp';config=root/'iokit/KernelConfigTables.cpp'
     old_cpu=cpu.read_text();old_config=config.read_text()
+    clock=root/'pexpert/arm/pe_identify_machine.c';old_clock=clock.read_text()
     if MARKER in old:
         if old.count(MARKER)!=1 or not target.exists() or target.read_bytes()!=source.read_bytes() or not receipt.is_file():
             raise ValueError('partial or changed bounded-GIC staging')
@@ -82,6 +111,7 @@ def stage(root):
         if metadata!={'pe_fiq_sha256':hashlib.sha256(path.read_bytes()).hexdigest(),
                       'cpu_sha256':hashlib.sha256(cpu.read_bytes()).hexdigest(),
                       'config_sha256':hashlib.sha256(config.read_bytes()).hexdigest(),
+                      'clock_sha256':hashlib.sha256(clock.read_bytes()).hexdigest(),
                       'header_sha256':hashlib.sha256(source.read_bytes()).hexdigest()}:
             raise ValueError('changed staged GIC source')
         return {'already_staged':True,'header_sha256':hashlib.sha256(source.read_bytes()).hexdigest()}
@@ -100,10 +130,12 @@ def stage(root):
     cpuName = OSSymbol::withCStringNoCopy("ARM64 bootstrap CPU");
 #else
 '''+name+'''\n#endif''')
-    target.write_bytes(source.read_bytes());path.write_text(new);cpu.write_text(new_cpu);config.write_text(new_config)
+    new_clock=clock_source(old_clock)
+    target.write_bytes(source.read_bytes());path.write_text(new);cpu.write_text(new_cpu);config.write_text(new_config);clock.write_text(new_clock)
     receipt.write_text(json.dumps({'pe_fiq_sha256':hashlib.sha256(path.read_bytes()).hexdigest(),
         'cpu_sha256':hashlib.sha256(cpu.read_bytes()).hexdigest(),
         'config_sha256':hashlib.sha256(config.read_bytes()).hexdigest(),
+        'clock_sha256':hashlib.sha256(clock.read_bytes()).hexdigest(),
         'header_sha256':hashlib.sha256(source.read_bytes()).hexdigest()},indent=2)+'\n')
     return {'already_staged':False,'header_sha256':hashlib.sha256(source.read_bytes()).hexdigest()}
 
