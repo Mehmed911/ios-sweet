@@ -22,6 +22,7 @@ def tracked_inputs(repo):
     paths = [
         repo / "duchamp/board.toml",
         repo / "duchamp/drivers/duchamp_gic_boot.h",
+        repo / "duchamp/drivers/duchamp_timer_boot.h",
         repo / "duchamp/drivers/duchamp_psci_boot.h",
         repo / "duchamp/drivers/mt6897-platform-sources.json",
         repo / "duchamp/drivers/test_mt6897_ufs_topckgen.c",
@@ -32,6 +33,7 @@ def tracked_inputs(repo):
         repo / "tools/report-duchamp-mt6897-ownership.py",
         repo / "tools/test-report-duchamp-mt6897-ownership.py",
         repo / "tools/test-duchamp-psci-boot.py",
+        repo / "tools/test-duchamp-timer-boot.py",
         Path(__file__).resolve(),
     ]
     paths.extend(sorted((repo / "duchamp/drivers").glob("mt6897*.[ch]")))
@@ -170,6 +172,11 @@ def main():
             str(repo / "tools/test-duchamp-psci-boot.py"),
             str(output / "psci"),
         ],
+        "timer_frequency": [
+            sys.executable,
+            str(repo / "tools/test-duchamp-timer-boot.py"),
+            str(output / "timer-frequency"),
+        ],
         "power_dma": [
             sys.executable,
             str(repo / "tools/test-mt6897-platform.py"),
@@ -232,6 +239,7 @@ def main():
         hardware_result = json.loads(hardware.read_text())
         gic = load_pass(output / "gic/result.json")
         psci = load_pass(output / "psci/result.json")
+        timer_frequency = load_pass(output / "timer-frequency/result.json")
         power = load_pass(output / "power-dma/result.json")
         providers = load_pass(output / "providers/result.json")
         clocks = load_pass(output / "ufs-clocks/result.json")
@@ -255,6 +263,10 @@ def main():
             raise ValueError("PSCI gate unexpectedly authorized physical CPU_ON")
         if psci.get("smc_executed") is not False:
             raise ValueError("PSCI gate unexpectedly executed an SMC")
+        if timer_frequency.get("architected_register_read_executed") is not False:
+            raise ValueError("timer model unexpectedly read CNTFRQ")
+        if timer_frequency.get("physical_timer_enabled") is not False:
+            raise ValueError("timer model unexpectedly enabled a physical timer")
         if power["saved_dtb"].get("physical_dma_route_verified") is not False:
             raise ValueError("physical DMA route was incorrectly promoted")
         if providers["saved_dtb"].get("installed_firmware_verified") is not False:
@@ -298,6 +310,12 @@ def main():
                 "arm64": psci["arm64_checks"],
                 "physical_psci_authorized": psci["physical_psci_authorized"],
                 "smc_executed": psci["smc_executed"],
+            },
+            "timer_frequency": {
+                "native": timer_frequency["native_checks"],
+                "arm64": timer_frequency["arm64_checks"],
+                "architected_register_read_executed": timer_frequency["architected_register_read_executed"],
+                "physical_timer_enabled": timer_frequency["physical_timer_enabled"],
             },
             "power_dma": {
                 "power": power["power_checks"],
