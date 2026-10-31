@@ -70,6 +70,10 @@ scan/wake integration, architected ARM CPU matching, and isolated phone/QEMU
 ADT descriptions derived from the saved FDT. Runtime phone ownership and
 interrupt/timer delivery remain unverified.
 
+[MT6897-PHONE-BOOT-CANDIDATE.md](MT6897-PHONE-BOOT-CANDIDATE.md) records the
+offline latest-kernel phone candidate, its matching QEMU jump test, exact
+hashes and the intentionally disabled physical-storage boundary.
+
 [FIRMWARE-DMA-FOLLOWUP.md](FIRMWARE-DMA-FOLLOWUP.md) adds independent
 descriptor/payload DMA limits to the read-only transport, saved MCQ/allocation
 instruction evidence, and execution of a pinned comparison firmware handler

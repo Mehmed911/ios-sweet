@@ -1,3 +1,23 @@
+Latest-kernel Duchamp phone bootstrap candidate — local milestone (2026-10-31):
+Baseline e81afba, duchamp-bootstrap. No phone/USB/ADB/fastboot/partition access.
+Built phone/QEMU twin payloads from kernel8d47bba (CI41156122045/artifact13025606915)
+and profile-v4 ADTs. Cmdline is single CPU, framebuffer console, rootrw=0, no
+root-device and no QEMU/physical UFS enable. Phone payload SHA82dd86fd; QEMU
+payload SHA957997e0. Source reconstruction and embedded byte comparisons PASS.
+Updated the local untracked bootshim preflight test to derive ADT/boot-args
+placement from the pinned payload instead of stale smaller-kernel addresses.
+Guard/materializer PASS:10 segments, entry0x1c1480488, ADT0x1c2568000,
+boot_args0x1c256c000, top0x1c2570000; corrupt input performs no write.
+QEMU captured-phone-FDT/8GiB jump PASS after20s with356280 white XNU pixels.
+Phone jump ELF has no relocations/unresolved imports and one final indirect br.
+Offline boot-v4/legacy-LZ4/AVB-NONE image64MiB verifies footer/vbmeta/boot hash;
+compressed8528087 bytes expands byte-equal to shim Image. Candidate SHA256
+288672ec987ef878bc457598f8f7c760855c1bc7975ada3dc7db3f754e8abc85 under
+research/mt6897-phone-boot-v1. It was not deployed and is not phone-ready iOS.
+Physical UFS/firmware/DMA providers remain closed. See
+duchamp/MT6897-PHONE-BOOT-CANDIDATE.md. Preserve all existing user edits.
+End of latest-kernel phone-bootstrap candidate.
+
 MT6897 firmware/DMA follow-up — active work (2026-10-31):
 Baseline31c15ab,duchamp-bootstrap; local saved files/WSL/QEMU only. No phone,
 USB,ADB,fastboot,physical UFS or partition action. Preserve existing user edits.
