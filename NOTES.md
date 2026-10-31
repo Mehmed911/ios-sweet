@@ -1,3 +1,28 @@
+MT6897 boot platform — active source integration (2026-10-31):
+Baseline5834326, duchamp-bootstrap. No phone/USB/ADB/fastboot/partition access.
+Captured FDT timer13MHz, virtual PPI11=>INTID27, GIC four-cell interrupt
+specifiers; GICD0x0c400000/0x40000, GICR0x0c440000/0x200000.
+CPU reg IDs0x000..0x700,4 Cortex-A510 +4 Cortex-A715; use reg, not node names.
+PSCI method smc is a saved declaration, not firmware authorization.
+New duchamp_gic_boot.h fixes full MPIDR Aff3:Aff0 matching, VLPIS-aware
+128/256-KiB redistributor scan, full extent/overlap validation and bounded wake.
+One ProcessorSleep clear preserves other bits, then requires both sleep bits
+clear; frozen timer/ignored write/failed callbacks cannot loop indefinitely.
+No Distributor or ICC ownership policy changes; no SMC or physical provider.
+stage-duchamp-gic-boot.py patches only DUCHAMP branch of existing pe_fiq.c,
+retains non-Duchamp bodies, rejects changed/partial staging via source receipt.
+Mandatory final dxb staging and CI header comparison added.
+research/mt6897-boot/check-v1 PASS:125 native ASan/UBSan and125 ARM64 model
+checks, plus4 actual QEMU GICR scan/wake checks; no MT6897 hardware equivalence.
+ELF SHA dd1b0d45ab205c260dd0adf45326f3fb28e22d41caf70b1bd17c1395322fd8c1.
+7 staging guards PASS. compile-v1:real generated XNU PEXPERT headers compile
+the modified pe_fiq.c successfully. Full new XNU CI/guest tests PENDING.
+FDT-derived ADT boot profile and pinned source receipts are IN PROGRESS.
+VLPIS behavior on the actual phone is not captured or asserted by these tests.
+Physical GIC/timer/scheduler/firmware readiness still unverified; no phone image
+or test was deployed. Preserve1689 old notes,7 qemu classifier lines and loader edits.
+End of MT6897 boot-platform handoff.
+
 Fast system bootstrap — verified local milestone (2026-10-31):
 Baseline1dae03f, duchamp-bootstrap. Host/QEMU/RAM only; no phone/USB/partitions.
 New tools/test-duchamp-system-boot.py reuses the unchanged proven RAM fixture
