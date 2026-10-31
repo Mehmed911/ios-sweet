@@ -32,6 +32,16 @@ def interrupts(timer, ufs):
 
 
 class ShellRuntimeTests(unittest.TestCase):
+    def test_boot_device_must_name_the_saved_ufs_controller(self):
+        self.assertEqual(
+            MODULE.validate_boot_devices(
+                "bootdevice,soc/112b0000.ufshci,112b0000.ufshci"
+            ),
+            ["bootdevice", "soc/112b0000.ufshci", "112b0000.ufshci"],
+        )
+        with self.assertRaisesRegex(ValueError, "does not identify"):
+            MODULE.validate_boot_devices("bootdevice,soc/other")
+
     def test_probe_classifies_adb_exec_out_permission_text(self):
         denied = MODULE.probe_result(
             completed([], b"cat: /proc/iomem: Permission denied\n", returncode=0)

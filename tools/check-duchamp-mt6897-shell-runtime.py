@@ -116,6 +116,14 @@ def online_devices(adb, runner=subprocess.run):
     return devices
 
 
+def validate_boot_devices(value):
+    devices = [entry for entry in value.split(",") if entry]
+    required = {"soc/112b0000.ufshci", "112b0000.ufshci"}
+    if not required.issubset(devices):
+        raise ValueError(f"boot-device property does not identify Duchamp UFS: {devices}")
+    return devices
+
+
 def adb_read(adb, serial, command, runner=subprocess.run, required=True):
     allowed = command[:2] in {
         ("shell", "getprop"),
@@ -202,6 +210,12 @@ def collect(adb, serial, interval, runner=subprocess.run, sleeper=time.sleep):
         adb_read(adb, serial, prefix + ("ro.boot.hardware",), runner).stdout,
         "ro.boot.hardware",
     )
+    boot_devices = validate_boot_devices(
+        decode(
+            adb_read(adb, serial, prefix + ("ro.boot.boot_devices",), runner).stdout,
+            "ro.boot.boot_devices",
+        )
+    )
     if device != "duchamp" or hardware != "mt6897":
         raise ValueError(f"unexpected target {device}/{hardware}")
 
@@ -227,6 +241,7 @@ def collect(adb, serial, interval, runner=subprocess.run, sleeper=time.sleep):
     return {
         "device": device,
         "hardware": hardware,
+        "boot_devices": boot_devices,
         "interrupts_before": before,
         "interrupts_after": after,
         "cpuidle": cpuidle,
@@ -294,7 +309,12 @@ def main():
         receipts[name] = {"bytes": len(raw), "sha256": sha256(raw)}
     report = {
         "passed": True,
-        "target": {"device": "duchamp", "hardware": "mt6897"},
+        "target": {
+            "device": "duchamp",
+            "hardware": "mt6897",
+            "android_boot_devices": captured["boot_devices"],
+            "ufs_boot_controller_matches_saved_dtb": True,
+        },
         "device_serial_sha256": sha256(serial.encode()),
         "reference_dtb_sha256": dtb_hash,
         "interval_seconds": args.interval,
