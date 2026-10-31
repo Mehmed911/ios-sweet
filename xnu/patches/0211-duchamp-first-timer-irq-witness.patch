@@ -1,0 +1,86 @@
+diff --git a/osfmk/arm64/sleh.c b/osfmk/arm64/sleh.c
+index 24f1abc..c5c9c14 100644
+--- a/osfmk/arm64/sleh.c
++++ b/osfmk/arm64/sleh.c
+@@ -38,6 +38,9 @@
+ #include <arm64/machine_machdep.h>
+ #include <arm64/monotonic.h>
+ #include <arm64/instructions.h>
++#if defined(DUCHAMP)
++#include <arm64/sweet_early.h>
++#endif
+ 
+ #include <kern/debug.h>
+ #include <kern/restartable.h>
+@@ -1873,6 +1876,9 @@ sleh_irq(arm_saved_state_t *state)
+ 		INTERRUPT_MASKED_DEBUG_START(rtclock_intr, DBG_INTR_TYPE_TIMER);
+ 		rtclock_intr(TRUE);
+ 		INTERRUPT_MASKED_DEBUG_END();
++#if defined(DUCHAMP)
++		sweet_early_timer_irq_witness();
++#endif
+ 		__builtin_arm_wsr64("ICC_EOIR1_EL1", iar);
+ 	} else if (intid < 16) {
+ 		sleh_interrupt_handler_prologue(state, DBG_INTR_TYPE_IPI);
+diff --git a/osfmk/arm64/sweet_early.c b/osfmk/arm64/sweet_early.c
+index 391a4ac..89d17e5 100644
+--- a/osfmk/arm64/sweet_early.c
++++ b/osfmk/arm64/sweet_early.c
+@@ -28,6 +28,7 @@ extern unsigned char iso_font[256 * 16];
+ /* Initialized data must remain writable until disable, including panics. */
+ static unsigned int early_row, early_col;
+ static unsigned int early_started, early_disabled, early_panicking;
++static unsigned int early_timer_irq_seen;
+ 
+ static void
+ sweet_early_clear_row(void)
+@@ -114,6 +115,29 @@ sweet_early_mark(unsigned int stage, const char *label)
+ 	sweet_early_putc('\n');
+ }
+ 
++void
++sweet_early_timer_irq_witness(void)
++{
++	/*
++	 * IRQ context cannot safely re-enter the text console.  Paint a dedicated
++	 * bottom-right witness once, without touching its row/column state.  The
++	 * caller invokes this only after rtclock_intr() returned successfully.
++	 */
++	if (early_disabled ||
++	    __atomic_exchange_n(&early_timer_irq_seen, 1u, __ATOMIC_RELAXED) != 0) {
++		return;
++	}
++	const unsigned int marker_width = 96u;
++	const unsigned int start = EARLY_WIDTH > marker_width ?
++	    EARLY_WIDTH - marker_width : 0;
++	for (unsigned int y = EARLY_HEIGHT - 32; y < EARLY_HEIGHT; y++) {
++		for (unsigned int x = start; x < EARLY_WIDTH; x++) {
++			EARLY_FB[y * EARLY_STRIDE + x] = 0xff00ffffu;
++		}
++	}
++	__asm__ volatile("dsb sy" ::: "memory");
++}
++
+ void
+ sweet_early_panic(const char *fmt, va_list *args)
+ {
+diff --git a/osfmk/arm64/sweet_early.h b/osfmk/arm64/sweet_early.h
+index d7a25f2..84b1798 100644
+--- a/osfmk/arm64/sweet_early.h
++++ b/osfmk/arm64/sweet_early.h
+@@ -8,6 +8,7 @@
+ 
+ #if defined(SWEET)
+ void sweet_early_mark(unsigned int stage, const char *label);
++void sweet_early_timer_irq_witness(void);
+ void sweet_early_putc(char c);
+ void sweet_early_panic(const char *fmt, va_list *args);
+ void sweet_early_relocate(uint64_t base);
+@@ -18,6 +19,7 @@ static inline void sweet_early_mark(unsigned int stage, const char *label)
+ 	(void)stage;
+ 	(void)label;
+ }
++static inline void sweet_early_timer_irq_witness(void) {}
+ static inline void sweet_early_disable(void) {}
+ #endif
+ 
