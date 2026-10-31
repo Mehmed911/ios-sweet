@@ -81,6 +81,20 @@ class RuntimeEvidenceTests(unittest.TestCase):
         self.assertEqual(module["dependencies"], ["mi_memory", "rpmb_mtk"])
         self.assertEqual(module["taints"], "OE")
 
+    def test_supplier_parser_keeps_only_supplier_links(self):
+        links = self.module.parse_supplier_links(
+            "/sys/devices/x/supplier:platform:10000000.syscon\n"
+            "/sys/devices/x/of_node\n"
+            "/sys/devices/x/supplier:phy:phy-112a0000.ufsphy.3\n"
+        )
+        self.assertEqual(
+            links,
+            [
+                "supplier:phy:phy-112a0000.ufsphy.3",
+                "supplier:platform:10000000.syscon",
+            ],
+        )
+
     def test_irq_identity_change_is_rejected(self):
         before = interrupts((100, 200), (10, 20, 30, 40))
         after = interrupts((103, 205), (11, 22, 34, 45)).replace(

@@ -26,6 +26,7 @@ REQUIRED_FILES = (
     "ufs-iommu-group-probe.txt",
     "ufs-iommu-group-probe.stderr.txt",
     "ufs-iommu-group-probe.exit.txt",
+    "ufs-supplier-links.txt",
     "scmi-platform-driver.txt",
     "scmi-vendor-id.txt",
     "scmi-sub-vendor-id.txt",
@@ -206,6 +207,19 @@ def parse_loaded_module(text, name):
     }
 
 
+def parse_supplier_links(text):
+    suppliers = sorted(
+        {
+            Path(line.strip().replace("\\", "/")).name
+            for line in text.splitlines()
+            if "/supplier:" in line.replace("\\", "/")
+        }
+    )
+    if not suppliers:
+        raise ValueError("no UFS supplier links captured")
+    return suppliers
+
+
 def fdt_snapshot(tree):
     return {
         path: {name: sha256(value) for name, value in node.props.items()}
@@ -363,6 +377,24 @@ def build_report(evidence, reference_dtb, repo):
     else:
         raise ValueError("ambiguous UFS iommu_group probe result")
 
+    suppliers = parse_supplier_links(read_text(evidence / "ufs-supplier-links.txt"))
+    required_supplier_fragments = (
+        "10000000.syscon",
+        "112a0000.ufsphy",
+        "112b8000.syscon",
+        "112bb000.syscon",
+        "1c00f000.dvfsrc",
+        "1cc04000.spmi",
+    )
+    missing_suppliers = [
+        fragment
+        for fragment in required_supplier_fragments
+        if not any(fragment in supplier for supplier in suppliers)
+    ]
+    if missing_suppliers:
+        raise ValueError(f"missing expected UFS supplier links: {missing_suppliers}")
+    iommu_suppliers = [supplier for supplier in suppliers if "iommu" in supplier.lower()]
+
     ancestry = ancestor_dma_contract(ufs)
     dt_iommu_binding = any(
         item["iommus_present"] or item["iommu_map_present"] for item in ancestry
@@ -504,9 +536,11 @@ def build_report(evidence, reference_dtb, repo):
             "ufs_ancestry": ancestry,
             "dt_iommu_binding_declared": dt_iommu_binding,
             "linux_sysfs_iommu_group_attached": sysfs_iommu_group,
+            "linux_supplier_links": suppliers,
+            "linux_iommu_supplier_links": iommu_suppliers,
             "linux_observation": (
-                "no DT IOMMU binding or Linux iommu_group attachment observed"
-                if not dt_iommu_binding and not sysfs_iommu_group
+                "no DT IOMMU binding, Linux iommu_group, or IOMMU supplier link observed"
+                if not dt_iommu_binding and not sysfs_iommu_group and not iommu_suppliers
                 else "an IOMMU declaration or Linux attachment was observed"
             ),
             "physical_dma_bypass_verified": False,
