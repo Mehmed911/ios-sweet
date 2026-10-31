@@ -18,6 +18,7 @@ REQUIRED_FILES = (
     "live-fdt.bin",
     "interrupts-1.txt",
     "interrupts-2.txt",
+    "iomem.txt",
     "clocksource-current.txt",
     "clockevent-current.txt",
     "ufs-driver.txt",
@@ -124,6 +125,43 @@ def interrupt_deltas(before_text, after_text):
     return before_cpus, result
 
 
+def parse_iomem(text):
+    rows = []
+    for line in text.splitlines():
+        match = re.match(
+            r"^\s*([0-9a-fA-F]+)-([0-9a-fA-F]+)\s*:\s*(.+?)\s*$", line
+        )
+        if not match:
+            continue
+        start = int(match.group(1), 16)
+        end = int(match.group(2), 16)
+        if end < start:
+            raise ValueError("invalid /proc/iomem range")
+        rows.append({"start": start, "end": end, "owner": match.group(3)})
+    if not rows:
+        raise ValueError("empty or invalid /proc/iomem capture")
+    return rows
+
+
+def require_iomem_claim(rows, start, size, owner):
+    end = start + size - 1
+    matches = [
+        row
+        for row in rows
+        if row["start"] == start and row["end"] == end and owner in row["owner"]
+    ]
+    if len(matches) != 1:
+        raise ValueError(
+            f"missing unique /proc/iomem claim {start:#x}-{end:#x} by {owner}"
+        )
+    return {
+        "start": hex(start),
+        "end": hex(end),
+        "bytes": hex(size),
+        "owner": matches[0]["owner"],
+    }
+
+
 def fdt_snapshot(tree):
     return {
         path: {name: sha256(value) for name, value in node.props.items()}
@@ -227,14 +265,25 @@ def build_report(evidence, reference_dtb, repo):
             raise ValueError(f"unsupported UFS interrupt tuple: {args}")
         dt_ufs_spis.append(args[1])
     expected_ufs_hwirqs = sorted(spi + 32 for spi in dt_ufs_spis)
+    timer_interrupts = live.interrupts(timer)
+    dt_timer_ppis = []
+    for entry in timer_interrupts:
+        args = entry["args"]
+        if len(args) != 4 or args[0] != 1:
+            raise ValueError(f"unsupported architected timer interrupt tuple: {args}")
+        dt_timer_ppis.append(args[1])
+    expected_timer_hwirqs = sorted(ppi + 16 for ppi in dt_timer_ppis)
 
     cpu_count, deltas = interrupt_deltas(
         read_text(evidence / "interrupts-1.txt"),
         read_text(evidence / "interrupts-2.txt"),
     )
     timer_rows = [row for row in deltas if row["name"] == "arch_timer"]
-    if len(timer_rows) != 1 or timer_rows[0]["hwirq"] != 27:
-        raise ValueError("expected one GICv3 arch_timer row at PPI 27")
+    if len(timer_rows) != 1 or timer_rows[0]["hwirq"] not in expected_timer_hwirqs:
+        raise ValueError(
+            "architected timer DT/runtime IRQ mismatch: "
+            f"expected one of {expected_timer_hwirqs}, got {timer_rows}"
+        )
     ufs_rows = [row for row in deltas if row["name"] == "ufshcd"]
     runtime_ufs_hwirqs = sorted(row["hwirq"] for row in ufs_rows)
     if runtime_ufs_hwirqs != expected_ufs_hwirqs:
@@ -280,6 +329,42 @@ def build_report(evidence, reference_dtb, repo):
     if not scmi_bound:
         raise ValueError("arm-scmi platform binding was not observed")
 
+    iomem = parse_iomem(read_text(evidence / "iomem.txt"))
+    gic_registers = live.registers(gic)
+    ufs_registers = live.registers(ufs)
+    phy = live.nodes.get("/soc/ufsphy@112a0000")
+    if len(gic_registers) != 2 or len(ufs_registers) != 1 or phy is None:
+        raise ValueError("unexpected GIC/UFS/PHY register layout")
+    phy_registers = live.registers(phy)
+    if len(phy_registers) != 1:
+        raise ValueError("unexpected UFS PHY register layout")
+    claims = {
+        "gicd": require_iomem_claim(
+            iomem,
+            int(gic_registers[0]["physical_address"], 16),
+            int(gic_registers[0]["bytes"], 16),
+            "GICD",
+        ),
+        "gicr": require_iomem_claim(
+            iomem,
+            int(gic_registers[1]["physical_address"], 16),
+            int(gic_registers[1]["bytes"], 16),
+            "GICR",
+        ),
+        "ufs": require_iomem_claim(
+            iomem,
+            int(ufs_registers[0]["physical_address"], 16),
+            int(ufs_registers[0]["bytes"], 16),
+            "112b0000.ufshci",
+        ),
+        "ufs_phy": require_iomem_claim(
+            iomem,
+            int(phy_registers[0]["physical_address"], 16),
+            int(phy_registers[0]["bytes"], 16),
+            "112a0000.ufsphy",
+        ),
+    }
+
     return {
         "report_version": 1,
         "evidence": file_receipts(evidence),
@@ -292,12 +377,18 @@ def build_report(evidence, reference_dtb, repo):
             "cpu_count": cpu_count,
             "gic": {
                 "compatible": gic.strings("compatible"),
-                "registers": live.registers(gic),
+                "registers": gic_registers,
                 "linux_controller_observed": "GICv3",
+                "linux_iomem_claims": {
+                    "distributor": claims["gicd"],
+                    "redistributors": claims["gicr"],
+                },
             },
             "timer": {
                 "clocksource": clocksource,
                 "clockevent": clockevent,
+                "dt_ppi_ids": dt_timer_ppis,
+                "expected_gic_hwirqs": expected_timer_hwirqs,
                 "linux_irq": timer_rows[0]["linux_irq"],
                 "gic_hwirq": timer_rows[0]["hwirq"],
                 "per_cpu_delta": timer_rows[0]["per_cpu_delta"],
@@ -307,6 +398,8 @@ def build_report(evidence, reference_dtb, repo):
             },
             "ufs": {
                 "driver": driver,
+                "linux_iomem_claim": claims["ufs"],
+                "linux_phy_iomem_claim": claims["ufs_phy"],
                 "dt_spi_ids": dt_ufs_spis,
                 "expected_gic_hwirqs": expected_ufs_hwirqs,
                 "irq_rows": ufs_rows,
@@ -345,6 +438,7 @@ def build_report(evidence, reference_dtb, repo):
                 "Android uses GICv3 and the architected ARM timer at runtime",
                 "the captured UFS DT IRQ tuples match Linux ufshcd IRQs",
                 "UFS interrupt progress occurred through ufshcd-mtk",
+                "Android Linux reserved the DT-declared GICD/GICR/UFS/PHY MMIO ranges",
                 "Linux bound arm-scmi and uses psci_idle",
             ],
             "not_proven": [

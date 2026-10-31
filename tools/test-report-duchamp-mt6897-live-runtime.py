@@ -52,6 +52,18 @@ class RuntimeEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "moved backwards"):
             self.module.interrupt_deltas(before, after)
 
+    def test_iomem_claim_must_match_exact_range_and_owner(self):
+        rows = self.module.parse_iomem(
+            "0c400000-0c43ffff : GICD\n"
+            "0c440000-0c63ffff : GICR\n"
+            "112b0000-112b2fff : 112b0000.ufshci ufshci@112b0000\n"
+        )
+        claim = self.module.require_iomem_claim(rows, 0x112B0000, 0x3000, "ufshci")
+        self.assertEqual(claim["start"], "0x112b0000")
+        self.assertEqual(claim["end"], "0x112b2fff")
+        with self.assertRaisesRegex(ValueError, "missing unique"):
+            self.module.require_iomem_claim(rows, 0x112B0000, 0x4000, "ufshci")
+
     def test_irq_identity_change_is_rejected(self):
         before = interrupts((100, 200), (10, 20, 30, 40))
         after = interrupts((103, 205), (11, 22, 34, 45)).replace(
