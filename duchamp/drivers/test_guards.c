@@ -42,7 +42,8 @@ int main(void) {
         struct dufs_config c={.io={&m,read32,write32,put,get,fence,ticks},
             .dma_begin=0x100000,.dma_end=0x200000,.list_dma=0x100000,
             .command_dma=0x101000,.data_dma=0x110000,.timeout_ms=5,
-            .exclusive_platform_ready=1,.poll_limit=64};
+            .exclusive_platform_ready=1,.poll_limit=64,
+            .descriptor_address_bits=64,.data_address_bits=64};
         struct dufs_host *h=calloc(1,sizeof(*h)); CHECK(h!=NULL);
         if(mode==0) m.regs[0x34/4]=1; /* inherited live controller: no takeover */
         if(mode==1) m.stall=1;

@@ -33,7 +33,8 @@ class IO(C.Structure):
 class Config(C.Structure):
     _fields_ = [('io', IO), ('begin', U64), ('end', U64), ('list', U64),
                 ('command', U64), ('data', U64), ('timeout', U32),
-                ('ready', C.c_uint8), ('lun', C.c_uint8), ('poll_limit', U32)]
+                ('ready', C.c_uint8), ('lun', C.c_uint8),
+                ('descriptor_bits', C.c_uint8), ('data_bits', C.c_uint8), ('poll_limit', U32)]
 
 
 class Surface(C.Structure):
@@ -157,7 +158,7 @@ def configure_library(path):
     return lib
 
 
-def ufs_checks(lib, q, base, original, fault):
+def ufs_checks(lib, q, base, original, fault, data_base=None, descriptor_bits=64, data_bits=64):
     errors, checks, operations, cdbs = [], {}, [], []
     inject, timeout_arm = [None], [False]
 
@@ -202,16 +203,24 @@ def ufs_checks(lib, q, base, original, fault):
 
     callbacks = [RD(rd), WR(wr), DMA(put), DMA(get), FENCE(lambda _: None),
                  TICK(lambda _: 1 if inject[0]=='frozen' else time.monotonic_ns() // 1_000_000)]
-    cfg = Config(IO(None, *callbacks), base, base+0x100000,
-                 base, base+0x1000, base+0x10000, 500, 1, 0, 64 if fault=='frozen' else 1000000)
+    data_base=base+0x10000 if data_base is None else data_base
+    cfg = Config(IO(None, *callbacks), min(base,data_base), max(base+0x100000,data_base+0x40000),
+                 base, base+0x1000, data_base, 500, 1, 0, descriptor_bits, data_bits,
+                 64 if fault=='frozen' else 1000000)
     host = C.create_string_buffer(lib.dufs_host_size())
     cfg.ready = 0
     checks['unproven_platform_no_io'] = lib.dufs_bind(host, C.byref(cfg)) == -2 and not operations
     cfg.ready = 1
     for name, field, value in [('unaligned_list', 'list', base+1),
                               ('overlap', 'command', base),
-                              ('outside_window', 'data', base+0x100000),
-                              ('address_overflow', 'data', 0xfffffffffffffff0)]:
+                              ('outside_window', 'data', cfg.end),
+                              ('address_overflow', 'data', 0xfffffffffffffff0),
+                              ('unknown_descriptor_limit','descriptor_bits',0),
+                              ('unknown_payload_limit','data_bits',0),
+                              ('invalid_descriptor_limit','descriptor_bits',65),
+                              ('invalid_payload_limit','data_bits',65),
+                              ('descriptor_limit_too_small','descriptor_bits',1),
+                              ('payload_limit_too_small','data_bits',1)]:
         previous = getattr(cfg, field); setattr(cfg, field, value)
         checks[name+'_no_io'] = lib.dufs_bind(host, C.byref(cfg)) == -1 and not operations
         setattr(cfg, field, previous)
@@ -264,7 +273,8 @@ def ufs_checks(lib, q, base, original, fault):
                                   for c in cdbs if c['transaction'] == 1)
     checks['no_task_abort_or_implicit_reset'] = not any(op[0]=='w' and
         (op[1] == 0x5c or op[1] == 0x34 and op[2] == 0) for op in operations)
-    return dict(checks=checks, dma_base=hex(base), controller_version=hex(q.read(8)),
+    return dict(checks=checks, dma_base=hex(base), data_dma_base=hex(data_base),
+                descriptor_address_bits=descriptor_bits,data_address_bits=data_bits,controller_version=hex(q.read(8)),
                 pci_id=hex(q.pci_id), geometry=dict(blocks=count.value, block_bytes=size.value),
                 reads=reads, packets=cdbs, injected_fault=fault, errors=errors)
 
@@ -344,8 +354,11 @@ def main():
               'cross_compile_only':cross_objects,
               'source_hashes': {str(p.relative_to(repo)): hashlib.sha256(p.read_bytes()).hexdigest()
                                 for p in (repo/'duchamp/drivers').glob('*.[ch]')}, 'ufs': []}
-    cases=[(0x100000,'tag',image,original),(0x100100000,'timeout',image,original),
-           (0x100100000,'frozen',image,original)]
+    cases=[(0x100000,'tag',image,original,None,64,64),
+           (0x100100000,'timeout',image,original,None,64,64),
+           (0x100100000,'frozen',image,original,None,64,64),
+           (0x100000,'tag',image,original,0x100110000,32,64),
+           (0x100100000,'tag',image,original,0x110000,64,32)]
     if args.root_image:
         root=args.root_image.resolve()
         if not stat.S_ISREG(root.stat().st_mode):
@@ -353,8 +366,8 @@ def main():
         data=root.read_bytes()
         if len(data)<1024*1024 or len(data)%4096 or data[1024:1026] not in (b'H+',b'HX'):
             ap.error('--root-image must contain an aligned HFS+ volume')
-        cases.append((0x100100000,'tag',root,data))
-    for index, (base, fault, disk, contents) in enumerate(cases):
+        cases.append((0x100100000,'tag',root,data,None,64,64))
+    for index, (base, fault, disk, contents, data_base, descriptor_bits, data_bits) in enumerate(cases):
         folder = out / f'ufs-{index}'
         folder.mkdir()
         # Unix socket length is bounded; use a short temporary socket directory.
@@ -362,7 +375,7 @@ def main():
             q = None
             try:
                 q = Qtest(args.qemu, disk, Path(name))
-                item=ufs_checks(lib,q,base,contents,fault)
+                item=ufs_checks(lib,q,base,contents,fault,data_base,descriptor_bits,data_bits)
                 item['image_sha256']=hashlib.sha256(contents).hexdigest()
                 item['image_kind']='existing HFS+ (read only)' if disk!=image else 'generated fixture'
                 item['image_unchanged']=disk.read_bytes()==contents

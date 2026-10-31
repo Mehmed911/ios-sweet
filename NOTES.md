@@ -1,3 +1,22 @@
+MT6897 firmware/DMA follow-up — active work (2026-10-31):
+Baseline31c15ab,duchamp-bootstrap; local saved files/WSL/QEMU only. No phone,
+USB,ADB,fastboot,physical UFS or partition action. Preserve existing user edits.
+Production UFS transport now requires separate provider-established descriptor
+and payload DMA address limits; unknown/invalid limits fail before any I/O.
+Each allocation's full extent is checked, including crossing4GiB; CAP64 is
+a separate controller ceiling. Large bus aperture alone no longer rejects
+an otherwise valid low32-bit pool. QEMU-only adapter supplies64/64 explicitly.
+research/mt6897-routing/poll-v1 PASS:79 native ASan/UBSan +79 ARM64 model checks.
+transport-v1 PASS:242 qtest/core checks,78 sanitizer guards;6 read-only images/
+controller cases,including control32/data64 and control64/data32 with actual
+emulated DMA below/above4GiB. Model CAP32/aperture and extent bounds also pass.
+compile-v1:both UFS core and XNU adapter compile against generated XNU headers.
+Full new XNU CI/guest test PENDING. New firmware/source/saved client follow-up
+IN PROGRESS. Existing reference firmware is not identified as installed BL31.
+Installed monitor effects/ownership and physical DMA route remain unverified;
+the physical backend stays disabled. Do not infer UFS uses display/MDP IOMMU.
+End of MT6897 firmware/DMA follow-up.
+
 MT6897 boot platform — active source integration (2026-10-31):
 Baseline5834326, duchamp-bootstrap. No phone/USB/ADB/fastboot/partition access.
 Captured FDT timer13MHz, virtual PPI11=>INTID27, GIC four-cell interrupt

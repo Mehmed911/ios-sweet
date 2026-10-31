@@ -54,7 +54,8 @@ static struct dufs_config config(unsigned limit,unsigned ms){
     return (struct dufs_config){.io={&model,rd,wr,put,get,barrier,ticks},
         .dma_begin=0x100000,.dma_end=0x160000,.list_dma=0x100000,
         .command_dma=0x101000,.data_dma=0x110000,.timeout_ms=ms,
-        .exclusive_platform_ready=1,.poll_limit=limit};
+        .exclusive_platform_ready=1,.poll_limit=limit,
+        .descriptor_address_bits=64,.data_address_bits=64};
 }
 static void reset(void){
     memset(&host,0,sizeof(host));memset(&model,0,sizeof(model));memset(arena,0,sizeof(arena));
@@ -73,6 +74,33 @@ static void poisoned(unsigned cause){
 }
 int main(void){
     CHECK(dufs_timeout_cause(NULL)==DUFS_WAIT_NONE);
+    /* Descriptor/coherent and payload limits must be established separately. */
+    for(unsigned field=0;field<2;field++)for(unsigned bad=0;bad<2;bad++){
+        reset();struct dufs_config c=config(64,3);
+        if(field)c.data_address_bits=bad?65:0;else c.descriptor_address_bits=bad?65:0;
+        CHECK(dufs_bind(&host,&c)==DUFS_ARGUMENT && !io_count());
+    }
+    reset();struct dufs_config mixed=config(64,3);mixed.dma_end=1ull<<36;
+    mixed.descriptor_address_bits=32;mixed.data_address_bits=64;mixed.data_dma=0x100100000ull;
+    CHECK(dufs_bind(&host,&mixed)==0 && !io_count());
+    reset();mixed.data_address_bits=32;
+    CHECK(dufs_bind(&host,&mixed)==DUFS_ARGUMENT && !io_count());
+    reset();mixed.data_address_bits=64;mixed.command_dma=0x100200000ull;
+    CHECK(dufs_bind(&host,&mixed)==DUFS_ARGUMENT && !io_count());
+    reset();mixed=config(64,3);mixed.dma_end=1ull<<36;
+    mixed.descriptor_address_bits=mixed.data_address_bits=32;
+    mixed.list_dma=0xfffffc00ull;
+    CHECK(dufs_bind(&host,&mixed)==0 && !io_count()); /* exact descriptor end */
+    reset();mixed.command_dma=0xffffff80ull;mixed.list_dma=0x100000;
+    CHECK(dufs_bind(&host,&mixed)==DUFS_ARGUMENT && !io_count());
+    reset();mixed.command_dma=0x101000;mixed.data_dma=0xfffc0000ull;
+    CHECK(dufs_bind(&host,&mixed)==0 && !io_count()); /* exact payload end */
+    reset();mixed.data_dma+=4;
+    CHECK(dufs_bind(&host,&mixed)==DUFS_ARGUMENT && !io_count());
+    /* A 64-GiB aperture does not force an otherwise low pool above CAP32. */
+    reset();mixed=config(64,3);mixed.dma_end=1ull<<36;
+    mixed.descriptor_address_bits=mixed.data_address_bits=32;model.regs[0]=0;
+    CHECK(dufs_bind(&host,&mixed)==0 && dufs_start(&host)==0);
     for(unsigned mode=0;mode<2;mode++){
         reset();struct dufs_config c=config(mode?DUFS_MAX_POLLS+1:0,3);
         CHECK(dufs_bind(&host,&c)==DUFS_ARGUMENT && !io_count());

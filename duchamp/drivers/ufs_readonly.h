@@ -29,6 +29,11 @@ struct dufs_config {
     uint64_t list_dma, command_dma, data_dma;
     uint32_t timeout_ms;
     uint8_t exclusive_platform_ready, lun;
+    /* Provider-established limits for control descriptors and payload mappings
+     * separately. Neither is inferred from CAP64 or the aperture. Zero means
+     * unknown and is rejected before any I/O. These do not attest a DMA route.
+     */
+    uint8_t descriptor_address_bits, data_address_bits;
     /* Resource policy, not a measured MT6897 timing parameter. Shared across
      * all waits/queries within one public operation; callbacks must return.
      */

@@ -253,7 +253,8 @@ int duchamp_qemu_ufs_rootdev(dev_t *device) {
         .io={NULL,qu_read32,qu_write32,qu_dma_write,qu_dma_read,qu_barrier,qu_milliseconds},
         .dma_begin=qu.dma_pa,.dma_end=qu.dma_pa+QU_DMA_BYTES,
         .list_dma=qu.dma_pa,.command_dma=qu.dma_pa+0x1000,.data_dma=qu.dma_pa+0x10000,
-        .timeout_ms=3000,.exclusive_platform_ready=1,.lun=0,.poll_limit=DUFS_MAX_POLLS
+        .timeout_ms=3000,.exclusive_platform_ready=1,.lun=0,.poll_limit=DUFS_MAX_POLLS,
+        .descriptor_address_bits=64,.data_address_bits=64 /* QEMU-only private DMA pool */
     };
     int result=dufs_bind(&qu.host,&setup);
     if(!result) result=dufs_start(&qu.host);

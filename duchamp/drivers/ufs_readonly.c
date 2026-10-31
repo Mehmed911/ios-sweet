@@ -49,6 +49,10 @@ static int inside(uint64_t a, uint64_t n, uint64_t lo, uint64_t hi) {
 static int separate(uint64_t a, uint64_t n, uint64_t b, uint64_t m) {
     return a<b ? n<=b-a : m<=a-b;
 }
+static int fits_bits(uint64_t a,uint64_t n,unsigned bits) {
+    return bits && bits<=64 && n && n-1<=UINT64_MAX-a &&
+        (bits==64 || !((a+n-1)>>bits));
+}
 size_t dufs_host_size(void) { return sizeof(struct dufs_host); }
 unsigned dufs_timeout_cause(const struct dufs_host *h) { return h?h->timeout_reason:DUFS_WAIT_NONE; }
 int dufs_bind(struct dufs_host *h, const struct dufs_config *c) {
@@ -64,6 +68,8 @@ int dufs_bind(struct dufs_host *h, const struct dufs_config *c) {
     const uint64_t n[]={DUFS_LIST_BYTES,DUFS_COMMAND_BYTES,DUFS_MAX_TRANSFER};
     for(int i=0;i<3;i++) {
         if(!inside(a[i],n[i],c->dma_begin,c->dma_end)) return DUFS_ARGUMENT;
+        if(!fits_bits(a[i],n[i],i==2?c->data_address_bits:c->descriptor_address_bits))
+            return DUFS_ARGUMENT;
         for(int j=0;j<i;j++) if(!separate(a[i],n[i],a[j],n[j])) return DUFS_ARGUMENT;
     }
     struct dufs_config config=*c;
@@ -77,8 +83,12 @@ int dufs_start(struct dufs_host *h) {
     uint32_t cap=rd(h,CAP);
     h->version=rd(h,VER);
     if(h->version<0x100 || h->version>0x4ff) return bad(h,DUFS_STATE);
-    if(!(cap&(1u<<24)) && ((h->config.list_dma|h->config.command_dma|
-                           h->config.data_dma| (h->config.dma_end-1))>>32))
+    /* CAP64 is a separate controller ceiling. Check allocated extents, not
+     * the end of a potentially much larger declared bus aperture. */
+    if(!(cap&(1u<<24)) &&
+       (!fits_bits(h->config.list_dma,DUFS_LIST_BYTES,32) ||
+        !fits_bits(h->config.command_dma,DUFS_COMMAND_BYTES,32) ||
+        !fits_bits(h->config.data_dma,DUFS_MAX_TRANSFER,32)))
         return bad(h,DUFS_ARGUMENT);
     wr(h,IE,0); wr(h,HCE,1);
     if(wait_bits(h,HCE,1,1) || wait_bits(h,HCS,8,8)) return DUFS_TIMEOUT;
