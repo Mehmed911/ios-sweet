@@ -118,6 +118,7 @@ jobs:
           grep -Fq 'DUCHAMP CPU BINDINGS V1' xnu/iokit/KernelConfigTables.cpp
           grep -Fq 'ARM64 bootstrap CPU' xnu/iokit/Kernel/arm/SweetCPU.cpp
           grep -Fq 'DUCHAMP UNKNOWN CLOCK RATIOS V1' xnu/pexpert/arm/pe_identify_machine.c
+          grep -Fq 'XNULDRST' xnu/osfmk/arm64/start.s
           cmp ../duchamp/drivers/duchamp_gic_boot.h xnu/pexpert/arm/duchamp_gic_boot.h
           cmp ../duchamp/drivers/ufs_readonly.c xnu/bsd/dev/duchamp_ufs_core.c
           cmp ../duchamp/drivers/ufs_readonly.h xnu/bsd/dev/ufs_readonly.h

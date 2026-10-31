@@ -1,0 +1,100 @@
+diff --git a/osfmk/arm64/start.s b/osfmk/arm64/start.s
+--- a/osfmk/arm64/start.s
++++ b/osfmk/arm64/start.s
+@@ -234,39 +234,80 @@ LEXT(_start)
+ LEXT(LowExceptionVectorBase)
+ 	/* EL1 SP 0 */
+-	b		.
++	b		Lduchamp_loader_early_exception
+ 	.align	7
+-	b		.
++	b		Lduchamp_loader_early_exception
+ 	.align	7
+-	b		.
++	b		Lduchamp_loader_early_exception
+ 	.align	7
+-	b		.
++	b		Lduchamp_loader_early_exception
+ 	/* EL1 SP1 */
+ 	.align	7
+-	b		.
++	b		Lduchamp_loader_early_exception
+ 	.align	7
+-	b		.
++	b		Lduchamp_loader_early_exception
+ 	.align	7
+-	b		.
++	b		Lduchamp_loader_early_exception
+ 	.align	7
+-	b		.
++	b		Lduchamp_loader_early_exception
+ 	/* EL0 64 */
+ 	.align	7
+-	b		.
++	b		Lduchamp_loader_early_exception
+ 	.align	7
+-	b		.
++	b		Lduchamp_loader_early_exception
+ 	.align	7
+-	b		.
++	b		Lduchamp_loader_early_exception
+ 	.align	7
+-	b		.
++	b		Lduchamp_loader_early_exception
+ 	/* EL0 32 */
+ 	.align	7
+-	b		.
++	b		Lduchamp_loader_early_exception
+ 	.align	7
+-	b		.
++	b		Lduchamp_loader_early_exception
+ 	.align	7
+-	b		.
++	b		Lduchamp_loader_early_exception
+ 	.align	7
+-	b		.
++	b		Lduchamp_loader_early_exception
++
++/*
++ * HakiOS uses a loader-return slot to recover useful state from an early
++ * exception.  SWEET keeps only the transport ABI here: no device register,
++ * storage, PMIC, or SoC-specific code is shared with the MT6768 port.
++ *
++ * x0/x1: optional log PA/length (none in this minimal early handler)
++ * x2: reason (1 = early synchronous/asynchronous exception)
++ * x3/x4/x5: ESR_EL1, ELR_EL1, FAR_EL1
++ */
++Lduchamp_loader_early_exception:
++	mrs		x3, ESR_EL1
++	mrs		x4, ELR_EL1
++	mrs		x5, FAR_EL1
++	adrp	x16, EXT(duchamp_loader_return_slot)@page
++	add		x16, x16, EXT(duchamp_loader_return_slot)@pageoff
++	ldr		x16, [x16, #8]
++	cbz		x16, Lduchamp_loader_return_halt
++	mov		x0, xzr
++	mov		x1, xzr
++	mov		x2, #1
++	mrs		x6, SCTLR_EL1
++	bic		x6, x6, #1
++	bic		x6, x6, #(1 << 2)
++	bic		x6, x6, #(1 << 12)
++	msr		SCTLR_EL1, x6
++	isb
++	tlbi	VMALLE1
++	dsb		sy
++	isb
++	br		x16
++Lduchamp_loader_return_halt:
++	b		Lduchamp_loader_return_halt
++
++	.balign 8
++	.globl EXT(duchamp_loader_return_slot)
++LEXT(duchamp_loader_return_slot)
++	.ascii	"XNULDRST"
++	.quad	0		/* bootshim return stub physical address */
++	.quad	0		/* diagnostic checkpoint selected by loader */
++	.quad	0		/* physBase - virtBase */
+ 	.align 12, 0
+ 
+ #if defined(KERNEL_INTEGRITY_KTRR) || defined(KERNEL_INTEGRITY_CTRR)
