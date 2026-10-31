@@ -199,3 +199,35 @@ The next physical prerequisites remain firmware/resource ownership, runtime
 timer/interrupt delivery and scheduler verification, then an authorized DMA/UFS
 provider. Storage and Mali are separate uncompleted work. QEMU RAM-root and
 Apple-service tests do not prove full iOS or phone boot readiness.
+
+## Parallel offline regression gate
+
+`tools/test-duchamp-mt6897-offline-gate.py` now runs the saved-DTB preflight,
+boot-profile tests, GIC model, power/DMA model, PMIC/firmware/IOMMU providers,
+UFS leaf-clock mapping and bounded UFS polling as one parallel local gate. Each
+child has a finite timeout, existing output is preserved, and the gate fails if
+the saved inputs or relevant sources change while it runs.
+
+The 2026-10-31 replay completed all eight components in 9.618 host seconds.
+It passed 18 profile tests, 128 native and 128 ARM64 GIC checks, four actual
+QEMU GICR checks, 176 power and 149 DMA checks, 424 provider checks, 12 raw
+SMC fixture checks, and 79 native plus 79 ARM64 bounded-polling checks. The
+result is `research/mt6897-offline-gate/maxspeed-20261031-v2/result.json`,
+SHA-256
+`cce05a7b39124cb09ea67109143e99822d284478b6fcf0fddcdd871d4c97dd51`.
+
+```sh
+python3 tools/test-duchamp-mt6897-offline-gate.py \
+  research/mt6897-offline-gate/replay-new \
+  --fdt ../phone-fdt.bin \
+  --template work/qemu-multiproc.adt \
+  --boot-sources research/mt6897-boot/sources \
+  --platform-sources research/mt6897-platform/sources \
+  --backend-sources research/mt6897-backends/sources \
+  --jobs 7 --timeout-seconds 120
+```
+
+The gate explicitly keeps physical access, MMIO, flashing and phone execution
+disabled. It reports the installed firmware contract, physical UFS DMA/IOMMU
+route, runtime interrupt/timer delivery, secondary CPUs and Mali as unresolved;
+passing it is not authorization for a phone trial.
