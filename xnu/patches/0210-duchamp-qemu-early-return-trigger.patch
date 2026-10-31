@@ -1,0 +1,29 @@
+diff --git a/osfmk/arm64/start.s b/osfmk/arm64/start.s
+--- a/osfmk/arm64/start.s
++++ b/osfmk/arm64/start.s
+@@ -538,7 +538,26 @@ Lsweet_mark_pixel:
+ 	add		x0, x0, EXT(LowExceptionVectorBase)@pageoff
+ 	MSR_VBAR_EL1_X0
+ 
++#if defined(SWEET)
++	/*
++	 * Opt-in QEMU return-channel test.  A normal loader writes checkpoint 0.
++	 * Only the exact "DUCHQEMU" value, written together with a non-zero return
++	 * stub, deliberately takes BRK after the low vectors are installed.  This
++	 * performs no MMIO and cannot be selected by a kernel boot argument.
++	 */
++	adrp	x0, EXT(duchamp_loader_return_slot)@page
++	add		x0, x0, EXT(duchamp_loader_return_slot)@pageoff
++	ldr		x2, [x0, #8]
++	cbz		x2, Lduchamp_qemu_return_continue
++	ldr		x0, [x0, #16]
++	MOV64	x1, 0x4455434851454d55
++	cmp		x0, x1
++	b.ne	Lduchamp_qemu_return_continue
++	brk		#0xd0
++Lduchamp_qemu_return_continue:
++#endif
++
+ 
+ 	// Get the kernel memory parameters from the boot args
+ 	ldr		x22, [x20, BA_VIRT_BASE]			// Get the kernel virt base
