@@ -64,3 +64,8 @@ initialization; runtime DMA/firmware ownership is still unverified.
 the original Apple-service fixture: 72/72 checks in 86.819 host seconds on
 a Linux-local RAM workspace with QEMU's default clock. Physical phone
 drivers and full iOS/UI remain unverified milestones.
+
+[MT6897-BOOT-PLATFORM.md](MT6897-BOOT-PLATFORM.md) tracks bounded XNU GICR
+scan/wake integration, architected ARM CPU matching, and isolated phone/QEMU
+ADT descriptions derived from the saved FDT. Runtime phone ownership and
+interrupt/timer delivery remain unverified.

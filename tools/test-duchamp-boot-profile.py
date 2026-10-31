@@ -23,10 +23,19 @@ class Profiles(unittest.TestCase):
             t,end=p.adt.parse(blob);self.assertEqual(end,len(blob));self.assertEqual(len(p.child(t,'cpus').children),1)
             fb=p.child(t,'sweet-fbcon');self.assertEqual(fb.prop('reg')[:8],p.u64(0xfcc2f000))
             self.assertEqual(fb.prop('width'),p.u32(1220));self.assertEqual(fb.prop('stride'),p.u32(4992))
-    def test_unknown_phone_clocks_omitted(self):
-        blob,_=p.build(self.template,'phone',self.facts(),b'x'*64);t,_=p.adt.parse(blob);cpu=p.child(p.child(t,'cpus'),'cpu0')
-        self.assertIsNone(cpu.prop('clock-frequency'));self.assertIsNone(cpu.prop('bus-frequency'))
-        self.assertEqual(cpu.prop('timebase-frequency'),p.u32(13000000))
+    def test_unknown_core_bus_ddr_clocks_omitted(self):
+        for target,hz in [('phone',13000000),('qemu',62500000)]:
+            blob,_=p.build(self.template,target,self.facts(),b'x'*64);t,_=p.adt.parse(blob);cpu=p.child(p.child(t,'cpus'),'cpu0')
+            for key in ['clock-frequency','bus-frequency','memory-frequency']:self.assertIsNone(cpu.prop(key))
+            self.assertEqual(cpu.prop('timebase-frequency'),p.u32(hz))
+    def test_console_above_diagnostic_marker_band(self):
+        for target in ['phone','qemu']:
+            f=self.facts();blob,emitted=p.build(self.template,target,f,b'x'*64);tree,_=p.adt.parse(blob)
+            self.assertEqual(p.child(tree,'sweet-fbcon').prop('height'),p.u32(2680))
+            display=p.child(p.child(tree,'arm-io'),'disp0')
+            self.assertEqual(display.prop('canvas-height'),p.u32(2712))
+            self.assertEqual(emitted['console_viewport']['rows'],83)
+            self.assertLessEqual(83*32,f['framebuffer']['height']-32)
     def test_timer_flag_rejected(self):
         n=self.tree.nodes['/timer'];raw=bytearray(n.props['interrupts']);raw[11]=8;n.props['interrupts']=bytes(raw)
         with self.assertRaises(ValueError):self.facts()

@@ -16,23 +16,42 @@ bb15237 CI41152464883 SUCCESS (intermediate scan/wake version only).
 Latest check-v2 PASS:128 native ASan/UBSan and128 ARM64 model checks,
 plus4 actual QEMU GICR checks; added PIDR2 validation before TYPER scan.
 ELF SHA d83344e72f0180ccc7c9d05e77dce7318171149d275dc4a2e8572e4ccd71f06e.
-11 staging guards and17 saved-FDT/profile tests PASS. pe_fiq.c cross-compiles
+11 staging guards and18 saved-FDT/profile tests PASS. pe_fiq.c cross-compiles
 against real generated XNU headers. Local C++ compile-v2 is BLOCKED by Linux
 clang lacking Apple's __builtin_xnu_type_summary/signature, not a compile pass;
-full Apple-toolchain CI is required for final CPU/config changes.
+Full Apple-toolchain CI41154098870 now SUCCESS at ff841ef7728a717262c00cee96fc163e12aedf8e.
 New separate phone/QEMU ADTs derive saved-FDT GIC/timer/CPU facts, preserve
 template software identities, omit unknown phone clocks and enable one CPU only.
 Public GIC/timer source blobs pinned at kernel_common cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6.
 New QEMU-profile baseline FAILED on old f6dfc1e kernel (no BSD/root/PID1);
 SweetCPU only matched qcom,kryo470. Added DUCHAMP-only ARM A510/A715/A76
-bindings and neutral CPU name. Final new-kernel build/guest tests PENDING.
+bindings and neutral CPU name; final new-kernel guest tests PASS below.
 Clock consumer audit found undefined division with missing bus-frequency.
 DUCHAMP-only ratio guards retain unknown clocks as zero and use nonzero
 ratio denominators. clock-consumer-v1 executes the real transformed function:
 baseline UBSan division-by-zero reproduced; unknown/zero and legacy known
 clock cases PASS after change. compile-v3 cross-compiles both pe_fiq.c and
 pe_identify_machine.c against generated XNU headers. No synthetic clock added.
-654a3c9 CI41153721164 superseded by this clock fix; final build required.
+654a3c9 CI41153721164 cancelled after superseding it with the clock fix.
+Final kernel artifact13024424002 archive SHA d527cafd07e02fcebefcfdb0306cdce7f936fc4a4f432cc1e611e57064375c85;
+kernel SHA a26248fa69047a6c2110f7998022d0625e8c617dd900050f098d39ed49a79232.
+Verified API archive digest and internal SHA256SUMS; final kernel has ARM
+CPU binding/name and bounded-GIC scan/wake markers.
+guest-profile-final-v1 reached root/PID1 but FAILED strict decoding:2 glyphs
+overlapped the last32-pixel diagnostic band. Corrected ADT sweet-fbcon text
+viewport to2680px/83rows, retaining actual1220x2712 canvas/full mapping.
+guest-profile-final-v2 PASS:24/24,33.539hostsec,15frames,0unknown glyphs,
+defaultclock; HFS+ root,PID1,readonly/error paths,backend/table RAM checks.
+Uses qemu-profile-v4 (ARM A76,unknown core/bus/DDR clocks omitted), not phone MMIO.
+system-final-v1 PASS:72/72 original Apple service checks+6 wrapper checks,
+113 installed hashes,86.640hostsec,defaultclock;unchanged legacy ADT/root.
+Final profiles phone SHA efa8ca6254a0534ebe79c0c9a38b12d07b9a468a7bf32ed30c348511553e6101;
+QEMU SHA 5ddf0057a50d97be8fc2a08ad88e443ab3460290f6fc532f5f4dbc063562eebe.
+tools/test-duchamp-ufs-native.ps1 reproduces strict24 checks on Linux ext4
+via Windows UNC, verifies source/fixture/kernel preservation; no /mnt/c VM trace.
+research/mt6897-boot/final-verification.json PASS:all report/source/profile
+pins,5 saved phone input hashes,user edits unchanged;no remaining QEMU process.
+See duchamp/MT6897-BOOT-PLATFORM.md for reproduction and limitations.
 VLPIS behavior on the actual phone is not captured or asserted by these tests.
 Physical GIC/timer/scheduler/firmware readiness still unverified; no phone image
 or test was deployed. Preserve1689 old notes,7 qemu classifier lines and loader edits.

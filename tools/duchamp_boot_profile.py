@@ -97,9 +97,10 @@ def build(template,target,profile,seed=None):
     comps[2:2]=['xiaomi,duchamp','mediatek,mt6897'] if target=='phone' else ['qemu,virt']
     setprop(tree,'compatible',string(*comps))
     cpus=child(tree,'cpus');cpu=copy.deepcopy(child(cpus,'cpu0'));cpus.children=[cpu]
+    # TCG supplies a counter frequency, not measured core/bus/DDR rates.
+    cpu.props=[p for p in cpu.props if p[0] not in ['clock-frequency','bus-frequency','memory-frequency']]
     if target=='phone':
         cp=profile['cpus'][0];freq=profile['timer_hz'];d=profile['gicd'];ds=profile['gicd_bytes'];r=profile['gicr'];rs=profile['gicr_bytes']
-        cpu.props=[p for p in cpu.props if p[0] not in ['clock-frequency','bus-frequency','memory-frequency']]
     else:
         cp={'mpidr':0,'compatible':'arm,cortex-a76'};freq=62500000;d=0x8000000;ds=0x10000;r=0x80a0000;rs=0x100000
     setprop(cpu,'reg',u32(cp['mpidr']));setprop(cpu,'compatible',string(cp['compatible'],'ARM,v8'))
@@ -112,7 +113,12 @@ def build(template,target,profile,seed=None):
     setprop(gic,'reg',u64(d-soc,ds,r-soc,rs));setprop(gic,'virtual-timer-intid',u32(profile['virtual_timer_intid']))
     fb=profile['framebuffer'];fbnode=child(tree,'sweet-fbcon')
     setprop(fbnode,'reg',u64(fb['base'],fb['bytes']))
-    for key in ['width','height','stride']:setprop(fbnode,key,u32(fb[key]))
+    for key in ['width','stride']:setprop(fbnode,key,u32(fb[key]))
+    # sweet_early_mark() paints the last32 pixels; fbcon's height is a text
+    # viewport, distinct from the full display/boot_args framebuffer geometry.
+    console_height=fb['height']-32
+    if console_height<32:raise ValueError('no complete console row above diagnostic band')
+    setprop(fbnode,'height',u32(console_height))
     display=child(arm,'disp0');setprop(display,'canvas-width',u32(fb['width']));setprop(display,'canvas-height',u32(fb['height']))
     blob=adt.serialize(tree)
     if b'qcom,' in blob:raise ValueError('unexpected Qualcomm hardware identity')
@@ -120,5 +126,6 @@ def build(template,target,profile,seed=None):
         'virtual_timer_intid':profile['virtual_timer_intid'],'boot_mpidr':cp['mpidr'],'cpu_count':1,
         'secondary_start_enabled':False,'physical_backend_enabled':False,'phone_execution_authorized':False,
         'template_identity_aliases_retained':['D22AP','iPhone10,3','xiaomi,sweet','AppleARM'],
-        'unknown_cpu_bus_memory_clocks_omitted':target=='phone'}
+        'unknown_cpu_bus_memory_clocks_omitted':True}
+    emitted['console_viewport']={'height':console_height,'rows':console_height//32,'reserved_bottom_pixels':32}
     return blob,emitted
