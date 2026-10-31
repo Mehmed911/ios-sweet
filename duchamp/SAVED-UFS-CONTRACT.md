@@ -72,8 +72,12 @@ An accepted streaming mask must not be treated as proof of the coherent mask.
 The live HCCAP, effective post-quirk capability and resulting masks are absent
 from this saved evidence.
 
-The candidate is **direct DMA, potentially using SWIOTLB**, conditional on no
-inherited or overridden DMA ops/fwspec and on the required ownership contract.
+The candidate is direct DMA, conditional on no inherited or overridden DMA
+ops/fwspec and on the required ownership contract. The follow-up
+[boot-policy audit](UFS-BOUNDS-POLICY.md) finds `swiotlb=noforce` in the saved
+FDT. With the matching source this skips default SWIOTLB initialization;
+the default bounce pool must not be assumed available. Vendor/per-device
+overrides and runtime state remain unverified.
 The source's
 [direct-mapping path](https://github.com/aosp-mirror/kernel_common/blob/cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6/kernel/dma/direct.h)
 can bounce an unreachable address when SWIOTLB is active, or fail when it is

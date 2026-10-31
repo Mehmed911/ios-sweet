@@ -10,11 +10,20 @@ transport-v1/result.json PASS:142 actual QEMU UFS/qtest host-core checks,
 including a frozen timer above4GiB;78 native sanitizer guards also pass.
 compile-v1/result.json:both changed C TUs compile with real XNU generated
 headers, new timeout-cause core definition resolves the adapter import.
-Full XNU CI/guest boots are PENDING for this change; previous24/20 belong
-to the old d51e7db kernel. Do not use those results for the changed core.
-Saved Linux boot-policy analysis is in progress, only allowlisted args should
-be reported; never expose full bootargs/calibration identifiers. SWIOTLB=noforce
-and disable_dma32=on require source interpretation before DMA assumptions.
+Production core commit f6dfc1e077bd196288d99d2250adfbd0b313e7b0 pushed.
+Full XNU CI41147308270 is RUNNING; guest boots PENDING for this change.
+Earlier24/20 belong to d51e7db. Do not use them for the changed core.
+New boot-policy auditor pins7 public files to the saved GKI stamp. audit-v2
+finds swiotlb=noforce disables DEFAULT SWIOTLB init, disable_dma32=on disables
+that zone, ufshcd_core_init is requested blacklisted. Built-in protected KVM
+is only a request, not runtime proof. EXTEND command line needs951/2048 bytes;
+saved vendor-boot bootconfig section is empty, bootloader-generated one unknown.
+check-v2 PASS:50 native ASan/UBSan +50 ARM64 QEMU checks of3 unchanged Linux
+parameter bodies with fixture capabilities; no Linux/pKVM/SWIOTLB initialization.
+All9 auditor guards pass (one initial boundary-test expectation corrected).
+Fresh public fetch verifies all7 exact Git blobs. Full bootargs never exported.
+This refines previous default-bounce assumptions; vendor overrides remain open.
+See duchamp/UFS-BOUNDS-POLICY.md. These Linux policies do not authorize XNU DMA.
 Physical firmware identity/effects, DMA ownership and effective masks remain
 unverified. No physical MT6897 backend enabled by these local tests.
 End of bounded-UFS handoff.

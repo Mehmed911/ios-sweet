@@ -52,5 +52,10 @@ models and the physical UFS route remains disabled.
 The follow-up audit of saved boot/vendor-boot images, the closer kernel source
 stamp, actual vendor UFS instruction fragments and local EL1/EL3 fixture is in
 [SAVED-UFS-CONTRACT.md](SAVED-UFS-CONTRACT.md). It narrows the DMA candidate to
-direct mapping with possible SWIOTLB under explicit conditions; it does not
+direct mapping under explicit conditions; it does not
 verify the installed monitor's effects or enable a physical UFS backend.
+
+[UFS-BOUNDS-POLICY.md](UFS-BOUNDS-POLICY.md) adds finite UFS polling even when
+the timer stalls, plus a pinned saved-boot-policy audit. The captured
+`swiotlb=noforce` request skips the matching source's default bounce-pool
+initialization; runtime DMA/firmware ownership is still unverified.
