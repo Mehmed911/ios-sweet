@@ -227,6 +227,53 @@ def fdt_snapshot(tree):
     }
 
 
+def cells_integer(cells):
+    value = 0
+    for cell in cells:
+        value = (value << 32) | cell
+    return value
+
+
+def decode_dma_ranges(node):
+    """Decode a node's DT dma-ranges without inferring physical DMA safety."""
+    if "dma-ranges" not in node.props:
+        return None
+    cells = node.cells("dma-ranges")
+    if not cells:
+        return []
+    if node.parent is None:
+        raise ValueError(f"{node.path}:dma-ranges has no parent address space")
+    child_cells = node.scalar("#address-cells", 2)
+    parent_cells = node.parent.scalar("#address-cells", 2)
+    size_cells = node.scalar("#size-cells", 1)
+    width = child_cells + parent_cells + size_cells
+    if (
+        not 1 <= child_cells <= 2
+        or not 1 <= parent_cells <= 2
+        or not 1 <= size_cells <= 2
+        or len(cells) % width
+    ):
+        raise ValueError(f"{node.path}: unsupported dma-ranges format")
+    windows = []
+    for offset in range(0, len(cells), width):
+        child_end = offset + child_cells
+        parent_end = child_end + parent_cells
+        child = cells_integer(cells[offset:child_end])
+        parent = cells_integer(cells[child_end:parent_end])
+        size = cells_integer(cells[parent_end:parent_end + size_cells])
+        if not size or child + size > 1 << 64 or parent + size > 1 << 64:
+            raise ValueError(f"{node.path}: invalid dma-ranges window")
+        windows.append(
+            {
+                "child_bus_start": hex(child),
+                "parent_bus_start": hex(parent),
+                "bytes": hex(size),
+                "identity": child == parent,
+            }
+        )
+    return windows
+
+
 def compare_fdt(reference, live):
     old = fdt_snapshot(reference)
     new = fdt_snapshot(live)
@@ -268,6 +315,7 @@ def ancestor_dma_contract(node):
                 "iommu_map_present": "iommu-map" in node.props,
                 "dma_coherent_present": "dma-coherent" in node.props,
                 "dma_ranges_cells": node.cells("dma-ranges"),
+                "dma_ranges": decode_dma_ranges(node),
             }
         )
         node = node.parent
@@ -396,6 +444,11 @@ def build_report(evidence, reference_dtb, repo):
     iommu_suppliers = [supplier for supplier in suppliers if "iommu" in supplier.lower()]
 
     ancestry = ancestor_dma_contract(ufs)
+    direct_dma_windows = [
+        {"path": item["path"], **window}
+        for item in ancestry
+        for window in (item["dma_ranges"] or [])
+    ]
     dt_iommu_binding = any(
         item["iommus_present"] or item["iommu_map_present"] for item in ancestry
     )
@@ -538,10 +591,22 @@ def build_report(evidence, reference_dtb, repo):
             "linux_sysfs_iommu_group_attached": sysfs_iommu_group,
             "linux_supplier_links": suppliers,
             "linux_iommu_supplier_links": iommu_suppliers,
+            "dt_direct_dma_windows": direct_dma_windows,
             "linux_observation": (
                 "no DT IOMMU binding, Linux iommu_group, or IOMMU supplier link observed"
                 if not dt_iommu_binding and not sysfs_iommu_group and not iommu_suppliers
                 else "an IOMMU declaration or Linux attachment was observed"
+            ),
+            "route_interpretation": (
+                "the DT declares a direct identity DMA window and Linux exposes no "
+                "UFS IOMMU attachment; firewall, coherency and XNU DMA safety remain "
+                "unverified"
+                if direct_dma_windows
+                and all(window["identity"] for window in direct_dma_windows)
+                and not dt_iommu_binding
+                and not sysfs_iommu_group
+                and not iommu_suppliers
+                else "the available evidence does not establish a direct UFS DMA route"
             ),
             "physical_dma_bypass_verified": False,
             "coherency_verified": False,
@@ -557,6 +622,7 @@ def build_report(evidence, reference_dtb, repo):
                 "Linux bound arm-scmi and uses psci_idle",
                 "the installed SCMI endpoint identifies as MediaTek protocol 1.0",
                 "the running UFS driver module has an exact GNU build ID receipt",
+                "the live DT declares its direct DMA windows and Linux exposes no UFS IOMMU attachment",
             ],
             "not_proven": [
                 "XNU timer or interrupt delivery on the physical phone",

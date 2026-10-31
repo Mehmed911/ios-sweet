@@ -3,6 +3,7 @@
 
 import importlib.util
 from pathlib import Path
+import struct
 import unittest
 
 
@@ -113,6 +114,76 @@ class RuntimeEvidenceTests(unittest.TestCase):
             ("/interrupt-controller", "reg"),
             self.module.ALLOWED_RUNTIME_FDT_CHANGES,
         )
+
+    def test_dma_range_decoder_reports_identity_64gib_window(self):
+        class FakeNode:
+            def __init__(self, path, parent=None, props=None):
+                self.path = path
+                self.parent = parent
+                self.props = props or {}
+
+            def cells(self, key):
+                raw = self.props.get(key, b"")
+                return list(struct.unpack(f">{len(raw) // 4}I", raw))
+
+            def scalar(self, key, default=None):
+                if key not in self.props:
+                    return default
+                values = self.cells(key)
+                if len(values) != 1:
+                    raise ValueError("not scalar")
+                return values[0]
+
+        root = FakeNode("/", props={"#address-cells": struct.pack(">I", 2)})
+        soc = FakeNode(
+            "/soc",
+            parent=root,
+            props={
+                "#address-cells": struct.pack(">I", 2),
+                "#size-cells": struct.pack(">I", 2),
+                "dma-ranges": struct.pack(">6I", 0, 0, 0, 0, 0x10, 0),
+            },
+        )
+        self.assertEqual(
+            self.module.decode_dma_ranges(soc),
+            [
+                {
+                    "child_bus_start": "0x0",
+                    "parent_bus_start": "0x0",
+                    "bytes": "0x1000000000",
+                    "identity": True,
+                }
+            ],
+        )
+
+    def test_dma_range_decoder_rejects_partial_tuple(self):
+        class FakeNode:
+            def __init__(self, path, parent=None, props=None):
+                self.path = path
+                self.parent = parent
+                self.props = props or {}
+
+            def cells(self, key):
+                raw = self.props.get(key, b"")
+                return list(struct.unpack(f">{len(raw) // 4}I", raw))
+
+            def scalar(self, key, default=None):
+                if key not in self.props:
+                    return default
+                return self.cells(key)[0]
+
+        root = FakeNode("/", props={"#address-cells": struct.pack(">I", 2)})
+        soc = FakeNode(
+            "/soc",
+            parent=root,
+            props={
+                "#address-cells": struct.pack(">I", 2),
+                "#size-cells": struct.pack(">I", 2),
+                "dma-ranges": struct.pack(">I", 0),
+            },
+        )
+        with self.assertRaisesRegex(ValueError, "unsupported dma-ranges"):
+            self.module.decode_dma_ranges(soc)
 
 
 if __name__ == "__main__":

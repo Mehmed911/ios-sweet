@@ -70,9 +70,19 @@ write `boot_a`.
 A separate read-only ADB observation matched the saved device model. Android
 reported `duchamp`, MT6897, and boot controller `112b0000.ufshci`. Its live
 GICv3 counters advanced for the architected timer at HWIRQ 27 and for all nine
-saved-DTB UFS interrupts at HWIRQs 200 and 209-216. This proves Android runtime
-delivery and boot-controller identity only. It does not prove that XNU owns
-those resources or that its UFS DMA/IOMMU route is usable.
+saved-DTB UFS interrupts at HWIRQs 200 and 209-216.
+
+Replaying the fuller archived read-only capture also verified that the live FDT
+kept the pinned critical topology, Linux reserved the exact GICD, GICR, UFS and
+UFS-PHY ranges, and the installed SCMI endpoint identifies as MediaTek protocol
+1.0 through `scmi-tinysys`. The UFS ancestry has no `iommus` or `iommu-map`,
+Linux exposes no UFS `iommu_group`, and its supplier links contain no IOMMU.
+The `/soc` `dma-ranges` property decodes to one identity window from `0x0` for
+`0x1000000000` bytes (64 GiB).
+
+This proves Android runtime delivery and a DT-described direct DMA address
+window. It still does not prove physical DMA bypass, firewall permission,
+coherency, or that XNU owns or can safely use those resources.
 
 ## Remaining physical boundary
 
