@@ -22,6 +22,8 @@ def tracked_inputs(repo):
     paths = [
         repo / "duchamp/board.toml",
         repo / "duchamp/drivers/duchamp_gic_boot.h",
+        repo / "duchamp/drivers/mt6897-platform-sources.json",
+        repo / "duchamp/drivers/test_mt6897_ufs_topckgen.c",
         repo / "duchamp/drivers/ufs_readonly.c",
         repo / "duchamp/drivers/ufs_readonly.h",
         repo / "tools/check-duchamp-fdt.sh",
@@ -181,6 +183,12 @@ def main():
             str(output / "ufs-clocks"),
             "--hardware-report", str(hardware),
         ],
+        "ufs_topckgen": [
+            sys.executable,
+            str(repo / "tools/test-mt6897-ufs-topckgen.py"),
+            str(output / "ufs-topckgen"),
+            "--hardware-report", str(hardware),
+        ],
         "ufs_polling": [
             sys.executable,
             str(repo / "tools/test-duchamp-ufs-poll.py"),
@@ -219,6 +227,7 @@ def main():
         power = load_pass(output / "power-dma/result.json")
         providers = load_pass(output / "providers/result.json")
         clocks = load_pass(output / "ufs-clocks/result.json")
+        topckgen = load_pass(output / "ufs-topckgen/result.json")
         polling = load_pass(output / "ufs-polling/result.json")
         ownership = json.loads(
             Path(components["ownership"]["log"]).read_text(encoding="utf-8")
@@ -238,6 +247,25 @@ def main():
             raise ValueError("physical DMA route was incorrectly promoted")
         if providers["saved_dtb"].get("installed_firmware_verified") is not False:
             raise ValueError("installed firmware was incorrectly promoted")
+        top_safety = topckgen.get("safety", {})
+        if top_safety.get("callback_only") is not True:
+            raise ValueError("topckgen model is not callback-only")
+        for key in ("direct_mmio_backend", "phone_access", "pll_control",
+                    "firmware_ownership_claimed"):
+            if top_safety.get(key) is not False:
+                raise ValueError("topckgen safety claim changed: " + key)
+        if topckgen.get("saved_fdt_topckgen_references") != {
+            "ufs_sel": 42,
+            "ufs_sel_min_src": 118,
+            "ufs_sel_max_src": 172,
+            "ufs_fde": 41,
+            "ufs_fde_min_src": 139,
+            "ufs_fde_max_src": 117,
+        }:
+            raise ValueError("topckgen saved-DTB references changed")
+        separate_topckgen = clocks.get("separate_topckgen_references", [])
+        if separate_topckgen != list(topckgen["saved_fdt_topckgen_references"]):
+            raise ValueError("leaf/topckgen component reference disagreement")
         for name, category in ownership["categories"].items():
             if category.get("runtime_owner") != "unproven":
                 raise ValueError(f"{name} ownership was incorrectly promoted")
@@ -265,7 +293,13 @@ def main():
             },
             "ufs_clocks": {
                 "leaf_mapping_from_saved_fdt": clocks.get("captured_fdt_leaf_mapping_verified"),
-                "unimplemented_topckgen_references": clocks.get("unimplemented_topckgen_references", []),
+                "topckgen_references_covered_by_separate_model": separate_topckgen,
+            },
+            "ufs_topckgen": {
+                "native_checks": topckgen["native_checks"],
+                "freestanding_arm64_compile": topckgen["freestanding_arm64_compile"],
+                "callback_only": top_safety["callback_only"],
+                "physical_backend": "disabled",
             },
             "ufs_polling": {
                 "native": polling["native_checks"],
@@ -304,6 +338,7 @@ def main():
             "gic_and_firmware_resource_ownership": "unverified",
             "installed_firmware_contract": "unverified",
             "ufs_dma_or_iommu_route": "unverified",
+            "ufs_topckgen_physical_backend": "disabled",
             "physical_ufs_backend": "disabled",
             "secondary_cpu_start_and_power": "unverified",
             "mali_acceleration": "not implemented",

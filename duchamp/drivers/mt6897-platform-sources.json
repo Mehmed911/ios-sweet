@@ -26,6 +26,22 @@
       {
         "path": "drivers/reset/reset-ti-syscon.c",
         "git_blob": "e36a3dd09cfab9382ee5b58a49e02ece1cfa15e1"
+      },
+      {
+        "path": "drivers/clk/mediatek/clk-mt6897.c",
+        "git_blob": "8c5474b19206b410ce19d2e29f221cca5a57401c"
+      },
+      {
+        "path": "drivers/clk/mediatek/clk-mux.c",
+        "git_blob": "dc747d04daf417c1b76b4dea6a5f5814db6f9a02"
+      },
+      {
+        "path": "drivers/clk/mediatek/clk-mux.h",
+        "git_blob": "6c29d77878fc3b12b9c52871f64e41cc157a880b"
+      },
+      {
+        "path": "include/dt-bindings/clock/mt6897-clk.h",
+        "git_blob": "ad626fb71eae5c3e6ef02d08e7c8e723adcc239f"
       }
     ]
   },
@@ -40,5 +56,5 @@
     ]
   },
   "captured_fdt_sha256": "9c49589f70044127be8941a9ea5537977f440ccd5ac15cfd24e120c8a1181d29",
-  "scope": "Source profile only; not firmware/SiP or physical DMA ownership evidence"
+  "scope": "Source profile only; not TOPCKGEN/firmware/SiP ownership or physical DMA evidence"
 }

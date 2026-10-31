@@ -44,8 +44,8 @@ index 391a4ac..89d17e5 100644
 +	/*
 +	 * IRQ context cannot safely re-enter the text console.  Paint a dedicated
 +	 * bottom-right witness once, without touching its row/column state.  Keep
-+	 * it inside the observed 20-pixel right margin that the later 1200-pixel
-+	 * QEMU scanout does not repaint.  The caller invokes this only after
++	 * it inside the observed 20-pixel right margin that the later 48-pixel
++	 * stage-stripe grid leaves untouched.  The caller invokes this only after
 +	 * rtclock_intr() returned successfully.
 +	 */
 +	if (early_disabled ||

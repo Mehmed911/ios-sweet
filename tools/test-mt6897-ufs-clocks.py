@@ -44,7 +44,7 @@ def main():
             ('ufshci_ufs',0x112bb000,0),('ufshci_aes',0x112bb000,1)]
         if selected!=expected: raise RuntimeError('captured leaf clock IDs differ from implementation')
         report['captured_fdt_leaf_mapping_verified']=True
-        report['unimplemented_topckgen_references']=remaining
+        report['separate_topckgen_references']=remaining
         report['physical_platform_backend_complete']=False
     (out/'result.json').write_text(json.dumps(report,indent=2)+'\n'); print(json.dumps(report,indent=2))
 
