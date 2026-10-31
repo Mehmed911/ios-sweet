@@ -26,6 +26,8 @@ def tracked_inputs(repo):
         repo / "duchamp/drivers/ufs_readonly.h",
         repo / "tools/check-duchamp-fdt.sh",
         repo / "tools/inspect-duchamp-hardware.py",
+        repo / "tools/report-duchamp-mt6897-ownership.py",
+        repo / "tools/test-report-duchamp-mt6897-ownership.py",
         Path(__file__).resolve(),
     ]
     paths.extend(sorted((repo / "duchamp/drivers").glob("mt6897*.[ch]")))
@@ -184,6 +186,12 @@ def main():
             str(repo / "tools/test-duchamp-ufs-poll.py"),
             str(output / "ufs-polling"),
         ],
+        "ownership": [
+            sys.executable,
+            str(repo / "tools/report-duchamp-mt6897-ownership.py"),
+            str(fdt),
+            "--compact",
+        ],
     }
 
     components = {"hardware": inspect_result}
@@ -212,6 +220,9 @@ def main():
         providers = load_pass(output / "providers/result.json")
         clocks = load_pass(output / "ufs-clocks/result.json")
         polling = load_pass(output / "ufs-polling/result.json")
+        ownership = json.loads(
+            Path(components["ownership"]["log"]).read_text(encoding="utf-8")
+        )
         observed_hashes = {
             hardware_result["fdt_sha256"],
             power["saved_dtb"]["fdt_sha256"],
@@ -227,6 +238,14 @@ def main():
             raise ValueError("physical DMA route was incorrectly promoted")
         if providers["saved_dtb"].get("installed_firmware_verified") is not False:
             raise ValueError("installed firmware was incorrectly promoted")
+        for name, category in ownership["categories"].items():
+            if category.get("runtime_owner") != "unproven":
+                raise ValueError(f"{name} ownership was incorrectly promoted")
+            if category.get("physical_access_tested") is not False:
+                raise ValueError(f"{name} physical access was incorrectly promoted")
+        ufs_route = ownership["categories"]["ufs"]["ufs_dma_route"]
+        if ufs_route.get("verified") is not False:
+            raise ValueError("ownership report promoted the UFS DMA route")
         evidence = {
             "boot_profile_tests": 18,
             "gic": {
@@ -251,6 +270,13 @@ def main():
             "ufs_polling": {
                 "native": polling["native_checks"],
                 "arm64": polling["arm64_checks"],
+            },
+            "ownership": {
+                "dtb_sha256": ownership["dtb"]["sha256"],
+                "categories": sorted(ownership["categories"]),
+                "runtime_owners": "unproven",
+                "physical_access_tested": False,
+                "ufs_dma_route_verified": ufs_route["verified"],
             },
         }
     except (KeyError, OSError, ValueError, json.JSONDecodeError) as error:
