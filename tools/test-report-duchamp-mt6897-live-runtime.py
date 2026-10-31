@@ -64,6 +64,23 @@ class RuntimeEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing unique"):
             self.module.require_iomem_claim(rows, 0x112B0000, 0x4000, "ufshci")
 
+    def test_build_id_and_loaded_module_are_parsed(self):
+        raw = bytes.fromhex(
+            "040000001400000003000000474e5500"
+            "df7eecc22450fb6e6eceaaef4b3fe8ceb46b2a84"
+        )
+        self.assertEqual(
+            self.module.parse_gnu_build_id(raw),
+            "df7eecc22450fb6e6eceaaef4b3fe8ceb46b2a84",
+        )
+        module = self.module.parse_loaded_module(
+            "ufs_mediatek_mod 14319616 24 mi_memory,rpmb_mtk, Live 0x0 (OE)\n",
+            "ufs_mediatek_mod",
+        )
+        self.assertEqual(module["bytes"], 14319616)
+        self.assertEqual(module["dependencies"], ["mi_memory", "rpmb_mtk"])
+        self.assertEqual(module["taints"], "OE")
+
     def test_irq_identity_change_is_rejected(self):
         before = interrupts((100, 200), (10, 20, 30, 40))
         after = interrupts((103, 205), (11, 22, 34, 45)).replace(

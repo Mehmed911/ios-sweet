@@ -12,6 +12,7 @@ import importlib.util
 import json
 from pathlib import Path
 import re
+import struct
 
 
 REQUIRED_FILES = (
@@ -26,7 +27,15 @@ REQUIRED_FILES = (
     "ufs-iommu-group-probe.stderr.txt",
     "ufs-iommu-group-probe.exit.txt",
     "scmi-platform-driver.txt",
+    "scmi-vendor-id.txt",
+    "scmi-sub-vendor-id.txt",
+    "scmi-firmware-version.txt",
+    "scmi-protocol-version.txt",
+    "scmi-protocol-driver.txt",
     "cpuidle-current-driver.txt",
+    "ufs-driver-module.txt",
+    "ufs-module-build-id.note",
+    "proc-modules.txt",
 )
 
 # These values are populated by the bootloader/fuel-gauge at runtime.  They
@@ -159,6 +168,41 @@ def require_iomem_claim(rows, start, size, owner):
         "end": hex(end),
         "bytes": hex(size),
         "owner": matches[0]["owner"],
+    }
+
+
+def parse_gnu_build_id(raw):
+    if len(raw) < 16:
+        raise ValueError("truncated GNU build-id note")
+    namesz, descsz, note_type = struct.unpack_from("<III", raw)
+    name_end = 12 + namesz
+    desc_offset = (name_end + 3) & ~3
+    desc_end = desc_offset + descsz
+    if (
+        note_type != 3
+        or namesz != 4
+        or raw[12:name_end] != b"GNU\0"
+        or descsz < 16
+        or desc_end != len(raw)
+    ):
+        raise ValueError("unexpected GNU build-id note layout")
+    return raw[desc_offset:desc_end].hex()
+
+
+def parse_loaded_module(text, name):
+    matches = [line.split() for line in text.splitlines() if line.startswith(name + " ")]
+    if len(matches) != 1 or len(matches[0]) < 6:
+        raise ValueError(f"expected one loaded module named {name}")
+    fields = matches[0]
+    if not fields[1].isdecimal() or not fields[2].isdecimal():
+        raise ValueError(f"invalid /proc/modules row for {name}")
+    return {
+        "name": fields[0],
+        "bytes": int(fields[1]),
+        "refcount": int(fields[2]),
+        "dependencies": [] if fields[3] == "-" else fields[3].rstrip(",").split(","),
+        "state": fields[4],
+        "taints": " ".join(fields[6:]).strip("()") if len(fields) > 6 else "",
     }
 
 
@@ -328,6 +372,33 @@ def build_report(evidence, reference_dtb, repo):
     )
     if not scmi_bound:
         raise ValueError("arm-scmi platform binding was not observed")
+    scmi_vendor = read_text(evidence / "scmi-vendor-id.txt")
+    scmi_sub_vendor = read_text(evidence / "scmi-sub-vendor-id.txt")
+    scmi_firmware_version = read_text(evidence / "scmi-firmware-version.txt")
+    scmi_protocol_version = read_text(evidence / "scmi-protocol-version.txt")
+    scmi_protocol_driver = read_text(
+        evidence / "scmi-protocol-driver.txt"
+    ).replace("\\", "/")
+    if (
+        scmi_vendor != "mtk"
+        or scmi_sub_vendor != "mtk"
+        or scmi_protocol_version != "1.0"
+        or not scmi_protocol_driver.endswith("/scmi-tinysys")
+    ):
+        raise ValueError("unexpected installed MediaTek SCMI identity")
+    ufs_module_path = read_text(evidence / "ufs-driver-module.txt").replace(
+        "\\", "/"
+    )
+    if not ufs_module_path.endswith("/ufs_mediatek_mod"):
+        raise ValueError(f"unexpected UFS module path: {ufs_module_path}")
+    ufs_module = parse_loaded_module(
+        read_text(evidence / "proc-modules.txt"), "ufs_mediatek_mod"
+    )
+    ufs_module["sysfs_path"] = ufs_module_path
+    ufs_module["gnu_build_id"] = parse_gnu_build_id(
+        (evidence / "ufs-module-build-id.note").read_bytes()
+    )
+    ufs_module["local_source_commit_match_verified"] = False
 
     iomem = parse_iomem(read_text(evidence / "iomem.txt"))
     gic_registers = live.registers(gic)
@@ -398,6 +469,7 @@ def build_report(evidence, reference_dtb, repo):
             },
             "ufs": {
                 "driver": driver,
+                "installed_module": ufs_module,
                 "linux_iomem_claim": claims["ufs"],
                 "linux_phy_iomem_claim": claims["ufs_phy"],
                 "dt_spi_ids": dt_ufs_spis,
@@ -416,6 +488,15 @@ def build_report(evidence, reference_dtb, repo):
             "scmi_mailboxes_present": "mboxes" in scmi.props,
             "scmi_shared_memory_present": "shmem" in scmi.props,
             "linux_scmi_platform_binding_observed": scmi_bound,
+            "installed_scmi_identity": {
+                "vendor_id": scmi_vendor,
+                "sub_vendor_id": scmi_sub_vendor,
+                "firmware_version": scmi_firmware_version,
+                "protocol_version": scmi_protocol_version,
+                "protocol_driver": scmi_protocol_driver,
+            },
+            "installed_scmi_identity_observed": True,
+            "installed_ufs_sip_abi_verified": False,
             "xnu_firmware_abi_verified": False,
             "physical_resource_ownership_verified": False,
         },
@@ -440,6 +521,8 @@ def build_report(evidence, reference_dtb, repo):
                 "UFS interrupt progress occurred through ufshcd-mtk",
                 "Android Linux reserved the DT-declared GICD/GICR/UFS/PHY MMIO ranges",
                 "Linux bound arm-scmi and uses psci_idle",
+                "the installed SCMI endpoint identifies as MediaTek protocol 1.0",
+                "the running UFS driver module has an exact GNU build ID receipt",
             ],
             "not_proven": [
                 "XNU timer or interrupt delivery on the physical phone",
