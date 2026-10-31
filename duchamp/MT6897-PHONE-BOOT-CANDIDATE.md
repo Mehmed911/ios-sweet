@@ -80,6 +80,14 @@ Linux exposes no UFS `iommu_group`, and its supplier links contain no IOMMU.
 The `/soc` `dma-ranges` property decodes to one identity window from `0x0` for
 `0x1000000000` bytes (64 GiB).
 
+The running `ufs_mediatek_mod` GNU build ID
+`df7eecc22450fb6e6eceaaef4b3fe8ceb46b2a84` also matches the pinned module
+extracted from the saved `vendor_boot` (SHA-256
+`7043e1109b4c356a914fdc92ffbe463c0c43cb27342f6ccce1517a2086b02493`).
+This links the static UFS client instruction audit to the installed client
+binary identity; it is not a reproducible source-build match and does not
+identify or validate the secure monitor.
+
 This proves Android runtime delivery and a DT-described direct DMA address
 window. It still does not prove physical DMA bypass, firewall permission,
 coherency, or that XNU owns or can safely use those resources.

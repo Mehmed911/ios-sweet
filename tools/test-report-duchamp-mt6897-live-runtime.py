@@ -82,6 +82,20 @@ class RuntimeEvidenceTests(unittest.TestCase):
         self.assertEqual(module["dependencies"], ["mi_memory", "rpmb_mtk"])
         self.assertEqual(module["taints"], "OE")
 
+    def test_saved_module_identity_requires_exact_build_id(self):
+        receipt = {
+            "bytes": 14657944,
+            "sha256": "7043e1109b4c356a914fdc92ffbe463c0c43cb27342f6ccce1517a2086b02493",
+            "gnu_build_id": "df7eecc22450fb6e6eceaaef4b3fe8ceb46b2a84",
+        }
+        matched = self.module.verify_saved_module_identity(
+            "df7eecc22450fb6e6eceaaef4b3fe8ceb46b2a84", receipt
+        )
+        self.assertTrue(matched["build_id_match_verified"])
+        self.assertFalse(matched["source_commit_match_verified"])
+        with self.assertRaisesRegex(ValueError, "build IDs differ"):
+            self.module.verify_saved_module_identity("00" * 20, receipt)
+
     def test_supplier_parser_keeps_only_supplier_links(self):
         links = self.module.parse_supplier_links(
             "/sys/devices/x/supplier:platform:10000000.syscon\n"

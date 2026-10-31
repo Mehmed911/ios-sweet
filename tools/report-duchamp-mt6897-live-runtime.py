@@ -64,6 +64,16 @@ def load_fdt_parser(repo):
     return module
 
 
+def load_saved_module_parser(repo):
+    path = repo / "tools/duchamp_saved_ufs.py"
+    spec = importlib.util.spec_from_file_location("duchamp_saved_module", path)
+    if spec is None or spec.loader is None:
+        raise ValueError(f"cannot load saved-module parser: {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def read_text(path):
     return path.read_text(encoding="utf-8", errors="strict").strip()
 
@@ -188,6 +198,34 @@ def parse_gnu_build_id(raw):
     ):
         raise ValueError("unexpected GNU build-id note layout")
     return raw[desc_offset:desc_end].hex()
+
+
+def saved_module_receipt(repo, path):
+    parser = load_saved_module_parser(repo)
+    raw = Path(path).read_bytes()
+    digest = sha256(raw)
+    if digest != parser.UFS_SHA:
+        raise ValueError("saved UFS module is not the pinned vendor-boot binary")
+    elf = parser.Elf(raw)
+    try:
+        note = elf.section_data(elf.sections[".note.gnu.build-id"])
+    except KeyError as error:
+        raise ValueError("saved UFS module lacks a GNU build ID") from error
+    return {
+        "bytes": len(raw),
+        "sha256": digest,
+        "gnu_build_id": parse_gnu_build_id(note),
+    }
+
+
+def verify_saved_module_identity(installed_build_id, receipt):
+    if receipt["gnu_build_id"] != installed_build_id:
+        raise ValueError("running and saved UFS module build IDs differ")
+    return {
+        **receipt,
+        "build_id_match_verified": True,
+        "source_commit_match_verified": False,
+    }
 
 
 def parse_loaded_module(text, name):
@@ -331,7 +369,7 @@ def file_receipts(evidence):
     return receipts
 
 
-def build_report(evidence, reference_dtb, repo):
+def build_report(evidence, reference_dtb, repo, saved_module=None):
     evidence = Path(evidence).resolve()
     repo = Path(repo).resolve()
     missing = [name for name in REQUIRED_FILES if not (evidence / name).is_file()]
@@ -480,8 +518,19 @@ def build_report(evidence, reference_dtb, repo):
         read_text(evidence / "proc-modules.txt"), "ufs_mediatek_mod"
     )
     ufs_module["sysfs_path"] = ufs_module_path
-    ufs_module["gnu_build_id"] = parse_gnu_build_id(
+    installed_build_id = parse_gnu_build_id(
         (evidence / "ufs-module-build-id.note").read_bytes()
+    )
+    ufs_module["gnu_build_id"] = installed_build_id
+    ufs_module["saved_vendor_module"] = (
+        verify_saved_module_identity(
+            installed_build_id, saved_module_receipt(repo, saved_module)
+        )
+        if saved_module is not None
+        else {
+            "build_id_match_verified": False,
+            "source_commit_match_verified": False,
+        }
     )
     ufs_module["local_source_commit_match_verified"] = False
 
@@ -520,6 +569,21 @@ def build_report(evidence, reference_dtb, repo):
             "112a0000.ufsphy",
         ),
     }
+
+    proven = [
+        "Android uses GICv3 and the architected ARM timer at runtime",
+        "the captured UFS DT IRQ tuples match Linux ufshcd IRQs",
+        "UFS interrupt progress occurred through ufshcd-mtk",
+        "Android Linux reserved the DT-declared GICD/GICR/UFS/PHY MMIO ranges",
+        "Linux bound arm-scmi and uses psci_idle",
+        "the installed SCMI endpoint identifies as MediaTek protocol 1.0",
+        "the running UFS driver module has an exact GNU build ID receipt",
+        "the live DT declares its direct DMA windows and Linux exposes no UFS IOMMU attachment",
+    ]
+    if saved_module is not None:
+        proven.append(
+            "the running UFS module build ID matches the pinned vendor-boot module"
+        )
 
     return {
         "report_version": 1,
@@ -581,7 +645,9 @@ def build_report(evidence, reference_dtb, repo):
                 "protocol_driver": scmi_protocol_driver,
             },
             "installed_scmi_identity_observed": True,
+            "installed_ufs_client_binary_identity_verified": saved_module is not None,
             "installed_ufs_sip_abi_verified": False,
+            "installed_ufs_sip_effect_contract_verified": False,
             "xnu_firmware_abi_verified": False,
             "physical_resource_ownership_verified": False,
         },
@@ -614,16 +680,7 @@ def build_report(evidence, reference_dtb, repo):
         },
         "result": {
             "passed": True,
-            "proven": [
-                "Android uses GICv3 and the architected ARM timer at runtime",
-                "the captured UFS DT IRQ tuples match Linux ufshcd IRQs",
-                "UFS interrupt progress occurred through ufshcd-mtk",
-                "Android Linux reserved the DT-declared GICD/GICR/UFS/PHY MMIO ranges",
-                "Linux bound arm-scmi and uses psci_idle",
-                "the installed SCMI endpoint identifies as MediaTek protocol 1.0",
-                "the running UFS driver module has an exact GNU build ID receipt",
-                "the live DT declares its direct DMA windows and Linux exposes no UFS IOMMU attachment",
-            ],
+            "proven": proven,
             "not_proven": [
                 "XNU timer or interrupt delivery on the physical phone",
                 "XNU ownership of GIC or installed firmware ABIs",
@@ -646,11 +703,18 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("evidence", type=Path, help="local read-only capture directory")
     parser.add_argument("reference_dtb", type=Path, help="previous exact Duchamp DTB")
+    parser.add_argument(
+        "--saved-module",
+        type=Path,
+        help="pinned UFS module extracted offline from the saved vendor_boot",
+    )
     parser.add_argument("--compact", action="store_true")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parent.parent
     try:
-        report = build_report(args.evidence, args.reference_dtb, repo)
+        report = build_report(
+            args.evidence, args.reference_dtb, repo, args.saved_module
+        )
     except (OSError, UnicodeError, ValueError) as error:
         parser.exit(1, f"live runtime report failed: {error}\n")
     print(
