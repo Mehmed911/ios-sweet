@@ -92,6 +92,44 @@ This proves Android runtime delivery and a DT-described direct DMA address
 window. It still does not prove physical DMA bypass, firewall permission,
 coherency, or that XNU owns or can safely use those resources.
 
+## Fail-closed readiness assessment
+
+`tools/assess-duchamp-mt6897-phone-readiness.py` now combines the current
+live-runtime report, the 12-component offline gate, the saved UFS and firmware
+client audits, the contract model, the candidate manifest, and the actual
+64 MiB candidate image. It pins the FDT, UFS module hash and GNU build ID,
+direct 64 GiB identity window, interrupt identities, candidate size and image
+hash. It refuses an older runtime report that lacks the saved-module receipt
+or decoded DMA window.
+
+Seven mutation/guard tests pass. They reject a changed module build ID, changed
+DMA window, candidate-image mismatch, unsafe offline action, or an unreviewed
+promotion of firmware effects, resource ownership, DMA bypass, coherency, or
+XNU DMA readiness. The actual combined result is
+`research/mt6897-phone-readiness/maxspeed-20261031-v2/result.json`:
+
+- evidence validation and the safe offline stage pass;
+- the diagnostic candidate is present and matches SHA-256
+  `a83f0792ccd883c19a8225641b4e96090fb08673375e71fe93123e0dafddfaa8`;
+- phone execution remains unauthorized;
+- full system boot and the physical UFS backend remain not ready.
+
+The assessment performs no ADB, fastboot, phone write, partition access, MMIO,
+or SMC. A zero exit status means the evidence is consistent, not that a phone
+trial is authorized.
+
+```sh
+python3 tools/assess-duchamp-mt6897-phone-readiness.py \
+  research/mt6897-phone-readiness/replay-new \
+  --live-report research/mt6897-live-evidence/14480520-210535/runtime-report-v5.json \
+  --offline-gate research/mt6897-offline-gate/maxspeed-20261031-v18/result.json \
+  --saved-audit research/mt6897-contract/audit-v3/result.json \
+  --client-audit research/mt6897-routing/client-audit-v1/result.json \
+  --contract-model research/mt6897-contract/check-v4/result.json \
+  --candidate-manifest research/mt6897-phone-boot-v2/manifest.json \
+  --candidate-image research/mt6897-phone-boot-v2/duchamp-xnu-latest-diagnostic.img
+```
+
 ## Remaining physical boundary
 
 This candidate can test the single boot CPU, GICv3, architected timer,
