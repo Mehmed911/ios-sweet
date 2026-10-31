@@ -4,13 +4,29 @@ import argparse,copy,json,subprocess,sys,tempfile,tomllib,unittest
 from pathlib import Path
 import duchamp_boot_profile as p
 class Profiles(unittest.TestCase):
-    raw=None;board=None;template=None;sources=None
+    raw=None;reference=None;board=None;template=None;sources=None
     def setUp(self):self.tree=p.hardware.Fdt(self.raw);self.b=copy.deepcopy(self.board)
     def facts(self):return p.facts(self.tree,self.b)
     def test_real_selected_facts(self):
         f=self.facts();self.assertEqual((f['timer_hz'],f['virtual_timer_intid'],f['interrupt_cells']),(13000000,27,4))
         self.assertEqual((f['gicd'],f['gicd_bytes'],f['gicr'],f['gicr_bytes']),(0xc400000,0x40000,0xc440000,0x200000))
         self.assertEqual([c['mpidr'] for c in f['cpus']],[i<<8 for i in range(8)])
+    def test_input_fdt_provenance_is_validated(self):
+        tree,receipt=p.validate_fdt(self.raw,self.reference)
+        self.assertEqual(len(tree.nodes),receipt['node_count'])
+        self.assertEqual(receipt['exact_reference'],p.sha(self.raw)==p.FDT_SHA)
+        self.assertTrue(receipt['critical_topology_matches_reference'])
+    def test_only_narrow_runtime_fdt_changes_are_accepted(self):
+        candidate=copy.deepcopy(self.tree)
+        candidate.nodes['/bootprof'].props['lk_t']=b'\0\0\0\1'
+        receipt=p.compare_fdt(self.tree,candidate)
+        self.assertTrue(receipt['critical_topology_matches_reference'])
+        self.assertEqual(receipt['allowed_runtime_changes'],[{'path':'/bootprof','property':'lk_t'}])
+    def test_critical_fdt_change_is_rejected(self):
+        candidate=copy.deepcopy(self.tree)
+        candidate.nodes['/soc/ufshci@112b0000'].props['reg']=b'\0'*len(candidate.nodes['/soc/ufshci@112b0000'].props['reg'])
+        with self.assertRaisesRegex(ValueError,'critical topology differs'):
+            p.compare_fdt(self.tree,candidate)
     def test_node_name_is_not_cpu_reg(self):
         self.assertEqual(self.facts()['cpus'][4]['mpidr'],0x400)
     def test_phone_qemu_separated(self):
@@ -79,8 +95,10 @@ class Profiles(unittest.TestCase):
             self.assertEqual(r.returncode,2);self.assertIn('preserve existing output',r.stderr);self.assertEqual(list(root.iterdir()),[sentinel])
 if __name__=='__main__':
     ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--fdt',type=Path,required=True)
+    ap.add_argument('--reference-fdt',type=Path)
     ap.add_argument('--template',type=Path,required=True);ap.add_argument('--sources',type=Path,required=True);a=ap.parse_args()
-    Profiles.raw=a.fdt.read_bytes();assert p.sha(Profiles.raw)==p.FDT_SHA
+    Profiles.raw=a.fdt.read_bytes();Profiles.reference=a.reference_fdt.read_bytes() if a.reference_fdt else None
+    p.validate_fdt(Profiles.raw,Profiles.reference)
     Profiles.template=a.template.read_bytes();assert p.sha(Profiles.template)==p.TEMPLATE_SHA
     Profiles.board=tomllib.loads((Path(__file__).resolve().parent.parent/'duchamp/board.toml').read_text())
     Profiles.sources=p.sources(a.sources);unittest.main(argv=[sys.argv[0]])

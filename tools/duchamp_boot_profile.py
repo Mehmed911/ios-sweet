@@ -3,6 +3,10 @@ import copy,hashlib,importlib.util,os,struct,sys
 from pathlib import Path
 import adt
 FDT_SHA='9c49589f70044127be8941a9ea5537977f440ccd5ac15cfd24e120c8a1181d29'
+RUNTIME_FDT_PROPERTIES={
+ ('/bootprof','lk_t'),('/bootprof','pl_t'),('/bootprof','sec_os_t'),
+ ('/i2c@11f01000/mt6375@34/mtk-gauge','fg_swocv_i'),
+ ('/i2c@11f01000/mt6375@34/mtk-gauge','fg_swocv_v')}
 TEMPLATE_SHA='be512dce04bf581d188440246b4e3402de057a43f4c178da7984a68ccbb9ba2f'
 COMMIT='cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6'
 SOURCE_PINS={'drivers/irqchip/irq-gic-v3.c':'b0c065108bb7c8dc343e067e39bdd2d6d95676f0',
@@ -15,6 +19,40 @@ u32=lambda *v:struct.pack('<%dI'%len(v),*v)
 u64=lambda *v:struct.pack('<%dQ'%len(v),*v)
 string=lambda *v:('\0'.join(v)+'\0').encode()
 sha=lambda data:hashlib.sha256(data).hexdigest()
+
+def fdt_snapshot(tree):
+    return {path:{name:sha(value) for name,value in node.props.items()}
+            for path,node in tree.nodes.items()}
+
+def compare_fdt(reference,candidate):
+    old=fdt_snapshot(reference);new=fdt_snapshot(candidate)
+    added=sorted(set(new)-set(old));removed=sorted(set(old)-set(new));changed=[]
+    for path in sorted(set(old)&set(new)):
+        for name in sorted(set(old[path])|set(new[path])):
+            if old[path].get(name)!=new[path].get(name):changed.append((path,name))
+    unexpected=[{'path':path,'property':name} for path,name in changed
+                if (path,name) not in RUNTIME_FDT_PROPERTIES]
+    if added or removed or unexpected:
+        raise ValueError('live FDT critical topology differs: added=%r removed=%r changed=%r'
+                         %(added,removed,unexpected))
+    return {'critical_topology_matches_reference':True,'node_count':len(new),
+            'allowed_runtime_changes':[{'path':path,'property':name} for path,name in changed]}
+
+def validate_fdt(raw,reference_raw=None):
+    digest=sha(raw)
+    if digest==FDT_SHA:
+        tree=hardware.Fdt(raw)
+        return tree,{'input_sha256':digest,'reference_sha256':FDT_SHA,
+                     'exact_reference':True,'critical_topology_matches_reference':True,
+                     'node_count':len(tree.nodes),'allowed_runtime_changes':[]}
+    if reference_raw is None:
+        raise ValueError('live FDT differs; exact pinned reference required')
+    if sha(reference_raw)!=FDT_SHA:
+        raise ValueError('reference FDT pin differs')
+    reference=hardware.Fdt(reference_raw);candidate=hardware.Fdt(raw)
+    result=compare_fdt(reference,candidate)
+    result.update({'input_sha256':digest,'reference_sha256':FDT_SHA,'exact_reference':False})
+    return candidate,result
 
 def sources(root):
     receipt=[]
