@@ -20,6 +20,12 @@ def transform(text):
     original=text[start:end]
     adapters='''#if defined(DUCHAMP)
 /* DUCHAMP BOUNDED GICR BOOT V1 */
+static int duchamp_gic_mmio_authorized;
+static int duchamp_gic_authorise(void *ctx,unsigned operation) {
+    (void)ctx;
+    return duchamp_gic_mmio_authorized &&
+        (operation==DGIC_OP_FIND || operation==DGIC_OP_WAKE);
+}
 static int duchamp_gic_read32(void *ctx,uint64_t off,uint32_t *value) {
     (void)ctx;*value=_gic_read32(gicr_base+off);return 0;
 }
@@ -35,7 +41,8 @@ static uint64_t duchamp_gic_nanoseconds(void *ctx) {
 static void duchamp_gic_barrier(void *ctx) {
     (void)ctx;__asm__ volatile("dsb sy" ::: "memory");
 }
-static const struct dgic_io duchamp_gic_io={NULL,duchamp_gic_read32,duchamp_gic_read64,
+static const struct dgic_io duchamp_gic_io={NULL,duchamp_gic_authorise,
+    duchamp_gic_read32,duchamp_gic_read64,
     duchamp_gic_write32,duchamp_gic_nanoseconds,duchamp_gic_barrier};
 #endif
 '''
@@ -56,6 +63,37 @@ find_gicr_pe_base()
 \t\t    gicr_base_prop > UINT64_MAX - soc_base_phys) {'''
     text=once(text,old,'''\t\tif (prop_size != 4*sizeof(uint64_t) ||
             !dgic_regions_valid(soc_base_phys,gicd_base_prop,gicd_size_prop,gicr_base_prop,gicr_size_prop)) {''')
+    map_anchor='''\t\t// Find GICD base address
+'''
+    authorization='''#if defined(DUCHAMP)
+        /* A profile token is an offline QEMU capability, not a claim that
+         * physical MT6897 GIC ownership has been established. Phone profiles
+         * deliberately omit it and stop before the first GICR read. */
+        duchamp_gic_mmio_authorized=0;
+        void const *authorization_prop;
+        unsigned int authorization_size;
+        if (SecureDTGetProperty(entry,"duchamp,gic-mmio-auth-v1",
+            &authorization_prop,&authorization_size)==kSuccess &&
+            authorization_size==4*sizeof(uint64_t)) {
+            uint64_t const *authorization=(uint64_t const *)authorization_prop;
+            if (authorization[0]==UINT64_C(0x08000000) &&
+                authorization[1]==UINT64_C(0x00010000) &&
+                authorization[2]==UINT64_C(0x080a0000) &&
+                authorization[3]==UINT64_C(0x00100000) &&
+                authorization[0]==soc_base_phys+gicd_base_prop &&
+                authorization[1]==gicd_size_prop &&
+                authorization[2]==soc_base_phys+gicr_base_prop &&
+                authorization[3]==gicr_size_prop) {
+                duchamp_gic_mmio_authorized=1;
+            }
+        }
+        if (!duchamp_gic_mmio_authorized) {
+            kprintf("DUCHAMP GIC: MMIO denied; no verified QEMU capability\\n");
+        }
+#endif
+
+'''
+    text=once(text,map_anchor,authorization+map_anchor)
     start=text.index('\t// Mark this PE to be awake\n');end=text.index('#if defined(SWEET)\n\t/*',start)
     old=text[start:end]
     new='''#if defined(DUCHAMP)

@@ -12,8 +12,12 @@ int printf(const char *,...);void *memset(void *,int,unsigned long);
 static unsigned checks;
 #define CHECK(x) do{checks++;assert(x);}while(0)
 struct model {uint64_t offset[8],typer[8],seen[8],tick;unsigned count,reads64,reads32,writes,
-    barriers,clock,clear_at,fail_read,fail_write,ignore_write,ids;uint32_t waker,written,pidr;};
+    barriers,clock,clock_calls,clear_at,fail_read,fail_write,ignore_write,ids,authorised,auth_calls,
+    last_operation;uint32_t waker,written,pidr;};
 static struct model m;
+static int authorise(void *ctx,unsigned operation) {
+    struct model *x=ctx;x->auth_calls++;x->last_operation=operation;return x->authorised?1:0;
+}
 static int read64(void *ctx,uint64_t off,uint64_t *value) {
     struct model *x=ctx;CHECK(x->reads64<8);x->seen[x->reads64++]=off;
     if(x->fail_read)return -1;
@@ -34,10 +38,10 @@ static int write32(void *ctx,uint64_t off,uint32_t value) {
     if(!x->ignore_write)x->waker=value;
     return 0;
 }
-static uint64_t now(void *ctx){struct model *x=ctx;uint64_t t=x->tick;if(x->clock)x->tick+=x->clock==2?UINT64_MAX:1;return t;}
+static uint64_t now(void *ctx){struct model *x=ctx;x->clock_calls++;uint64_t t=x->tick;if(x->clock)x->tick+=x->clock==2?UINT64_MAX:1;return t;}
 static void barrier(void *ctx){((struct model *)ctx)->barriers++;}
-static struct dgic_io io={&m,read32,read64,write32,now,barrier};
-static void reset(void){memset(&m,0,sizeof(m));m.pidr=0x3b;}
+static struct dgic_io io={&m,authorise,read32,read64,write32,now,barrier};
+static void reset(void){memset(&m,0,sizeof(m));m.pidr=0x3b;m.authorised=1;}
 static uint64_t type(uint64_t mpidr,unsigned flags){return (uint64_t)dgic_affinity(mpidr)<<32|flags;}
 static void scans(void) {
     CHECK(dgic_regions_valid(0,0xc400000,0x40000,0xc440000,0x200000));
@@ -111,14 +115,40 @@ static void wakes(void) {
     CHECK(dgic_wake(&io,0x20000,0,UINT64_MAX,8,&d)==DGIC_ARGUMENT);
     CHECK(!m.reads32 && !m.writes && !m.barriers);
 }
+static void authorisation(void) {
+    uint64_t found=0xdead;
+    struct dgic_wake_result sentinel={1,2,3,4,5},d=sentinel;
+    struct dgic_io missing=io;missing.authorise=NULL;
+    reset();m.count=1;m.typer[0]=type(0,16);
+    CHECK(dgic_find(&missing,0x20000,0,0,8,&found)==DGIC_UNVERIFIED);
+    CHECK(found==0xdead && !m.auth_calls && !m.ids && !m.reads32 && !m.reads64 &&
+          !m.writes && !m.clock_calls && !m.barriers);
+    reset();m.authorised=0;m.count=1;m.typer[0]=type(0,16);
+    CHECK(dgic_find(&io,0x20000,0,0,8,&found)==DGIC_UNVERIFIED);
+    CHECK(m.auth_calls==1 && m.last_operation==DGIC_OP_FIND && !m.ids && !m.reads32 &&
+          !m.reads64 && !m.writes && !m.clock_calls && !m.barriers);
+    reset();m.authorised=0;m.waker=6;
+    CHECK(dgic_wake(&io,0x20000,0,100,8,&d)==DGIC_UNVERIFIED);
+    CHECK(m.auth_calls==1 && m.last_operation==DGIC_OP_WAKE && !m.reads32 && !m.writes &&
+          !m.clock_calls && !m.barriers && d.initial==sentinel.initial && d.last==sentinel.last &&
+          d.reads==sentinel.reads && d.writes==sentinel.writes && d.timeout_cause==sentinel.timeout_cause);
+    reset();m.count=1;m.typer[0]=type(0,16);
+    CHECK(dgic_find(&io,0x20000,0,0,8,&found)==DGIC_OK && found==0);
+    unsigned reads64=m.reads64,ids=m.ids,auth_calls=m.auth_calls;
+    m.authorised=0;d=sentinel;
+    CHECK(dgic_wake(&io,0x20000,0,100,8,&d)==DGIC_UNVERIFIED);
+    CHECK(m.auth_calls==auth_calls+1 && m.last_operation==DGIC_OP_WAKE && m.reads64==reads64 &&
+          m.ids==ids && !m.reads32 && !m.writes && !m.clock_calls && !m.barriers);
+}
 #ifdef MT6897_MODEL_FREESTANDING
+static int actual_authorise(void *c,unsigned operation){(void)c;return operation==DGIC_OP_FIND||operation==DGIC_OP_WAKE;}
 static int actual32(void *c,uint64_t o,uint32_t *v){(void)c;*v=*(volatile uint32_t *)(UINT64_C(0x80a0000)+o);return 0;}
 static int actual64(void *c,uint64_t o,uint64_t *v){(void)c;*v=*(volatile uint64_t *)(UINT64_C(0x80a0000)+o);return 0;}
 static int actual_write(void *c,uint64_t o,uint32_t v){(void)c;*(volatile uint32_t *)(UINT64_C(0x80a0000)+o)=v;return 0;}
 static uint64_t actual_ns(void *c){(void)c;uint64_t t;__asm__ volatile("mrs %0,cntvct_el0":"=r"(t));return t*16;}
 static void actual_barrier(void *c){(void)c;__asm__ volatile("dsb sy":::"memory");}
 static void actual_gic(void) {
-    struct dgic_io real={0,actual32,actual64,actual_write,actual_ns,actual_barrier};
+    struct dgic_io real={0,actual_authorise,actual32,actual64,actual_write,actual_ns,actual_barrier};
     uint64_t mpidr,found=0xdead;__asm__ volatile("mrs %0,mpidr_el1":"=r"(mpidr));
     CHECK(dgic_find(&real,0x20000,0,mpidr,8,&found)==0 && found==0);
     struct dgic_wake_result d;
@@ -128,7 +158,7 @@ static void actual_gic(void) {
     printf("4 actual QEMU GICR checks passed\n");
 }
 #endif
-int main(void){scans();wakes();printf("%u bounded GIC bootstrap checks passed\n",checks);
+int main(void){scans();wakes();authorisation();printf("%u bounded GIC bootstrap checks passed\n",checks);
 #ifdef MT6897_MODEL_FREESTANDING
     actual_gic();
 #endif

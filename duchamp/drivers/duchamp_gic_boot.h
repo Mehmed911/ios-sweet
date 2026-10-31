@@ -1,7 +1,7 @@
 #ifndef DUCHAMP_GIC_BOOT_H
 #define DUCHAMP_GIC_BOOT_H
-/* Bounded GICR bootstrap algorithms. Callbacks must return. This validates
- * extents, not secure ownership or the accessibility of physical MMIO.
+/* Bounded GICR bootstrap algorithms. Callbacks must return. Extent validation
+ * is separate from the mandatory, caller-supplied MMIO authorisation gate.
  * GICR stride/affinity follows the pinned Linux GICv3 implementation; see
  * duchamp/MT6897-BOOT-PLATFORM.md. No distributor/ICC configuration here.
  */
@@ -10,10 +10,13 @@
 #define DGIC_MAX_FRAMES 256u
 #define DGIC_MAX_POLLS 1000000u
 enum dgic_result {DGIC_OK=0,DGIC_ARGUMENT=-1,DGIC_RANGE=-2,DGIC_IO=-3,
-                  DGIC_NOT_FOUND=-4,DGIC_LIMIT=-5,DGIC_TIMEOUT=-6,DGIC_ID=-7};
+                  DGIC_NOT_FOUND=-4,DGIC_LIMIT=-5,DGIC_TIMEOUT=-6,DGIC_ID=-7,
+                  DGIC_UNVERIFIED=-8};
 enum dgic_timeout {DGIC_WAIT_NONE=0,DGIC_WAIT_CLOCK=1,DGIC_WAIT_POLLS=2};
+enum dgic_operation {DGIC_OP_FIND=1,DGIC_OP_WAKE=2};
 struct dgic_io {
     void *context;
+    int (*authorise)(void *,unsigned);
     int (*read32)(void *,uint64_t,uint32_t *);
     int (*read64)(void *,uint64_t,uint64_t *);
     int (*write32)(void *,uint64_t,uint32_t);
@@ -38,6 +41,7 @@ static inline int dgic_find(const struct dgic_io *io,uint64_t bytes,uint64_t str
     if(!io || !io->read32 || !io->read64 || !found || !frames || frames>DGIC_MAX_FRAMES)return DGIC_ARGUMENT;
     if(bytes<2*DGIC_FRAME || (bytes&(DGIC_FRAME-1)) ||
        (stride && (stride<2*DGIC_FRAME || (stride&(DGIC_FRAME-1)))))return DGIC_RANGE;
+    if(!io->authorise || io->authorise(io->context,DGIC_OP_FIND)!=1)return DGIC_UNVERIFIED;
     uint32_t pidr2;
     if(io->read32(io->context,0xffe8,&pidr2))return DGIC_IO;
     if((pidr2&0xf0)!=0x30 && (pidr2&0xf0)!=0x40)return DGIC_ID;
@@ -61,6 +65,7 @@ static inline int dgic_wake(const struct dgic_io *io,uint64_t bytes,uint64_t pe,
     if(!io || !io->read32 || !io->write32 || !io->nanoseconds || !io->barrier || !result ||
        timeout_ns>UINT64_C(60000000000) || !polls || polls>DGIC_MAX_POLLS)return DGIC_ARGUMENT;
     if(bytes<2*DGIC_FRAME || (pe&(DGIC_FRAME-1)) || pe>bytes-2*DGIC_FRAME)return DGIC_RANGE;
+    if(!io->authorise || io->authorise(io->context,DGIC_OP_WAKE)!=1)return DGIC_UNVERIFIED;
     struct dgic_wake_result d={0,0,0,0,0};
     uint64_t start=io->nanoseconds(io->context);
     int status=DGIC_TIMEOUT;

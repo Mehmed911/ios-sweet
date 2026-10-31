@@ -275,7 +275,7 @@ def main():
         if ufs_route.get("verified") is not False:
             raise ValueError("ownership report promoted the UFS DMA route")
         evidence = {
-            "boot_profile_tests": 18,
+            "boot_profile_tests": 21,
             "gic": {
                 "native": gic["native_checks"],
                 "arm64": gic["arm64_model_checks"],

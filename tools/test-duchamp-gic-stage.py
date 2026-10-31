@@ -40,6 +40,17 @@ class Guards(unittest.TestCase):
         start=old.index('\t// Mark this PE to be awake\n');end=old.index('#if defined(SWEET)\n\t/*',start)
         self.assertIn('#else\n'+old[start:end]+'#endif /* DUCHAMP */',new)
         self.assertIn('if (phys_id == aff_value)',new)
+    def test_qemu_only_mmio_authorisation_precedes_mapping(self):
+        new=mod.transform(self.path.read_text())
+        self.assertIn('duchamp,gic-mmio-auth-v1',new)
+        self.assertIn('duchamp_gic_io={NULL,duchamp_gic_authorise,',new)
+        self.assertIn('authorization[0]==UINT64_C(0x08000000)',new)
+        self.assertIn('authorization[2]==UINT64_C(0x080a0000)',new)
+        self.assertIn('no verified QEMU capability\\n");',new)
+        self.assertLess(new.index('duchamp_gic_mmio_authorized=0;'),new.index('gicd_base = ml_io_map'))
+        header=(Path(__file__).resolve().parent.parent/'duchamp/drivers/duchamp_gic_boot.h').read_text()
+        self.assertIn('io->authorise(io->context,DGIC_OP_FIND)!=1',header)
+        self.assertIn('io->authorise(io->context,DGIC_OP_WAKE)!=1',header)
     def test_cpu_binding_corruption_rejected(self):
         mod.stage(self.root);c=self.root/'iokit/KernelConfigTables.cpp';c.write_text(c.read_text().replace('arm,cortex-a510','bad,cpu'))
         with self.assertRaises(ValueError):mod.stage(self.root)

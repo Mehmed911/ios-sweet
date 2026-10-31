@@ -144,11 +144,16 @@ def build(template,target,profile,seed=None):
     setprop(cpu,'reg',u32(cp['mpidr']));setprop(cpu,'compatible',string(cp['compatible'],'ARM,v8'))
     for key in ['timebase-frequency','fixed-frequency','peripheral-frequency']:setprop(cpu,key,u32(freq))
     arm=child(tree,'arm-io');gic=child(arm,'gic')
+    # Never inherit an authorisation token from a template.  Only the exact
+    # QEMU virt GIC layout below receives a freshly generated token.
+    gic.props=[p for p in gic.props if p[0]!='duchamp,gic-mmio-auth-v1']
     ranges=arm.prop('ranges')
     if len(ranges)!=24:raise ValueError('unsupported arm-io translation')
     bus,soc,span=struct.unpack('<3Q',ranges)
     if bus!=0 or not soc or d<soc or r<soc or d+ds>soc+span or r+rs>soc+span:raise ValueError('GIC outside template bus')
     setprop(gic,'reg',u64(d-soc,ds,r-soc,rs));setprop(gic,'virtual-timer-intid',u32(profile['virtual_timer_intid']))
+    if target=='qemu':
+        setprop(gic,'duchamp,gic-mmio-auth-v1',u64(d,ds,r,rs))
     fb=profile['framebuffer'];fbnode=child(tree,'sweet-fbcon')
     setprop(fbnode,'reg',u64(fb['base'],fb['bytes']))
     for key in ['width','stride']:setprop(fbnode,key,u32(fb[key]))
@@ -163,6 +168,7 @@ def build(template,target,profile,seed=None):
     emitted={'target':target,'gicd':d,'gicd_bytes':ds,'gicr':r,'gicr_bytes':rs,'timer_hz':freq,
         'virtual_timer_intid':profile['virtual_timer_intid'],'boot_mpidr':cp['mpidr'],'cpu_count':1,
         'secondary_start_enabled':False,'physical_backend_enabled':False,'phone_execution_authorized':False,
+        'qemu_gic_mmio_authorized':target=='qemu',
         'template_identity_aliases_retained':['D22AP','iPhone10,3','xiaomi,sweet','AppleARM'],
         'unknown_cpu_bus_memory_clocks_omitted':True}
     emitted['console_viewport']={'height':console_height,'rows':console_height//32,'reserved_bottom_pixels':32}

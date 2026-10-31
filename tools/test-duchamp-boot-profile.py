@@ -39,6 +39,11 @@ class Profiles(unittest.TestCase):
             t,end=p.adt.parse(blob);self.assertEqual(end,len(blob));self.assertEqual(len(p.child(t,'cpus').children),1)
             fb=p.child(t,'sweet-fbcon');self.assertEqual(fb.prop('reg')[:8],p.u64(0xfcc2f000))
             self.assertEqual(fb.prop('width'),p.u32(1220));self.assertEqual(fb.prop('stride'),p.u32(4992))
+        pt,_=p.adt.parse(phone);qt,_=p.adt.parse(qemu)
+        pg=p.child(p.child(pt,'arm-io'),'gic');qg=p.child(p.child(qt,'arm-io'),'gic')
+        self.assertIsNone(pg.prop('duchamp,gic-mmio-auth-v1'))
+        self.assertEqual(qg.prop('duchamp,gic-mmio-auth-v1'),p.u64(0x8000000,0x10000,0x80a0000,0x100000))
+        self.assertFalse(fp['qemu_gic_mmio_authorized']);self.assertTrue(fq['qemu_gic_mmio_authorized'])
     def test_unknown_core_bus_ddr_clocks_omitted(self):
         for target,hz in [('phone',13000000),('qemu',62500000)]:
             blob,_=p.build(self.template,target,self.facts(),b'x'*64);t,_=p.adt.parse(blob);cpu=p.child(p.child(t,'cpus'),'cpu0')
