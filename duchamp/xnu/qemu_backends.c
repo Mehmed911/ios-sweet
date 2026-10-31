@@ -31,7 +31,7 @@ static LCK_MTX_DECLARE(qbt_lock,&qbt_group);
 static const char receipt[]="DUCHAMP XNU BACKENDS PASS tables=1 mmu=1 pmic=1 fw_verified=0 physical=0\n";
 static int ready,attempted;
 struct peripheral_model {
-    unsigned role,state,locked,fw_calls,confirmed,accesses;
+    unsigned role,state,locked,fw_calls,confirmed,accesses,dma_route_verified;
     uint32_t write_data,read_data,ttbr,done;
     uint8_t reg[2][0x2000];
 };
@@ -135,6 +135,13 @@ static int unreachable_sip(void *ctx,const struct mp_sip_request *q){(void)q;((s
 static int unreachable_read(void *ctx,uint32_t o,uint32_t *v){(void)o;(void)v;((struct peripheral_model *)ctx)->accesses++;return -1;}
 static int unreachable_write(void *ctx,uint32_t o,uint32_t v){(void)o;(void)v;((struct peripheral_model *)ctx)->accesses++;return -1;}
 static int unreachable_reset(void *ctx,unsigned id,int a){(void)id;(void)a;((struct peripheral_model *)ctx)->accesses++;return -1;}
+static int model_dma_route(void *ctx,const struct md_config *c,enum md_route route){
+    struct peripheral_model *m=ctx;
+    return m->dma_route_verified && route==MD_VERIFIED_BUS_WINDOW &&
+        c->claim.evidence==MD_EVIDENCE_BUS_REQUIRED &&
+        c->cpu==(void *)data_va && c->physical==data_pa && c->bytes==PAGE_SIZE &&
+        c->device_begin==0 && c->device_end==(1ull<<35) && c->address_bits==35;
+}
 static int deny_dma(void *ctx,const struct md_config *c){(void)ctx;(void)c;return 0;}
 static int unreachable_idle(void *ctx){((struct peripheral_model *)ctx)->accesses++;return 0;}
 static int unreachable_map(void *ctx,uint64_t p,uint64_t n,enum md_direction d,uint64_t *a,uint64_t *c){
@@ -229,13 +236,19 @@ int duchamp_qemu_backends_prepare(void) {
                       ordered,micros,pause_us,unreachable_reset};
     struct mufs_clocks clocks={0};
     struct mufs_clock_ops cop={&peripheral,deny_clock,read_model,write_model,ordered,micros};
-    struct md_pool dma={0};
-    struct md_config dc={(void *)data_va,data_pa,PAGE_SIZE,0,1ull<<35,64,PAGE_SIZE,35,MD_UNKNOWN,MD_BIDIRECTIONAL};
-    struct md_ops dop={&peripheral,deny_dma,unreachable_idle,unreachable_map,unreachable_sync,
+    struct md_pool dma={0},claimed_dma={0};
+    struct md_config dc={(void *)data_va,data_pa,PAGE_SIZE,0,1ull<<35,64,PAGE_SIZE,35,
+        {MD_UNKNOWN,0},MD_BIDIRECTIONAL};
+    struct md_ops dop={&peripheral,model_dma_route,deny_dma,unreachable_idle,unreachable_map,unreachable_sync,
                       unreachable_sync,ordered,unreachable_unmap};
     if(mp_bind(&power,&pp,&pop) || mp_prepare(&power)!=MP_UNVERIFIED ||
        mufs_clocks_bind(&clocks,&cop,1000) || mufs_clock_set(&clocks,0,0,1)!=MUFS_UNVERIFIED ||
        md_bind(&dma,&dc,&dop)!=MD_UNVERIFIED || peripheral.accesses!=accesses)return EIO;
+    peripheral.dma_route_verified=1;
+    dc.claim=(struct md_route_claim){MD_VERIFIED_BUS_WINDOW,MD_EVIDENCE_BUS_REQUIRED};
+    if(md_bind(&claimed_dma,&dc,&dop) || md_map(&claimed_dma)!=MD_UNVERIFIED ||
+       peripheral.accesses!=accesses)return EIO;
+    peripheral.dma_route_verified=0;
     sweet_early_mark(196,"QEMU XNU PHYSICAL PROVIDERS DEFAULT CLOSED");
     int major=cdevsw_add(-1,&diagnostic);
     if(major<0 || !devfs_make_node(makedev(major,0),DEVFS_CHAR,UID_ROOT,GID_WHEEL,0440,"mbtest"))return ENXIO;

@@ -3,7 +3,26 @@
 static int pow2(uint64_t n) { return n && !(n&(n-1)); }
 static int poison(struct md_pool *p,int error) { p->state=MD_POISONED; return error; }
 static int authorised(struct md_pool *p) {
+    enum md_route route=md_route_evaluate(&p->config.claim);
+    if(route==MD_UNKNOWN || route!=p->route) return MD_UNVERIFIED;
+    if(p->ops.verify_route(p->ops.context,&p->config,route)!=1) return MD_UNVERIFIED;
     return p->ops.authorise(p->ops.context,&p->config)==1?MD_OK:MD_UNVERIFIED;
+}
+enum md_route md_route_evaluate(const struct md_route_claim *claim) {
+    if(!claim) return MD_UNKNOWN;
+    const uint32_t direct=MD_EVIDENCE_DIRECT_DMA_OPS|MD_EVIDENCE_NO_SWIOTLB|
+                          MD_EVIDENCE_PA_TO_DMA;
+    const uint32_t iommu=MD_EVIDENCE_IOMMU_OPS|MD_EVIDENCE_IOMMU_DOMAIN|
+                         MD_EVIDENCE_STREAM_ID|MD_EVIDENCE_IOMMU_TABLES;
+    const uint32_t known=MD_EVIDENCE_COMMON_REQUIRED|direct|iommu;
+    if(claim->evidence&~known) return MD_UNKNOWN;
+    if(claim->requested==MD_VERIFIED_BUS_WINDOW &&
+       (claim->evidence&MD_EVIDENCE_BUS_REQUIRED)==MD_EVIDENCE_BUS_REQUIRED &&
+       !(claim->evidence&iommu)) return MD_VERIFIED_BUS_WINDOW;
+    if(claim->requested==MD_VERIFIED_IOMMU &&
+       (claim->evidence&MD_EVIDENCE_IOMMU_REQUIRED)==MD_EVIDENCE_IOMMU_REQUIRED &&
+       !(claim->evidence&direct)) return MD_VERIFIED_IOMMU;
+    return MD_UNKNOWN;
 }
 int md_bind(struct md_pool *p,const struct md_config *c,const struct md_ops *o) {
     if(!p || !c || !o || !c->cpu || !c->bytes || c->bytes>SIZE_MAX ||
@@ -14,14 +33,15 @@ int md_bind(struct md_pool *p,const struct md_config *c,const struct md_ops *o) 
        c->bytes%c->alignment || c->device_begin>=c->device_end ||
        !c->address_bits || c->address_bits>64 ||
        c->direction<MD_TO_DEVICE || c->direction>MD_BIDIRECTIONAL ||
-       !o->authorise || !o->idle || !o->map || !o->sync_device || !o->sync_cpu ||
+       !o->verify_route || !o->authorise || !o->idle || !o->map || !o->sync_device || !o->sync_cpu ||
        !o->barrier || !o->unmap) return MD_ARGUMENT;
     if(p->state!=MD_NEW) return MD_STATE;
-    if(c->route!=MD_VERIFIED_BUS_WINDOW && c->route!=MD_VERIFIED_IOMMU) return MD_UNVERIFIED;
+    enum md_route route=md_route_evaluate(&c->claim);
+    if(route==MD_UNKNOWN || o->verify_route(o->context,c,route)!=1) return MD_UNVERIFIED;
     /* Reserving a bus window does not establish that physical == DMA. The
      * mapper must return an explicitly validated device address in both modes.
      */
-    p->config=*c; p->ops=*o; p->state=MD_BOUND;
+    p->config=*c; p->ops=*o; p->route=route; p->state=MD_BOUND;
     return MD_OK;
 }
 int md_map(struct md_pool *p) {
@@ -73,7 +93,7 @@ int md_release(struct md_pool *p) {
     if(p->ops.idle(p->ops.context)!=1) return MD_BUSY;
     if(p->ops.unmap(p->ops.context,p->cookie,p->device,p->config.bytes,p->config.direction))
         return poison(p,MD_IO);
-    p->device=0; p->cookie=0; p->state=MD_RELEASED;
+    p->device=0; p->cookie=0; p->route=MD_UNKNOWN; p->state=MD_RELEASED;
     return MD_OK;
 }
 void md_poison(struct md_pool *p) {

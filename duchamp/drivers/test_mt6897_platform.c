@@ -164,11 +164,15 @@ static void power_tests(void) {
 
 _Alignas(4096) static unsigned char cpu_memory[8192];
 struct dma_model {
-    unsigned maps,unmaps,to_device,to_cpu,barriers,idles;
-    int permitted,idle,fail_map,fail_device,fail_cpu,fail_unmap;
+    unsigned verifies,maps,unmaps,to_device,to_cpu,barriers,idles;
+    int route_permitted,permitted,idle,fail_map,fail_device,fail_cpu,fail_unmap;
     uint64_t bus,cookie;
     unsigned char device_memory[8192];
 };
+static int dverify(void *v,const struct md_config *c,enum md_route route) {
+    struct dma_model *m=v;m->verifies++;assert(c->cpu==cpu_memory);
+    return m->route_permitted && route==c->claim.requested;
+}
 static int dauth(void *v,const struct md_config *c) {
     assert(c->cpu==cpu_memory); return ((struct dma_model *)v)->permitted;
 }
@@ -200,14 +204,15 @@ static int dunmap(void *v,uint64_t cookie,uint64_t bus,uint64_t bytes,enum md_di
     return m->fail_unmap?-1:0;
 }
 static struct md_ops dops(struct dma_model *m) {
-    return (struct md_ops){m,dauth,didle,dmap,dsync_device,dsync_cpu,dbarrier,dunmap};
+    return (struct md_ops){m,dverify,dauth,didle,dmap,dsync_device,dsync_cpu,dbarrier,dunmap};
 }
 static struct md_config dconfig(void) {
     return (struct md_config){cpu_memory,0x100000000ull,8192,0x20000000,0x30000000,64,4096,32,
-                             MD_VERIFIED_IOMMU,MD_BIDIRECTIONAL};
+                             {MD_VERIFIED_IOMMU,MD_EVIDENCE_IOMMU_REQUIRED},MD_BIDIRECTIONAL};
 }
 static struct dma_model dmodel(void) {
-    return (struct dma_model){.permitted=1,.idle=1,.bus=0x20004000,.cookie=0x98765};
+    return (struct dma_model){.route_permitted=1,.permitted=1,.idle=1,
+                              .bus=0x20004000,.cookie=0x98765};
 }
 static void pinned(struct md_pool *p,struct dma_model *m) {
     unsigned before=m->maps+m->unmaps+m->to_cpu+m->to_device;
@@ -215,12 +220,23 @@ static void pinned(struct md_pool *p,struct dma_model *m) {
     CHECK(md_release(p)==MD_STATE && before==m->maps+m->unmaps+m->to_cpu+m->to_device);
 }
 static void dma_tests(void) {
+    const uint32_t expected_common=MD_EVIDENCE_POOL_OWNED|MD_EVIDENCE_DMA_MASK|
+        MD_EVIDENCE_CACHE_POLICY|MD_EVIDENCE_FIRMWARE_OWNERSHIP;
+    const uint32_t expected_bus=expected_common|MD_EVIDENCE_DIRECT_DMA_OPS|
+        MD_EVIDENCE_NO_SWIOTLB|MD_EVIDENCE_PA_TO_DMA;
+    const uint32_t expected_iommu=expected_common|MD_EVIDENCE_IOMMU_OPS|
+        MD_EVIDENCE_IOMMU_DOMAIN|MD_EVIDENCE_STREAM_ID|MD_EVIDENCE_IOMMU_TABLES;
+    CHECK(MD_EVIDENCE_COMMON_REQUIRED==expected_common);
+    CHECK(MD_EVIDENCE_BUS_REQUIRED==expected_bus);
+    CHECK(MD_EVIDENCE_IOMMU_REQUIRED==expected_iommu);
     for(int route=1;route<=2;route++) for(int direction=1;direction<=3;direction++) {
         struct dma_model m=dmodel(); struct md_ops o=dops(&m); struct md_config c=dconfig();
-        c.route=(enum md_route)route; c.direction=(enum md_direction)direction;
+        c.claim.requested=(enum md_route)route;
+        c.claim.evidence=route==MD_VERIFIED_BUS_WINDOW?expected_bus:expected_iommu;
+        c.direction=(enum md_direction)direction;
         struct md_pool p={0};
         for(unsigned i=0;i<sizeof(cpu_memory);i++) cpu_memory[i]=(unsigned char)(i*7);
-        CHECK(md_bind(&p,&c,&o)==0 && !m.maps);
+        CHECK(md_bind(&p,&c,&o)==0 && m.verifies==1 && !m.maps);
         CHECK(md_map(&p)==0 && p.state==MD_CPU && p.device!=p.config.physical);
         CHECK(p.device==0x20004000 && p.cookie==0x98765 && m.maps==1);
         CHECK(md_for_device(&p)==0 && p.state==MD_DEVICE && m.to_device==1 && m.barriers==1);
@@ -234,7 +250,7 @@ static void dma_tests(void) {
         CHECK(md_release(&p)==0 && m.unmaps==1 && p.state==MD_RELEASED);
         CHECK(md_bind(&p,&c,&o)==MD_STATE);
     }
-    for(unsigned mode=0;mode<14;mode++) {
+    for(unsigned mode=0;mode<15;mode++) {
         struct dma_model m=dmodel(); struct md_ops o=dops(&m); struct md_config c=dconfig();
         struct md_pool p={0}; int expected=MD_ARGUMENT;
         switch(mode) {
@@ -250,10 +266,66 @@ static void dma_tests(void) {
         case 9: c.direction=0; break;
         case 10: c.device_end=c.device_begin; break;
         case 11: o.sync_cpu=NULL; break;
-        case 12: c.route=MD_UNKNOWN; expected=MD_UNVERIFIED; break;
-        default: c.cpu=(void *)(UINTPTR_MAX-63); break;
+        case 12: c.claim.requested=MD_UNKNOWN; expected=MD_UNVERIFIED; break;
+        case 13: c.cpu=(void *)(UINTPTR_MAX-63); break;
+        default: o.verify_route=NULL; break;
         }
-        CHECK(md_bind(&p,&c,&o)==expected && !m.maps && !m.idles);
+        CHECK(md_bind(&p,&c,&o)==expected && !m.verifies && !m.maps && !m.idles);
+    }
+    {
+        /* Linux observations such as an identity dma-ranges window and no DT
+         * IOMMU binding do not prove runtime dma_ops, SWIOTLB, PA->DMA,
+         * cache policy, or firmware/firewall ownership. */
+        struct dma_model m=dmodel(); struct md_ops o=dops(&m); struct md_config c=dconfig();
+        struct md_pool p={0}; c.claim.requested=MD_VERIFIED_BUS_WINDOW;
+        c.claim.evidence=MD_EVIDENCE_DMA_MASK;
+        CHECK(md_route_evaluate(&c.claim)==MD_UNKNOWN);
+        CHECK(md_bind(&p,&c,&o)==MD_UNVERIFIED);
+        CHECK(!m.verifies && !m.idles && !m.maps && !m.to_device && !m.to_cpu &&
+              !m.barriers && !m.unmaps);
+    }
+    for(int route=MD_VERIFIED_BUS_WINDOW;route<=MD_VERIFIED_IOMMU;route++) {
+        uint32_t required=route==MD_VERIFIED_BUS_WINDOW?expected_bus:expected_iommu;
+        for(unsigned bit=0;bit<11;bit++) if(required&(1u<<bit)) {
+            struct dma_model m=dmodel(); struct md_ops o=dops(&m); struct md_config c=dconfig();
+            struct md_pool p={0}; c.claim.requested=(enum md_route)route;
+            c.claim.evidence=required&~(1u<<bit);
+            CHECK(md_route_evaluate(&c.claim)==MD_UNKNOWN);
+            CHECK(md_bind(&p,&c,&o)==MD_UNVERIFIED && !m.verifies && !m.idles && !m.maps &&
+                  !m.to_device && !m.to_cpu && !m.barriers && !m.unmaps);
+        }
+    }
+    {
+        struct dma_model m=dmodel(); struct md_ops o=dops(&m); struct md_config c=dconfig();
+        struct md_pool p={0}; c.claim.evidence|=MD_EVIDENCE_DIRECT_DMA_OPS;
+        CHECK(md_route_evaluate(&c.claim)==MD_UNKNOWN);
+        CHECK(md_bind(&p,&c,&o)==MD_UNVERIFIED && !m.verifies && !m.idles && !m.maps);
+        c.claim.evidence=MD_EVIDENCE_IOMMU_REQUIRED|(1u<<31);
+        CHECK(md_route_evaluate(&c.claim)==MD_UNKNOWN);
+        CHECK(md_bind(&p,&c,&o)==MD_UNVERIFIED && !m.verifies && !m.idles && !m.maps);
+        c.claim.requested=MD_VERIFIED_BUS_WINDOW;
+        c.claim.evidence=MD_EVIDENCE_BUS_REQUIRED|MD_EVIDENCE_IOMMU_OPS;
+        CHECK(md_route_evaluate(&c.claim)==MD_UNKNOWN);
+        CHECK(md_bind(&p,&c,&o)==MD_UNVERIFIED && !m.verifies && !m.idles && !m.maps);
+    }
+    {
+        struct dma_model m=dmodel(); struct md_ops o=dops(&m); struct md_config c=dconfig();
+        struct md_pool p={0};m.route_permitted=0;
+        CHECK(md_bind(&p,&c,&o)==MD_UNVERIFIED && m.verifies==1 && !m.idles && !m.maps);
+    }
+    {
+        struct dma_model m=dmodel(); struct md_ops o=dops(&m); struct md_config c=dconfig();
+        struct md_pool p={0};CHECK(md_bind(&p,&c,&o)==MD_OK && m.verifies==1);
+        m.route_permitted=0;
+        CHECK(md_map(&p)==MD_UNVERIFIED && m.verifies==2 && !m.idles && !m.maps);
+    }
+    {
+        struct dma_model m=dmodel(); struct md_ops o=dops(&m); struct md_config c=dconfig();
+        struct md_pool p={0};CHECK(md_bind(&p,&c,&o)==MD_OK);
+        p.config.claim.evidence&=~MD_EVIDENCE_STREAM_ID;
+        CHECK(md_map(&p)==MD_UNVERIFIED && !m.idles && !m.maps);
+        p.config.claim=(struct md_route_claim){MD_VERIFIED_BUS_WINDOW,expected_bus};
+        CHECK(md_map(&p)==MD_UNVERIFIED && !m.idles && !m.maps);
     }
     for(unsigned mode=0;mode<5;mode++) {
         struct dma_model m=dmodel(); struct md_ops o=dops(&m); struct md_config c=dconfig();
@@ -310,6 +382,7 @@ static void dma_tests(void) {
         md_poison(&p); CHECK(p.state==MD_POISONED && !m.unmaps); pinned(&p,&m);
     }
     CHECK(md_bind(NULL,NULL,NULL)==MD_ARGUMENT && md_map(NULL)==MD_ARGUMENT);
+    CHECK(md_route_evaluate(NULL)==MD_UNKNOWN);
     CHECK(md_for_device(NULL)==MD_ARGUMENT && md_for_cpu(NULL)==MD_ARGUMENT && md_release(NULL)==MD_ARGUMENT);
 }
 int main(void) {
