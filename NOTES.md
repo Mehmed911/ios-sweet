@@ -1,4 +1,4 @@
-Bounded UFS waits / saved boot policy — active work (2026-10-31):
+Bounded UFS waits / saved boot policy — verified milestone (2026-10-31):
 Baseline 50f15c39241565cdb4a87921b0fe949af2f8f4d7, duchamp-bootstrap.
 No phone/USB/ADB/fastboot/partition access. Existing user changes preserved.
 Fixed unbounded frozen-clock UFS waits with a mandatory finite, operation-wide
@@ -11,8 +11,18 @@ including a frozen timer above4GiB;78 native sanitizer guards also pass.
 compile-v1/result.json:both changed C TUs compile with real XNU generated
 headers, new timeout-cause core definition resolves the adapter import.
 Production core commit f6dfc1e077bd196288d99d2250adfbd0b313e7b0 pushed.
-Full XNU CI41147308270 is RUNNING; guest boots PENDING for this change.
-Earlier24/20 belong to d51e7db. Do not use them for the changed core.
+Full XNU CI41147308270 SUCCESS at f6dfc1e; artifact13022331159, archive SHA
+e980cee5e4e240e8595320757b6799a5be72375b6512ecf0110ccac431606c91.
+Kernel SHA f86bd430b9fdb58d93c0f38d2009b71a7d1b5f15107ea9656c045c5a2eea99ca.
+NEW guest-backends-v1/verification.json24/24 and guest-baseline-v1/verification.json
+20/20 PASS with this exact kernel; both exit0,81.805/81.815sec,16frames each.
+Actual virtual UFS/HFS+ root -> diagnostic PID1 reads/EROFS/heartbeat observed;
+no sampled panic,0 unknown glyphs. No RAMDisk; both root images unchanged.
+In-kernel backend/table selftest remains RAM models with fw_verified=0/physical=0.
+Stopped rootPA0x1c2820000 aligned64KiB and below35bits; pool0x1c2830000/data0x1c2834000.
+final-verification.json passes source closures,7 fresh public blobs and5 original
+saved image hashes. All user pre-existing1689-line notes/loader/QEMU changes preserved.
+Boot-policy tools/docs committed01aa3148328119598bcc6f6ba929469fbadb1b92.
 New boot-policy auditor pins7 public files to the saved GKI stamp. audit-v2
 finds swiotlb=noforce disables DEFAULT SWIOTLB init, disable_dma32=on disables
 that zone, ufshcd_core_init is requested blacklisted. Built-in protected KVM
@@ -26,6 +36,8 @@ This refines previous default-bounce assumptions; vendor overrides remain open.
 See duchamp/UFS-BOUNDS-POLICY.md. These Linux policies do not authorize XNU DMA.
 Physical firmware identity/effects, DMA ownership and effective masks remain
 unverified. No physical MT6897 backend enabled by these local tests.
+Next: close those actual firmware/DMA evidence gaps before physical UFS use;
+do not infer them from Linux policy, source replay, QEMU or a successful CI.
 End of bounded-UFS handoff.
 
 Saved-UFS firmware/DMA contract — verified local milestone (2026-10-31):

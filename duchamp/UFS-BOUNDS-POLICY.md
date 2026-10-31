@@ -27,8 +27,27 @@ Local validation on 2026-10-31:
 | `test-duchamp-driver-core.py` | 142 checks; 78 native sanitizer guards | Actual QEMU UFS DMA driven by qtest, including a frozen clock above 4 GiB; no guest OS |
 | Local XNU compilation | Both changed C translation units pass; new symbol resolves | Real generated XNU headers, no full kernel boot |
 
-Full XNU build/guest results will be recorded below when complete. Previous
-24/20 guest results for `d51e7db` do not validate this changed core.
+[Full XNU CI 41147308270](https://github.com/Mehmed911/ios-sweet/actions/runs/41147308270)
+completed successfully at `f6dfc1e077bd196288d99d2250adfbd0b313e7b0`.
+Artifact `13022331159` matches its GitHub archive digest
+`e980cee5e4e240e8595320757b6799a5be72375b6512ecf0110ccac431606c91`;
+the packaged checksum manifest also matches. The new kernel SHA256 is
+`f86bd430b9fdb58d93c0f38d2009b71a7d1b5f15107ea9656c045c5a2eea99ca`.
+
+Two **new** guest boots with that kernel passed in parallel:
+
+| Guest | Result | Observed behavior |
+|---|---|---|
+| Backend/table selftest enabled | 24/24; exit 0; 81.805 s | RAM backend tests and devfs receipt, actual virtual UFS/HFS+ mount, PID1 reads, EROFS and heartbeat |
+| Baseline, selftest omitted | 20/20; exit 0; 81.815 s | Same UFS/HFS+ root and diagnostic PID1 path |
+
+Both collected 16 framebuffer samples, decoded without unknown glyphs, and
+observed no panic through the success heartbeat. They used read-only UFS
+images with no RAMDisk; image, kernel and harness source hashes were unchanged.
+The stopped-guest table root PA was `0x1c2820000`, 64-KiB aligned and below
+the 35-bit table limit. The backend receipt explicitly reports
+`fw_verified=0 physical=0`. These are sampled diagnostic boots, not a long
+stability test, physical MediaTek UFS validation or a complete iOS system.
 
 ## Captured boot policy narrows the DMA candidate
 
@@ -89,4 +108,8 @@ python3 tools/test-duchamp-ufs-poll.py research/ufs-poll-check
 Current local evidence: `research/mt6897-policy/audit-v2/result.json`,
 `check-v2/result.json`, `poll-v1/result.json`, `transport-v1/result.json`,
 and `compile-v1/result.json`. Source and fixture hashes are recorded there.
+The new guest reports are `guest-backends-v1/verification.json` and
+`guest-baseline-v1/verification.json` under the same directory. The final
+`final-verification.json` checks their source closures, the seven freshly
+downloaded upstream blobs and five original saved boot/FDT/firmware hashes.
 Physical firmware/DMA validation remains a separate, unresolved requirement.
