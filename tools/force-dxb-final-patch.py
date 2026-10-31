@@ -43,6 +43,8 @@ replacement = '''        done
         python3 "${WORK_DIR}/../tools/stage-duchamp-qemu-backends.py" "${WORK_DIR}/xnu"
         running "Staging bounded Duchamp GIC redistributor discovery and wake"
         python3 "${WORK_DIR}/../tools/stage-duchamp-gic-boot.py" "${WORK_DIR}/xnu"
+        running "Staging fail-closed Duchamp PSCI CPU_ON authorization"
+        python3 "${WORK_DIR}/../tools/stage-duchamp-psci-boot.py" "${WORK_DIR}/xnu"
         cd "${WORK_DIR}"
     fi
 }

@@ -23,7 +23,9 @@ on:
       - "tools/stage-duchamp-qemu-ufs.py"
       - "tools/stage-duchamp-qemu-backends.py"
       - "tools/stage-duchamp-gic-boot.py"
+      - "tools/stage-duchamp-psci-boot.py"
       - "duchamp/drivers/duchamp_gic_boot.h"
+      - "duchamp/drivers/duchamp_psci_boot.h"
       - "tools/force-dxb-final-patch.py"
       - "duchamp/drivers/ufs_readonly.c"
       - "duchamp/drivers/ufs_readonly.h"
@@ -115,6 +117,7 @@ jobs:
           grep -Fq 'DUCHAMP QUFS ROOT SELECTED' xnu/iokit/bsddev/IOKitBSDInit.cpp
           grep -Fq 'DUCHAMP QUFS READY' xnu/bsd/dev/duchamp_qemu_ufs.c
           grep -Fq 'DUCHAMP BOUNDED GICR BOOT V1' xnu/pexpert/arm/pe_fiq.c
+          grep -Fq 'DUCHAMP PSCI CPU_ON AUTH GATE V1' xnu/iokit/Kernel/arm/SweetCPU.cpp
           grep -Fq 'DUCHAMP CPU BINDINGS V1' xnu/iokit/KernelConfigTables.cpp
           grep -Fq 'ARM64 bootstrap CPU' xnu/iokit/Kernel/arm/SweetCPU.cpp
           grep -Fq 'DUCHAMP UNKNOWN CLOCK RATIOS V1' xnu/pexpert/arm/pe_identify_machine.c
@@ -122,6 +125,7 @@ jobs:
           grep -Fq 'DUCHQEMU' xnu/osfmk/arm64/start.s
           grep -Fq 'sweet_early_timer_irq_witness' xnu/osfmk/arm64/sleh.c
           cmp ../duchamp/drivers/duchamp_gic_boot.h xnu/pexpert/arm/duchamp_gic_boot.h
+          cmp ../duchamp/drivers/duchamp_psci_boot.h xnu/iokit/Kernel/arm/duchamp_psci_boot.h
           cmp ../duchamp/drivers/ufs_readonly.c xnu/bsd/dev/duchamp_ufs_core.c
           cmp ../duchamp/drivers/ufs_readonly.h xnu/bsd/dev/ufs_readonly.h
           grep -Fq 'DUCHAMP QEMU backend selftest failed' xnu/iokit/bsddev/IOKitBSDInit.cpp
