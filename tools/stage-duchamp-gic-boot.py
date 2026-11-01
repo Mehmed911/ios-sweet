@@ -21,6 +21,7 @@ def transform(text):
     adapters='''#if defined(DUCHAMP)
 /* DUCHAMP BOUNDED GICR BOOT V1 */
 static int duchamp_gic_mmio_authorized;
+static int duchamp_gic_physical_trial;
 static int duchamp_gic_authorise(void *ctx,unsigned operation) {
     (void)ctx;
     return duchamp_gic_mmio_authorized &&
@@ -66,10 +67,10 @@ find_gicr_pe_base()
     map_anchor='''\t\t// Find GICD base address
 '''
     authorization='''#if defined(DUCHAMP)
-        /* A profile token is an offline QEMU capability, not a claim that
-         * physical MT6897 GIC ownership has been established. Phone profiles
-         * deliberately omit it and stop before the first GICR read. */
+        /* QEMU and physical diagnostic profiles use distinct exact tokens.
+         * Neither token authorizes storage or any unrelated device MMIO. */
         duchamp_gic_mmio_authorized=0;
+        duchamp_gic_physical_trial=0;
         void const *authorization_prop;
         unsigned int authorization_size;
         if (SecureDTGetProperty(entry,"duchamp,gic-mmio-auth-v1",
@@ -85,10 +86,33 @@ find_gicr_pe_base()
                 authorization[2]==soc_base_phys+gicr_base_prop &&
                 authorization[3]==gicr_size_prop) {
                 duchamp_gic_mmio_authorized=1;
+            } else if (authorization[0]==UINT64_C(0x0c400000) &&
+                authorization[1]==UINT64_C(0x00040000) &&
+                authorization[2]==UINT64_C(0x0c440000) &&
+                authorization[3]==UINT64_C(0x00200000) &&
+                authorization[0]==soc_base_phys+gicd_base_prop &&
+                authorization[1]==gicd_size_prop &&
+                authorization[2]==soc_base_phys+gicr_base_prop &&
+                authorization[3]==gicr_size_prop) {
+                void const *trial_prop;
+                unsigned int trial_size;
+                if (SecureDTGetProperty(entry,"duchamp,gic-phone-trial-v1",
+                    &trial_prop,&trial_size)==kSuccess &&
+                    trial_size==4*sizeof(uint64_t)) {
+                    uint64_t const *trial=(uint64_t const *)trial_prop;
+                    if (trial[0]==UINT64_C(0x44554348414d5031) &&
+                        trial[1]==UINT64_C(13000000) &&
+                        trial[2]==UINT64_C(27) && trial[3]==UINT64_C(0)) {
+                        duchamp_gic_mmio_authorized=1;
+                        duchamp_gic_physical_trial=1;
+                    }
+                }
             }
         }
         if (!duchamp_gic_mmio_authorized) {
-            kprintf("DUCHAMP GIC: MMIO denied; no verified QEMU capability\\n");
+            kprintf("DUCHAMP GIC: MMIO denied; no verified profile capability\\n");
+        } else if (duchamp_gic_physical_trial) {
+            kprintf("DUCHAMP GIC: bounded physical trial capability accepted\\n");
         }
 #endif
 

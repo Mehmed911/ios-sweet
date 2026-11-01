@@ -44,6 +44,28 @@ class Profiles(unittest.TestCase):
         self.assertIsNone(pg.prop('duchamp,gic-mmio-auth-v1'))
         self.assertEqual(qg.prop('duchamp,gic-mmio-auth-v1'),p.u64(0x8000000,0x10000,0x80a0000,0x100000))
         self.assertFalse(fp['qemu_gic_mmio_authorized']);self.assertTrue(fq['qemu_gic_mmio_authorized'])
+        self.assertFalse(fp['physical_gic_trial_authorized']);self.assertFalse(fq['physical_gic_trial_authorized'])
+    def test_explicit_phone_gic_trial_token(self):
+        facts=self.facts();blob,emitted=p.build(self.template,'phone',facts,b'x'*64,authorize_phone_gic=True)
+        tree,end=p.adt.parse(blob);self.assertEqual(end,len(blob));gic=p.child(p.child(tree,'arm-io'),'gic')
+        self.assertEqual(gic.prop('duchamp,gic-mmio-auth-v1'),
+                         p.u64(0xc400000,0x40000,0xc440000,0x200000))
+        self.assertEqual(gic.prop('duchamp,gic-phone-trial-v1'),
+                         p.u64(p.PHONE_GIC_TRIAL_MAGIC,13000000,27,0))
+        self.assertTrue(emitted['physical_gic_trial_authorized'])
+        self.assertFalse(emitted['phone_execution_authorized']);self.assertFalse(emitted['physical_backend_enabled'])
+    def test_phone_gic_trial_rejected_for_qemu(self):
+        with self.assertRaises(ValueError):
+            p.build(self.template,'qemu',self.facts(),b'x'*64,authorize_phone_gic=True)
+    def test_phone_gic_runtime_evidence_gate(self):
+        report={'passed':True,'target':{'device':'duchamp','hardware':'mt6897'},
+                'reference_dtb_sha256':p.FDT_SHA,
+                'runtime':{'timer':{'gic_hwirq':27,'total_delta':1}},
+                'claims':{'android_timer_delivery_observed':True,'xnu_phone_delivery_observed':False},
+                'safety':{key:False for key in ['device_writes','fastboot_access','partition_access','mmio_access']}}
+        self.assertEqual(p.validate_phone_gic_evidence(report,self.facts()),{'gic_hwirq':27,'total_delta':1})
+        report['runtime']['timer']['total_delta']=0
+        with self.assertRaises(ValueError):p.validate_phone_gic_evidence(report,self.facts())
     def test_unknown_core_bus_ddr_clocks_omitted(self):
         for target,hz in [('phone',13000000),('qemu',62500000)]:
             blob,_=p.build(self.template,target,self.facts(),b'x'*64);t,_=p.adt.parse(blob);cpu=p.child(p.child(t,'cpus'),'cpu0')

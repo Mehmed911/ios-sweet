@@ -8,6 +8,7 @@ RUNTIME_FDT_PROPERTIES={
  ('/i2c@11f01000/mt6375@34/mtk-gauge','fg_swocv_i'),
  ('/i2c@11f01000/mt6375@34/mtk-gauge','fg_swocv_v')}
 TEMPLATE_SHA='be512dce04bf581d188440246b4e3402de057a43f4c178da7984a68ccbb9ba2f'
+PHONE_GIC_TRIAL_MAGIC=0x44554348414d5031
 COMMIT='cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6'
 SOURCE_PINS={'drivers/irqchip/irq-gic-v3.c':'b0c065108bb7c8dc343e067e39bdd2d6d95676f0',
  'include/linux/irqchip/arm-gic-v3.h':'d4a40c7f8e05361e7f53ee9d5858490e5a97d92b',
@@ -118,8 +119,26 @@ def child(node,name):
     return found[0]
 def setprop(node,key,value):
     node.props=[p for p in node.props if p[0]!=key]+[(key,0,value)]
-def build(template,target,profile,seed=None):
+
+def validate_phone_gic_evidence(report,profile):
+    if report.get('passed') is not True:raise ValueError('GIC runtime evidence did not pass')
+    if report.get('target',{}).get('device')!='duchamp' or report.get('target',{}).get('hardware')!='mt6897':
+        raise ValueError('GIC runtime evidence target differs')
+    if report.get('reference_dtb_sha256')!=FDT_SHA:raise ValueError('GIC runtime evidence DTB pin differs')
+    timer=report.get('runtime',{}).get('timer',{})
+    if timer.get('gic_hwirq')!=profile['virtual_timer_intid'] or not isinstance(timer.get('total_delta'),int) or timer['total_delta']<=0:
+        raise ValueError('GIC runtime evidence lacks advancing timer PPI')
+    claims=report.get('claims',{})
+    if claims.get('android_timer_delivery_observed') is not True or claims.get('xnu_phone_delivery_observed') is not False:
+        raise ValueError('GIC runtime evidence scope differs')
+    safety=report.get('safety',{})
+    for key in ['device_writes','fastboot_access','partition_access','mmio_access']:
+        if safety.get(key) is not False:raise ValueError('unsafe GIC runtime evidence: '+key)
+    return {'gic_hwirq':timer['gic_hwirq'],'total_delta':timer['total_delta']}
+
+def build(template,target,profile,seed=None,authorize_phone_gic=False):
     if target not in ['phone','qemu']:raise ValueError('explicit phone/qemu target required')
+    if authorize_phone_gic and target!='phone':raise ValueError('physical GIC trial requires phone target')
     if sha(template)!=TEMPLATE_SHA:raise ValueError('template pin differs')
     if seed is not None and len(seed)!=64:raise ValueError('diagnostic seed must have64 bytes')
     tree,end=adt.parse(template)
@@ -144,9 +163,10 @@ def build(template,target,profile,seed=None):
     setprop(cpu,'reg',u32(cp['mpidr']));setprop(cpu,'compatible',string(cp['compatible'],'ARM,v8'))
     for key in ['timebase-frequency','fixed-frequency','peripheral-frequency']:setprop(cpu,key,u32(freq))
     arm=child(tree,'arm-io');gic=child(arm,'gic')
-    # Never inherit an authorisation token from a template.  Only the exact
-    # QEMU virt GIC layout below receives a freshly generated token.
-    gic.props=[p for p in gic.props if p[0]!='duchamp,gic-mmio-auth-v1']
+    # Never inherit an authorisation token from a template.  Only an exact
+    # QEMU layout or an explicitly requested physical diagnostic trial gets one.
+    gic.props=[p for p in gic.props if p[0] not in
+               ['duchamp,gic-mmio-auth-v1','duchamp,gic-phone-trial-v1']]
     ranges=arm.prop('ranges')
     if len(ranges)!=24:raise ValueError('unsupported arm-io translation')
     bus,soc,span=struct.unpack('<3Q',ranges)
@@ -154,6 +174,13 @@ def build(template,target,profile,seed=None):
     setprop(gic,'reg',u64(d-soc,ds,r-soc,rs));setprop(gic,'virtual-timer-intid',u32(profile['virtual_timer_intid']))
     if target=='qemu':
         setprop(gic,'duchamp,gic-mmio-auth-v1',u64(d,ds,r,rs))
+    elif authorize_phone_gic:
+        # This does not authorize storage or general phone execution.  The
+        # kernel still checks the exact extents and independent trial token.
+        setprop(gic,'duchamp,gic-mmio-auth-v1',u64(d,ds,r,rs))
+        setprop(gic,'duchamp,gic-phone-trial-v1',u64(
+            PHONE_GIC_TRIAL_MAGIC,profile['timer_hz'],
+            profile['virtual_timer_intid'],cp['mpidr']))
     fb=profile['framebuffer'];fbnode=child(tree,'sweet-fbcon')
     setprop(fbnode,'reg',u64(fb['base'],fb['bytes']))
     for key in ['width','stride']:setprop(fbnode,key,u32(fb[key]))
@@ -169,6 +196,7 @@ def build(template,target,profile,seed=None):
         'virtual_timer_intid':profile['virtual_timer_intid'],'boot_mpidr':cp['mpidr'],'cpu_count':1,
         'secondary_start_enabled':False,'physical_backend_enabled':False,'phone_execution_authorized':False,
         'qemu_gic_mmio_authorized':target=='qemu',
+        'physical_gic_trial_authorized':target=='phone' and authorize_phone_gic,
         'template_identity_aliases_retained':['D22AP','iPhone10,3','xiaomi,sweet','AppleARM'],
         'unknown_cpu_bus_memory_clocks_omitted':True}
     emitted['console_viewport']={'height':console_height,'rows':console_height//32,'reserved_bottom_pixels':32}
