@@ -24,9 +24,11 @@ on:
       - "tools/stage-duchamp-qemu-backends.py"
       - "tools/stage-duchamp-gic-boot.py"
       - "tools/stage-duchamp-timer-boot.py"
+      - "tools/stage-duchamp-counter-probe.py"
       - "tools/stage-duchamp-psci-boot.py"
       - "duchamp/drivers/duchamp_gic_boot.h"
       - "duchamp/drivers/duchamp_timer_boot.h"
+      - "duchamp/drivers/duchamp_counter_probe.h"
       - "duchamp/drivers/duchamp_psci_boot.h"
       - "tools/force-dxb-final-patch.py"
       - "duchamp/drivers/ufs_readonly.c"
@@ -120,6 +122,7 @@ jobs:
           grep -Fq 'DUCHAMP QUFS READY' xnu/bsd/dev/duchamp_qemu_ufs.c
           grep -Fq 'DUCHAMP BOUNDED GICR BOOT V1' xnu/pexpert/arm/pe_fiq.c
           grep -Fq 'DUCHAMP CNTFRQ CONTRACT V1' xnu/osfmk/arm/arm_init.c
+          grep -Fq 'DUCHAMP PRE-GIC COUNTER PROBE V1' xnu/osfmk/arm/arm_init.c
           grep -Fq 'DUCHAMP PSCI CPU_ON AUTH GATE V1' xnu/iokit/Kernel/arm/SweetCPU.cpp
           grep -Fq 'DUCHAMP CPU BINDINGS V1' xnu/iokit/KernelConfigTables.cpp
           grep -Fq 'ARM64 bootstrap CPU' xnu/iokit/Kernel/arm/SweetCPU.cpp
@@ -129,6 +132,7 @@ jobs:
           grep -Fq 'sweet_early_timer_irq_witness' xnu/osfmk/arm64/sleh.c
           cmp ../duchamp/drivers/duchamp_gic_boot.h xnu/pexpert/arm/duchamp_gic_boot.h
           cmp ../duchamp/drivers/duchamp_timer_boot.h xnu/osfmk/arm/duchamp_timer_boot.h
+          cmp ../duchamp/drivers/duchamp_counter_probe.h xnu/osfmk/arm/duchamp_counter_probe.h
           cmp ../duchamp/drivers/duchamp_psci_boot.h xnu/iokit/Kernel/arm/duchamp_psci_boot.h
           cmp ../duchamp/drivers/ufs_readonly.c xnu/bsd/dev/duchamp_ufs_core.c
           cmp ../duchamp/drivers/ufs_readonly.h xnu/bsd/dev/ufs_readonly.h
