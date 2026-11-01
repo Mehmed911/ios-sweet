@@ -3,9 +3,10 @@
 ## Result
 
 The passive observer builds and passes its complete offline ABI verification.
-It has not been loaded on the phone. No ADB command, storage command, firmware
-call, MMIO access, flash operation or partition modification occurred during
-this build and verification stage.
+At the time of this build it had not yet been loaded on the phone. No ADB
+command, storage command, firmware call, MMIO access, flash operation or
+partition modification occurred during this build and verification stage. A
+later, separately approved live result is recorded below.
 
 Artifact:
 
@@ -59,14 +60,25 @@ requires the measured dma-direct/no-IOMMU/36-bit contract before registering
 the hook and at report time, and calls `tracepoint_synchronize_unregister()`
 before module memory can be released.
 
-## Remaining live boundary
+## Separately approved live follow-up
 
-A live result still requires two separately authorized runtime actions:
+After this offline build, the user separately approved a normal Android reboot
+and then the temporary load of this exact artifact. The 2026-11-01 live run
+passed its preflight, observation and cleanup checks:
 
-1. a normal Android reboot to remove the previously orphaned tracefs instance;
-2. temporary loading of this exact module, followed by the bounded fixed-read
-   observation and verified unload/cleanup.
+- 371 read commands and 17,437 segments were added by the bounded workload;
+- every PRDT address and length matched the mapped scatterlist;
+- all 17,437 translated addresses matched their original physical addresses;
+- no SWIOTLB segment, overflow, rejection or runtime-contract change occurred;
+- all extents remained inside the measured 36-bit bus limit;
+- module unload and staged-file removal succeeded;
+- boot ID and kernel taint remained unchanged;
+- no new kernel fault line was found.
 
-The runner refuses mismatched devices, kernels, source or artifact hashes and
-never performs the reboot itself. Even a successful direct-DMA observation
-will not authorize XNU UFS MMIO or prove firmware/firewall and cache ownership.
+The machine-readable result is
+`research/mt6897-dma-ownership/prdt-observation-20261101-v1/result.json`, with
+SHA-256
+`81f1210b67a659103d3c4c863dd6baafd85e39dfb77132b4382efab1a91de5d4`.
+This proves the observed Android UFS route under the pinned runtime contract.
+It does not authorize XNU UFS MMIO or prove firmware/firewall access, cache
+ownership, or safe controller ownership by XNU.

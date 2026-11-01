@@ -55,10 +55,11 @@ The corrected offline artifact is:
 Static verification passed against all 18 imported symbol CRCs, Android Clang
 17.0.2, the exact captured vermagic, a `0x440`-byte `struct module`, and init
 and exit relocations at `0x170` and `0x3d8`. No module signature is appended.
-This proves the local artifact contract only. The artifact has not been loaded
-on a phone and contains no runtime PRDT result.
+This proves the local artifact contract only. A separately approved live run
+of this exact artifact completed on 2026-11-01; see
+`PHONE-TEST-2026-11-01.md` for the runtime result and its limits.
 
-## Separately approved live capture
+## Approved live capture and rerun procedure
 
 `tools/capture-duchamp-ufs-prdt-observer.py` is the only supported live runner.
 It fails closed unless the device, SoC, kernel, source hash, artifact hash,
@@ -77,6 +78,15 @@ in-flight trace callbacks before unloading. It never flashes, accesses a partiti
 drops caches, invokes firmware, or performs MMIO. A fresh explicit approval is
 required before running it because loading the module changes the live kernel.
 
+The approved 2026-11-01 run passed. Its bounded workload added 371 read
+commands and 17,437 segments. Every PRDT address and length matched the mapped
+scatterlist, every `dma_to_phys()` result matched the original physical
+address, no SWIOTLB segment was observed, and every extent remained below the
+live 36-bit bus limit. The module unloaded, its staged file disappeared, the
+boot ID and kernel taint stayed unchanged, and no new kernel fault line was
+found. The result is preserved under
+`research/mt6897-dma-ownership/prdt-observation-20261101-v1/`.
+
 Example command to use only after that approval:
 
 ```powershell
@@ -89,9 +99,10 @@ python tools/capture-duchamp-ufs-prdt-observer.py `
   --approval-token I_APPROVE_DUCHAMP_PRDT_FB5B1A887BCED8E4B0FBF498EBAFC21D4856B4F57BBF2795F1D469BD8C9984C3
 ```
 
-The result can show that Android's live UFS DMA addresses equal the original
-physical addresses, or that SWIOTLB buffers were observed, while the pinned
-no-IOMMU/dma-direct contract remains true at both snapshots. Equality alone is
-not a generic IOVA translation proof. The result still cannot prove secure-world
-firewall permission, XNU cache-maintenance correctness, or safe physical UFS
-ownership by XNU.
+The completed result shows that Android's observed UFS DMA addresses equal the
+original physical addresses without observed SWIOTLB use while the pinned
+no-IOMMU/dma-direct contract remained true at both snapshots. This is evidence
+for the installed Android route, not a generic IOVA translation proof. It does
+not prove secure-world firewall permission, XNU cache-maintenance correctness,
+or safe physical UFS ownership by XNU. Every rerun still requires fresh
+explicit approval.
