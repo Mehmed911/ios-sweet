@@ -5,6 +5,7 @@ param(
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-f]{64}$')][string]$RootSha256,
     [Parameter(Mandatory)][string]$Reference,
     [Parameter(Mandatory)][string]$Adt,
+    [ValidatePattern('^[0-9a-f]{64}$')][string]$AdtSha256,
     [Parameter(Mandatory)][string]$Hfsplus,
     [Parameter(Mandatory)][string]$Output,
     [ValidatePattern('^[A-Za-z0-9._-]+$')][string]$Distro='Ubuntu',
@@ -21,12 +22,14 @@ $taskHfs=(Resolve-Path -LiteralPath $Hfsplus).Path
 if((Get-FileHash -LiteralPath $taskKernel -Algorithm SHA256).Hash.ToLowerInvariant() -ne $KernelSha256){throw 'Kernel pin differs'}
 $taskRoot=Join-Path $taskReference 'root.hfs'
 if((Get-FileHash -LiteralPath $taskRoot -Algorithm SHA256).Hash.ToLowerInvariant() -ne $RootSha256){throw 'Root pin differs'}
+$taskAdtHash=(Get-FileHash -LiteralPath $taskAdt -Algorithm SHA256).Hash.ToLowerInvariant()
+if($AdtSha256 -and $taskAdtHash -ne $AdtSha256){throw 'ADT pin differs'}
 # Windows->WSL copy avoids the Linux /mnt/c 9P mount, including a stalled mount.
 $taskNative=(& wsl.exe -d $Distro --cd /tmp -e mktemp -d /tmp/duchamp-system-XXXXXXXXXX).Trim()
 if($LASTEXITCODE -ne 0 -or $taskNative -notmatch '^/tmp/duchamp-system-[A-Za-z0-9]+$'){throw 'Cannot create owned Linux workspace'}
 $taskUnc='\\wsl.localhost\'+$Distro+$taskNative.Replace('/','\')
 New-Item -ItemType Directory -Path (Join-Path $taskUnc 'tools'),(Join-Path $taskUnc 'reference'),(Join-Path $taskUnc 'reference/run') | Out-Null
-$taskSources=@('test-duchamp-system-boot.py','verify-sweet-cfprefs-batch.py','qemu-sweet.py','mkpayload.py','adt.py','qemu_ufs.py')
+$taskSources=@('test-duchamp-system-boot.py','verify-sweet-cfprefs-batch.py','verify-duchamp-timer-irq-witness.py','qemu-sweet.py','mkpayload.py','adt.py','qemu_ufs.py')
 $taskHashes=[ordered]@{}
 foreach($taskName in $taskSources){
     $taskSource=Join-Path $PSScriptRoot $taskName
@@ -46,6 +49,7 @@ $taskArguments=@('-d',$Distro,'--cd',$taskNative,'-e','python3',($taskNative+'/t
     '--kernel',($taskNative+'/kernel'),'--kernel-sha256',$KernelSha256,'--root-sha256',$RootSha256,
     '--reference',($taskNative+'/reference'),'--adt',($taskNative+'/tree.adt'),'--hfsplus',($taskNative+'/hfsplus'),
     '--output',($taskNative+'/result'),'--seconds',[string]$Seconds)
+if($AdtSha256){$taskArguments+=@('--adt-sha256',$AdtSha256)}
 if($null -ne $IcountShift){$taskArguments+=@('--icount-shift',[string]$IcountShift)}
 Write-Output ('Linux workspace: '+$taskNative)
 & wsl.exe @taskArguments
@@ -59,10 +63,14 @@ $taskUnchanged=$true
 foreach($taskName in $taskSources){
     if((Get-FileHash -LiteralPath (Join-Path $PSScriptRoot $taskName) -Algorithm SHA256).Hash.ToLowerInvariant() -ne $taskHashes[$taskName]){$taskUnchanged=$false}
 }
-$taskInputsPreserved=((Get-FileHash -LiteralPath $taskKernel -Algorithm SHA256).Hash.ToLowerInvariant() -eq $KernelSha256 -and
+$taskKernelRootPreserved=((Get-FileHash -LiteralPath $taskKernel -Algorithm SHA256).Hash.ToLowerInvariant() -eq $KernelSha256 -and
     (Get-FileHash -LiteralPath $taskRoot -Algorithm SHA256).Hash.ToLowerInvariant() -eq $RootSha256)
+$taskAdtPreserved=((Get-FileHash -LiteralPath $taskAdt -Algorithm SHA256).Hash.ToLowerInvariant() -eq $taskAdtHash)
+$taskInputsPreserved=($taskKernelRootPreserved -and $taskAdtPreserved)
 $taskMetadata=[ordered]@{child_exit=$taskExit;linux_workspace=$taskNative;source_sha256=$taskHashes;
-    original_sources_unchanged=$taskUnchanged;original_kernel_root_unchanged=$taskInputsPreserved;
+    original_sources_unchanged=$taskUnchanged;original_kernel_root_unchanged=$taskKernelRootPreserved;
+    original_adt_unchanged=$taskAdtPreserved;adt_sha256=$taskAdtHash;
+    adt_pin_mode=$(if($AdtSha256){'explicit'}else{'reference'});
     transport='Windows UNC copy; all VM trace/snapshot/HFS operations on Linux filesystem';physical_device_access=$false}
 $taskMetadata | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $taskOutput 'native-workspace.json') -Encoding utf8
 if($taskExit -ne 0){exit $taskExit}
