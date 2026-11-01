@@ -23,9 +23,11 @@ def tracked_inputs(repo):
         repo / "duchamp/board.toml",
         repo / "duchamp/drivers/duchamp_gic_boot.h",
         repo / "duchamp/drivers/duchamp_counter_probe.h",
+        repo / "duchamp/drivers/duchamp_timer_probe.h",
         repo / "duchamp/drivers/duchamp_timer_boot.h",
         repo / "duchamp/drivers/duchamp_psci_boot.h",
         repo / "duchamp/drivers/test_duchamp_counter_probe.c",
+        repo / "duchamp/drivers/test_duchamp_timer_probe.c",
         repo / "duchamp/drivers/mt6897-platform-sources.json",
         repo / "duchamp/drivers/test_mt6897_ufs_topckgen.c",
         repo / "duchamp/drivers/ufs_readonly.c",
@@ -38,6 +40,9 @@ def tracked_inputs(repo):
         repo / "tools/stage-duchamp-counter-probe.py",
         repo / "tools/test-duchamp-counter-probe-stage.py",
         repo / "tools/test-duchamp-counter-probe.py",
+        repo / "tools/stage-duchamp-timer-probe.py",
+        repo / "tools/test-duchamp-timer-probe-stage.py",
+        repo / "tools/test-duchamp-timer-probe.py",
         repo / "tools/test-duchamp-timer-boot.py",
         Path(__file__).resolve(),
     ]
@@ -181,6 +186,15 @@ def main():
             str(repo / "tools/test-duchamp-counter-probe.py"),
             str(output / "counter-probe"),
         ],
+        "timer_probe_stage": [
+            sys.executable,
+            str(repo / "tools/test-duchamp-timer-probe-stage.py"),
+        ],
+        "timer_probe": [
+            sys.executable,
+            str(repo / "tools/test-duchamp-timer-probe.py"),
+            str(output / "timer-probe"),
+        ],
         "psci": [
             sys.executable,
             str(repo / "tools/test-duchamp-psci-boot.py"),
@@ -252,6 +266,7 @@ def main():
             raise ValueError("failed components: " + ", ".join(failed))
         hardware_result = json.loads(hardware.read_text())
         counter_probe = load_pass(output / "counter-probe/result.json")
+        timer_probe = load_pass(output / "timer-probe/result.json")
         gic = load_pass(output / "gic/result.json")
         psci = load_pass(output / "psci/result.json")
         timer_frequency = load_pass(output / "timer-frequency/result.json")
@@ -286,6 +301,18 @@ def main():
                     "phone_access"):
             if counter_probe.get(key) is not False:
                 raise ValueError("counter-probe safety claim changed: " + key)
+        if timer_probe.get("architected_timer_expiry_executed") is not True:
+            raise ValueError("timer probe did not observe architected expiry")
+        if timer_probe.get("qemu_cntfrq_hz") != 62500000:
+            raise ValueError("timer probe observed an unexpected QEMU frequency")
+        if timer_probe.get("timer_register_writes") is not True:
+            raise ValueError("timer probe did not execute its expected writes")
+        if timer_probe.get("timer_irq_masked") is not True:
+            raise ValueError("timer probe did not keep the IRQ masked")
+        for key in ("timer_irq_delivery_tested", "gic_access", "smc_execution",
+                    "phone_access"):
+            if timer_probe.get(key) is not False:
+                raise ValueError("timer-probe safety claim changed: " + key)
         if timer_frequency.get("architected_register_read_executed") is not False:
             raise ValueError("timer model unexpectedly read CNTFRQ")
         if timer_frequency.get("physical_timer_enabled") is not False:
@@ -335,6 +362,24 @@ def main():
                 "gic_access": counter_probe["gic_access"],
                 "smc_execution": counter_probe["smc_execution"],
                 "phone_access": counter_probe["phone_access"],
+            },
+            "pre_gic_timer_expiry": {
+                "stage_tests_passed": components["timer_probe_stage"]["passed"],
+                "native": timer_probe["native_checks"],
+                "arm64": timer_probe["arm64_checks"],
+                "architected_timer_expiry_executed": timer_probe[
+                    "architected_timer_expiry_executed"
+                ],
+                "qemu_cntfrq_hz": timer_probe["qemu_cntfrq_hz"],
+                "deadline_ticks": timer_probe["qemu_deadline_ticks"],
+                "elapsed_ticks": timer_probe["qemu_elapsed_ticks"],
+                "timer_irq_masked": timer_probe["timer_irq_masked"],
+                "timer_irq_delivery_tested": timer_probe[
+                    "timer_irq_delivery_tested"
+                ],
+                "gic_access": timer_probe["gic_access"],
+                "smc_execution": timer_probe["smc_execution"],
+                "phone_access": timer_probe["phone_access"],
             },
             "gic": {
                 "native": gic["native_checks"],

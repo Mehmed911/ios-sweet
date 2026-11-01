@@ -47,6 +47,8 @@ replacement = '''        done
         python3 "${WORK_DIR}/../tools/stage-duchamp-timer-boot.py" "${WORK_DIR}/xnu"
         running "Staging opt-in Duchamp pre-GIC counter probe"
         python3 "${WORK_DIR}/../tools/stage-duchamp-counter-probe.py" "${WORK_DIR}/xnu"
+        running "Staging opt-in Duchamp pre-GIC timer expiry probe"
+        python3 "${WORK_DIR}/../tools/stage-duchamp-timer-probe.py" "${WORK_DIR}/xnu"
         running "Staging fail-closed Duchamp PSCI CPU_ON authorization"
         python3 "${WORK_DIR}/../tools/stage-duchamp-psci-boot.py" "${WORK_DIR}/xnu"
         cd "${WORK_DIR}"
