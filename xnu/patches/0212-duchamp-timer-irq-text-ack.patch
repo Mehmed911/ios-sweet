@@ -1,0 +1,80 @@
+diff --git a/osfmk/arm64/sweet_early.c b/osfmk/arm64/sweet_early.c
+--- a/osfmk/arm64/sweet_early.c
++++ b/osfmk/arm64/sweet_early.c
+@@ -126,7 +126,7 @@ sweet_early_timer_irq_witness(void)
+ 	 * rtclock_intr() returned successfully.
+ 	 */
+ 	if (early_disabled ||
+-	    __atomic_exchange_n(&early_timer_irq_seen, 1u, __ATOMIC_RELAXED) != 0) {
++	    __atomic_exchange_n(&early_timer_irq_seen, 1u, __ATOMIC_RELEASE) != 0) {
+ 		return;
+ 	}
+ 	const unsigned int marker_width = 16u;
+@@ -142,6 +142,12 @@ sweet_early_timer_irq_witness(void)
+ 	__asm__ volatile("dsb sy" ::: "memory");
+ }
+ 
++unsigned int
++sweet_early_timer_irq_seen(void)
++{
++	return __atomic_load_n(&early_timer_irq_seen, __ATOMIC_ACQUIRE);
++}
++
+ void
+ sweet_early_panic(const char *fmt, va_list *args)
+ {
+diff --git a/osfmk/arm64/sweet_early.h b/osfmk/arm64/sweet_early.h
+--- a/osfmk/arm64/sweet_early.h
++++ b/osfmk/arm64/sweet_early.h
+@@ -9,6 +9,7 @@
+ #if defined(SWEET)
+ void sweet_early_mark(unsigned int stage, const char *label);
+ void sweet_early_timer_irq_witness(void);
++unsigned int sweet_early_timer_irq_seen(void);
+ void sweet_early_putc(char c);
+ void sweet_early_panic(const char *fmt, va_list *args);
+ void sweet_early_relocate(uint64_t base);
+@@ -20,6 +21,7 @@ static inline void sweet_early_mark(unsigned int stage, const char *label)
+ 	(void)label;
+ }
+ static inline void sweet_early_timer_irq_witness(void) {}
++static inline unsigned int sweet_early_timer_irq_seen(void) { return 0; }
+ static inline void sweet_early_disable(void) {}
+ #endif
+ 
+diff --git a/osfmk/kern/startup.c b/osfmk/kern/startup.c
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -885,7 +885,32 @@ kernel_bootstrap_thread(void)
+ 	sweet_early_mark(138, "interrupt state validated");
+ #endif
+ 	(void) spllo();         /* Allow interruptions */
+ #if defined(DUCHAMP)
++	/*
++	 * The IRQ handler records the first completed virtual-timer interrupt but
++	 * cannot safely print from IRQ context.  This opt-in gate acknowledges it
++	 * from the bootstrap thread after interrupts are enabled.  The bounded
++	 * architectural-counter wait is diagnostic only and performs no MMIO.
++	 */
++	int timer_irq_ack = 0;
++	if (PE_parse_boot_argn("duchamp_timer_irq_ack", &timer_irq_ack,
++	    sizeof(timer_irq_ack)) && timer_irq_ack != 0) {
++		uint64_t counter_frequency = __builtin_arm_rsr64("CNTFRQ_EL0");
++		uint64_t counter_start = __builtin_arm_rsr64("CNTVCT_EL0");
++		uint64_t timeout_ticks = counter_frequency / 2;
++		if (counter_frequency == 0 || timeout_ticks == 0) {
++			panic("DUCHAMP: invalid counter frequency for timer IRQ acknowledgement");
++		}
++		while (sweet_early_timer_irq_seen() == 0 &&
++		    __builtin_arm_rsr64("CNTVCT_EL0") - counter_start < timeout_ticks) {
++			__asm__ volatile("isb" ::: "memory");
++		}
++		if (sweet_early_timer_irq_seen() == 0) {
++			panic("DUCHAMP: no timer PPI %u IRQ within bounded acknowledgement window",
++			    sweet_vtimer_intid);
++		}
++		kprintf("SWEET TIMER PPI%u IRQ CONFIRMED\n", sweet_vtimer_intid);
++	}
+ 	sweet_early_mark(139, "spllo returned");
+ 	if (!ml_get_interrupts_enabled()) {
+ 		panic("DUCHAMP: interrupts remain disabled after spllo");
