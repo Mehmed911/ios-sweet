@@ -100,10 +100,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Successful run 41340697398, head 5391dfc; retained through 2026-11-08.
           curl --fail --location --retry 3 \
             --header "Authorization: Bearer $GH_TOKEN" \
             --header "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/Mehmed911/ios-sweet/actions/artifacts/12611236385/zip \
+            https://api.github.com/repos/Mehmed911/ios-sweet/actions/artifacts/13098010906/zip \
             -o "$RUNNER_TEMP/iig-buildtree.zip"
           python3 tools/duchamp-frozen-iig.py stage --archive "$RUNNER_TEMP/iig-buildtree.zip" --out "$RUNNER_TEMP/duchamp-iig-cache"
           chmod +x "$GITHUB_WORKSPACE/tools/duchamp-frozen-iig.py"
@@ -191,6 +192,7 @@ jobs:
         if: always()
         run: |
           mkdir -p out/kdk-libs
+          shopt -s nullglob
           for lib in /Library/Developer/KDKs/*/System/Library/KernelSupport/lib*.a; do
             b=$(basename "$lib" .a)
             ar t "$lib" > "out/kdk-libs/$b.members.txt" 2>&1 || true

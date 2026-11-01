@@ -7,7 +7,7 @@ configuration, and cached output hashes. Not a general IIG replacement.
 """
 from pathlib import Path
 import argparse,hashlib,io,json,os,shutil,sys,tarfile,zipfile
-ARCHIVE_SHA256='b81e875ad922d3b248ea6e4adc2b16435a19b46d98a9ebcba6e797f7f38853c7'
+ARCHIVE_SHA256='1d9a9634d0abe7e3f0ddd43b1605bff77a5fb9b2abf734e762cdf96ed83fa7b7'
 SOURCE_COMMIT='fdad0de8dc0e75c5ea84762adc03f7232dc91f19'
 GENERATED='build/xnu.obj/DEVELOPMENT_ARM64_SWEET/iokit/DEVELOPMENT/DriverKit/'
 def digest(b):return hashlib.sha256(b).hexdigest()
