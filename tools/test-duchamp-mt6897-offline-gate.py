@@ -22,8 +22,10 @@ def tracked_inputs(repo):
     paths = [
         repo / "duchamp/board.toml",
         repo / "duchamp/drivers/duchamp_gic_boot.h",
+        repo / "duchamp/drivers/duchamp_counter_probe.h",
         repo / "duchamp/drivers/duchamp_timer_boot.h",
         repo / "duchamp/drivers/duchamp_psci_boot.h",
+        repo / "duchamp/drivers/test_duchamp_counter_probe.c",
         repo / "duchamp/drivers/mt6897-platform-sources.json",
         repo / "duchamp/drivers/test_mt6897_ufs_topckgen.c",
         repo / "duchamp/drivers/ufs_readonly.c",
@@ -33,6 +35,9 @@ def tracked_inputs(repo):
         repo / "tools/report-duchamp-mt6897-ownership.py",
         repo / "tools/test-report-duchamp-mt6897-ownership.py",
         repo / "tools/test-duchamp-psci-boot.py",
+        repo / "tools/stage-duchamp-counter-probe.py",
+        repo / "tools/test-duchamp-counter-probe-stage.py",
+        repo / "tools/test-duchamp-counter-probe.py",
         repo / "tools/test-duchamp-timer-boot.py",
         Path(__file__).resolve(),
     ]
@@ -167,6 +172,15 @@ def main():
             str(repo / "tools/test-duchamp-gic-boot.py"),
             str(output / "gic"),
         ],
+        "counter_stage": [
+            sys.executable,
+            str(repo / "tools/test-duchamp-counter-probe-stage.py"),
+        ],
+        "counter_probe": [
+            sys.executable,
+            str(repo / "tools/test-duchamp-counter-probe.py"),
+            str(output / "counter-probe"),
+        ],
         "psci": [
             sys.executable,
             str(repo / "tools/test-duchamp-psci-boot.py"),
@@ -237,6 +251,7 @@ def main():
             failed = sorted(name for name, value in components.items() if not value["passed"])
             raise ValueError("failed components: " + ", ".join(failed))
         hardware_result = json.loads(hardware.read_text())
+        counter_probe = load_pass(output / "counter-probe/result.json")
         gic = load_pass(output / "gic/result.json")
         psci = load_pass(output / "psci/result.json")
         timer_frequency = load_pass(output / "timer-frequency/result.json")
@@ -263,6 +278,14 @@ def main():
             raise ValueError("PSCI gate unexpectedly authorized physical CPU_ON")
         if psci.get("smc_executed") is not False:
             raise ValueError("PSCI gate unexpectedly executed an SMC")
+        if counter_probe.get("architected_register_reads_executed") is not True:
+            raise ValueError("counter probe did not read the architected counter")
+        if counter_probe.get("qemu_cntfrq_hz") != 62500000:
+            raise ValueError("counter probe observed an unexpected QEMU frequency")
+        for key in ("timer_register_writes", "gic_access", "smc_execution",
+                    "phone_access"):
+            if counter_probe.get(key) is not False:
+                raise ValueError("counter-probe safety claim changed: " + key)
         if timer_frequency.get("architected_register_read_executed") is not False:
             raise ValueError("timer model unexpectedly read CNTFRQ")
         if timer_frequency.get("physical_timer_enabled") is not False:
@@ -300,6 +323,19 @@ def main():
             raise ValueError("ownership report promoted the UFS DMA route")
         evidence = {
             "boot_profile_tests": 21,
+            "pre_gic_counter": {
+                "stage_tests_passed": components["counter_stage"]["passed"],
+                "native": counter_probe["native_checks"],
+                "arm64": counter_probe["arm64_checks"],
+                "architected_register_reads_executed": counter_probe[
+                    "architected_register_reads_executed"
+                ],
+                "qemu_cntfrq_hz": counter_probe["qemu_cntfrq_hz"],
+                "timer_register_writes": counter_probe["timer_register_writes"],
+                "gic_access": counter_probe["gic_access"],
+                "smc_execution": counter_probe["smc_execution"],
+                "phone_access": counter_probe["phone_access"],
+            },
             "gic": {
                 "native": gic["native_checks"],
                 "arm64": gic["arm64_model_checks"],
