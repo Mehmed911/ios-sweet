@@ -212,7 +212,7 @@ def run_fake_main(fake_target, temporary):
 
 
 class CapturePrdtTests(unittest.TestCase):
-    def test_valid_direct_observation_passes(self):
+    def test_valid_inverse_translation_observation_passes(self):
         before = MODULE.parse_observation(render(observation()))
         after = MODULE.parse_observation(render(observation(
             hook_calls=4,
@@ -238,7 +238,13 @@ class CapturePrdtTests(unittest.TestCase):
         self.assertTrue(result["passed"])
         self.assertEqual(
             result["route_classification"],
-            "dma-equals-original-phys-no-swiotlb-under-pinned-contract",
+            "dma-to-phys-returns-original-no-swiotlb-under-pinned-contract",
+        )
+        self.assertTrue(
+            result["inverse_dma_translation_returns_original_phys"]
+        )
+        self.assertFalse(
+            result["raw_dma_address_equals_original_phys_proven"]
         )
 
     def test_swiotlb_route_is_reported_without_being_rejected(self):

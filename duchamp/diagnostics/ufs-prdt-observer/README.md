@@ -80,11 +80,13 @@ required before running it because loading the module changes the live kernel.
 
 The approved 2026-11-01 run passed. Its bounded workload added 371 read
 commands and 17,437 segments. Every PRDT address and length matched the mapped
-scatterlist, every `dma_to_phys()` result matched the original physical
-address, no SWIOTLB segment was observed, and every extent remained below the
-live 36-bit bus limit. The module unloaded, its staged file disappeared, the
-boot ID and kernel taint stayed unchanged, and no new kernel fault line was
-found. The result is preserved under
+scatterlist, and inverse translation through `dma_to_phys()` returned the
+original scatterlist physical address for every segment. No SWIOTLB segment
+was observed, and every extent remained below the live 36-bit bus limit. This
+does not prove that the raw PRDT DMA address equals the CPU physical address,
+because a `dma_range_map` exists and its live entries were not captured. The
+module unloaded, its staged file disappeared, the boot ID and kernel taint
+stayed unchanged, and no new kernel fault line was found. The result is under
 `research/mt6897-dma-ownership/prdt-observation-20261101-v1/`.
 
 Example command to use only after that approval:
@@ -99,10 +101,11 @@ python tools/capture-duchamp-ufs-prdt-observer.py `
   --approval-token I_APPROVE_DUCHAMP_PRDT_FB5B1A887BCED8E4B0FBF498EBAFC21D4856B4F57BBF2795F1D469BD8C9984C3
 ```
 
-The completed result shows that Android's observed UFS DMA addresses equal the
-original physical addresses without observed SWIOTLB use while the pinned
-no-IOMMU/dma-direct contract remained true at both snapshots. This is evidence
-for the installed Android route, not a generic IOVA translation proof. It does
-not prove secure-world firewall permission, XNU cache-maintenance correctness,
-or safe physical UFS ownership by XNU. Every rerun still requires fresh
-explicit approval.
+The completed result shows that inverse DMA translation returned the original
+physical address without observed SWIOTLB use while the pinned
+no-IOMMU/dma-direct contract remained true at both snapshots. The historical
+`result.json` route label says `dma-equals-original-phys`, but that label means
+the `dma_to_phys()` comparison above; it is not proof of raw numeric identity.
+The result does not prove the live `dma_range_map` is identity, secure-world
+firewall permission, XNU cache-maintenance correctness, or safe physical UFS
+ownership by XNU. Every rerun still requires fresh explicit approval.

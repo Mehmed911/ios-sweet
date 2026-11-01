@@ -68,7 +68,8 @@ passed its preflight, observation and cleanup checks:
 
 - 371 read commands and 17,437 segments were added by the bounded workload;
 - every PRDT address and length matched the mapped scatterlist;
-- all 17,437 translated addresses matched their original physical addresses;
+- inverse `dma_to_phys()` translation returned the original scatterlist
+  physical address for all 17,437 segments;
 - no SWIOTLB segment, overflow, rejection or runtime-contract change occurred;
 - all extents remained inside the measured 36-bit bus limit;
 - module unload and staged-file removal succeeded;
@@ -79,6 +80,8 @@ The machine-readable result is
 `research/mt6897-dma-ownership/prdt-observation-20261101-v1/result.json`, with
 SHA-256
 `81f1210b67a659103d3c4c863dd6baafd85e39dfb77132b4382efab1a91de5d4`.
-This proves the observed Android UFS route under the pinned runtime contract.
-It does not authorize XNU UFS MMIO or prove firmware/firewall access, cache
-ownership, or safe controller ownership by XNU.
+This proves the observed inverse-translation behavior under the pinned Android
+runtime contract. It does not prove raw PRDT DMA/CPU-physical numeric identity,
+because the live `dma_range_map` entries were not captured. It also does not
+authorize XNU UFS MMIO or prove firmware/firewall access, cache ownership, or
+safe controller ownership by XNU.

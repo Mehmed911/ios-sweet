@@ -269,25 +269,38 @@ def evaluate_observations(before, after):
         after["dma_to_phys_matches"] == after["segments"]
         and after["swiotlb_segments"] == 0
     ):
-        route = "dma-equals-original-phys-no-swiotlb-under-pinned-contract"
+        route = (
+            "dma-to-phys-returns-original-no-swiotlb-under-pinned-contract"
+        )
     elif after["swiotlb_segments"] > 0:
         route = "swiotlb-buffer-observed-under-pinned-contract"
     else:
-        route = "dma-differs-from-original-phys-without-swiotlb-observed"
-    expected_equal_flag = int(
+        route = (
+            "dma-to-phys-differs-from-original-without-swiotlb-observed"
+        )
+    expected_inverse_flag = int(
         after["observation_complete"] == 1
         and after["dma_to_phys_matches"] == after["segments"]
         and after["swiotlb_segments"] == 0
         and after["translated_phys_invalid"] == 0
     )
-    if after["all_dma_equals_original_without_swiotlb"] != expected_equal_flag:
-        errors.append("DMA/physical equality summary flag is inconsistent")
+    if (
+        after["all_dma_equals_original_without_swiotlb"]
+        != expected_inverse_flag
+    ):
+        errors.append(
+            "DMA-to-physical inverse-translation summary flag is inconsistent"
+        )
 
     return {
         "passed": not errors,
         "errors": errors,
         "delta": delta,
         "route_classification": route,
+        "inverse_dma_translation_returns_original_phys": bool(
+            expected_inverse_flag
+        ),
+        "raw_dma_address_equals_original_phys_proven": False,
         "read_workload_causality_proven": False,
         "linux_dma_direct_contract_pinned_during_snapshots": True,
         "physical_firewall_bypass_proven": False,

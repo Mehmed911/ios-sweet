@@ -40,8 +40,14 @@ The fail-closed runner completed successfully. The workload delta was:
 
 The live `bus_dma_limit` was `68719476735` (`2^36 - 1`). Of the complete
 observation, 16,475 segments were above 4 GiB and all stayed inside that
-36-bit limit. The final route classification was
+36-bit limit. The historical runner classification was
 `dma-equals-original-phys-no-swiotlb-under-pinned-contract`.
+
+That legacy label describes the observed equality between
+`dma_to_phys(sg_dma_address)` and `sg_phys`. It does not establish that the raw
+DMA address stored in PRDT numerically equals the CPU physical address. The
+device has a `dma_range_map`, and its live entries were not captured by this
+observer.
 
 The observer's report remained coherent and complete. The runner intentionally
 does not claim that every observed command was caused by its file reads because
@@ -73,8 +79,12 @@ Evidence directory:
 
 `81f1210b67a659103d3c4c863dd6baafd85e39dfb77132b4382efab1a91de5d4`
 
-This establishes that the installed Android UFS path used DMA addresses equal
-to the original physical addresses, without observed SWIOTLB use, while the
-pinned dma-direct/no-IOMMU/36-bit contract remained valid. It does not prove
-that secure firmware permits XNU to own the controller, that XNU cache
-maintenance is correct, or that XNU may safely program UFS MMIO.
+`tools/interpret-duchamp-prdt-observation.py` pins this exact receipt and emits
+only the narrower claims described below. It explicitly keeps raw DMA identity,
+firewall bypass, cache ownership and XNU resource ownership false.
+
+This establishes that inverse DMA translation returned the original
+scatterlist physical address, without observed SWIOTLB use, while the pinned
+dma-direct/no-IOMMU/36-bit contract remained valid. It does not prove raw DMA
+and CPU-physical numeric identity, secure-firmware permission, XNU cache
+maintenance, or that XNU may safely own and program UFS MMIO.
