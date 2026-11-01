@@ -105,13 +105,13 @@ def main():
     result = json.loads((run / "result.json").read_text())
     checks = {
         "qemu_exit_zero": qemu_exit == 0,
-        "no_visible_panic": result.get("status") != "panic"
+        "no_visible_panic": result.get("status") == "no_panic_observed"
         and "SWEET EARLY PANIC:" not in combined,
         "timer_ppi27_text_ack": TIMER_MARKER in combined,
         "ram_root_mounted": "QEMU RAM ROOT MOUNTED" in combined,
         "root_vnode_ready": "QEMU ROOTVNODE READY" in combined,
-        "init_exec_accepted": "INIT EXEC ACCEPTED" in combined,
-        "diagnostic_pid1_entered": PID1_MARKER in combined,
+        "diagnostic_pid1_entered": PID1_MARKER in combined
+        and result.get("stop_marker") == PID1_MARKER,
         "base_hfs_unchanged": sha256(args.base_hfs) == input_hashes["base_hfs"],
         "base_init_unchanged": sha256(args.base_init) == input_hashes["base_init"],
         "kernel_unchanged": sha256(args.kernel) == input_hashes["kernel"],
