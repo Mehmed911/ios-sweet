@@ -9,6 +9,17 @@ import struct
 import subprocess
 
 
+PE_IOKIT_MARKERS = (
+    'SWEET EARLY 127: InitIOKit entering',
+    'SWEET EARLY 128: InitIOKit returned',
+    'SWEET EARLY 129: DUCHAMP PRE CONFIGURE IOKIT',
+    'SWEET EARLY 130: ConfigureIOKit entering',
+    'SWEET EARLY 131: ConfigureIOKit returned',
+    'SWEET EARLY 132: DUCHAMP POST CONFIGURE IOKIT',
+    'SWEET EARLY 133: PE init iokit returned',
+)
+
+
 def digest(path): return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
@@ -90,16 +101,21 @@ def main():
     frames=sorted((run/'frames').glob('*.txt'))
     screen='\n'.join(p.read_text() for p in frames)
     if (run/'fb.txt').exists(): screen+='\n'+(run/'fb.txt').read_text()
-    required_text=['QEMU RAM ROOT MOUNTED','QEMU ROOTVNODE READY','DUCHAMP UFS PID1 ENTERED',
+    required_text=[
+        'QEMU RAM ROOT MOUNTED','QEMU ROOTVNODE READY','DUCHAMP UFS PID1 ENTERED',
         'DUCHAMP UFS ROOT DEVICE MATCH',
         'DUCHAMP UFS RAW HEADER READ PASS','DUCHAMP UFS WRITE OPEN REFUSED EROFS',
         'DUCHAMP UFS OFFSET READ PASS','DUCHAMP UFS USER COPY FAULT HANDLED',
         'DUCHAMP UFS HFS FILE BYTES MATCH','DUCHAMP UFS PID1 READ PASS','DUCHAMP UFS PID1 heartbeat']
     if args.backends:
-        required_text+=['QEMU XNU BACKENDS SELFTEST PASS',
+        required_text+=['QEMU XNU IOMMU MODEL PASS UFS REFUSED',
+            'QEMU XNU FIRMWARE CONTRACT UNVERIFIED REFUSED',
+            'QEMU XNU PHYSICAL PROVIDERS DEFAULT CLOSED',
+            'QEMU XNU BACKENDS SELFTEST PASS',
             'DUCHAMP XNU BACKENDS PASS tables=1 mmu=1 pmic=1 fw_verified=0 physical=0',
             'DUCHAMP XNU BACKEND RECEIPT EOF EROFS PASS']
     checks={text:text in screen for text in required_text}
+    checks['pe_iokit_trace_complete']=all(text in screen for text in PE_IOKIT_MARKERS)
     checks.update({
         'runner_exit_zero':rc==0,'decoded_framebuffer':result.get('unknown_glyphs')==0,
         'no_observed_panic':result.get('status')=='no_panic_observed' and not any(
