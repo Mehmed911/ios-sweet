@@ -21,7 +21,7 @@ bsd_path = root / "bsd/kern/bsd_init.c"
 iokit_path = root / "iokit/bsddev/IOKitBSDInit.cpp"
 
 early = early_path.read_text()
-early = replace_once(early, "stage > 154", "stage > 173", "stage ceiling")
+early = replace_once(early, "stage > 154", "stage > 178", "stage ceiling")
 early_path.write_text(early)
 
 startup_path = root / "osfmk/kern/startup.c"
@@ -72,7 +72,24 @@ edits = [
         "BSD services",
     ),
     (
+        "\tbsd_init_kprintf(\"calling bsd_bufferinit\\n\");\n\tbsd_bufferinit();",
+        "\tbsd_init_kprintf(\"calling bsd_bufferinit\\n\");\n"
+        "#if defined(ARM64_BOARD_CONFIG_SWEET)\n\tsweet_early_mark(174, \"bsd_bufferinit entering\");\n#endif\n"
+        "\tbsd_bufferinit();\n"
+        "#if defined(ARM64_BOARD_CONFIG_SWEET)\n\tsweet_early_mark(175, \"bsd_bufferinit returned\");\n#endif",
+        "BSD buffer service split",
+    ),
+    (
+        "\tbsd_init_kprintf(\"calling IOKitInitializeTime\\n\");\n\tIOKitInitializeTime();",
+        "\tbsd_init_kprintf(\"calling IOKitInitializeTime\\n\");\n"
+        "#if defined(ARM64_BOARD_CONFIG_SWEET)\n\tsweet_early_mark(176, \"IOKit time entering\");\n#endif\n"
+        "\tIOKitInitializeTime();\n"
+        "#if defined(ARM64_BOARD_CONFIG_SWEET)\n\tsweet_early_mark(177, \"IOKit time returned\");\n#endif",
+        "IOKit time service split",
+    ),
+    (
         "\tvfsinit();\n\n#if defined(ARM64_BOARD_CONFIG_SWEET)",
+        "#if defined(ARM64_BOARD_CONFIG_SWEET)\n\tsweet_early_mark(178, \"vfsinit entering\");\n#endif\n"
         "\tvfsinit();\n#if defined(ARM64_BOARD_CONFIG_SWEET)\n"
         "\tsweet_early_mark(158, \"VFS core ready\");\n#endif\n\n#if defined(ARM64_BOARD_CONFIG_SWEET)",
         "VFS",
