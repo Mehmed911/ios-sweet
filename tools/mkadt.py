@@ -159,13 +159,20 @@ def build(seed=None, qemu=False, highmem=False, duchamp_window=False):
     cpus = node('cpus', [ph(), ('#address-cells', u32(1)),
                          ('#size-cells', u32(0))], cpu_nodes)
 
-    gic = node('gic', [
+    gic_props = [
         ph(),
         ('compatible', cstr('arm,gic-v3')),
         ('interrupt-controller', b''),
         ('virtual-timer-intid', u32(QEMU_VTIMER_INTID if qemu else VTIMER_INTID)),
         ('reg', u64(gicd - SOC_BASE, GICD_SIZE, gicr - SOC_BASE, GICR_SIZE)),
-    ])
+    ]
+    if qemu:
+        # The Duchamp GIC bootstrap fails closed unless the ADT explicitly
+        # authorises one exact MMIO extent.  Emit that capability only for
+        # QEMU's known virt layout; phone ADTs never inherit it.
+        gic_props.append(('duchamp,gic-mmio-auth-v1',
+                          u64(QEMU_GICD, GICD_SIZE, QEMU_GICR, GICR_SIZE)))
+    gic = node('gic', gic_props)
     arm_io = node('arm-io', [
         ph(),
         ('device_type', cstr('sweet-io')),

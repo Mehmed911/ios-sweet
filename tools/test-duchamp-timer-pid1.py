@@ -18,6 +18,15 @@ PE_IOKIT_MARKERS = (
     "SWEET EARLY 132: DUCHAMP POST CONFIGURE IOKIT",
     "SWEET EARLY 133: PE init iokit returned",
 )
+BSD_SERVICE_MARKERS = (
+    "SWEET EARLY 157: BSD services entering",
+    "SWEET EARLY 157: bsd_bufferinit entering",
+    "SWEET EARLY 157: bsd_bufferinit returned",
+    "SWEET EARLY 157: IOKit time entering",
+    "SWEET EARLY 157: IOKit time returned",
+    "SWEET EARLY 157: vfsinit entering",
+    "SWEET EARLY 158: VFS core ready",
+)
 PID1_MARKER = "*** SWEET userspace: init running as PID 1 ***"
 
 
@@ -30,6 +39,11 @@ def main():
     for name in ("kernel", "adt", "base-hfs", "base-init", "output"):
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--seconds", type=int, default=120)
+    parser.add_argument(
+        "--cpu",
+        default="cortex-a76",
+        help="QEMU CPU model and properties (default: cortex-a76)",
+    )
     args = parser.parse_args()
 
     repo = Path(__file__).resolve().parent.parent
@@ -95,6 +109,8 @@ def main():
         "duchamp",
         "--kernel",
         str(args.kernel.resolve()),
+        "--cpu",
+        args.cpu,
         "--snapshot-interval",
         "1",
         "--stop-on-text",
@@ -138,6 +154,9 @@ def main():
         "timer_ppi27_irq_witness": witness_process.returncode == 0
         and timer_witness.get("passed") is True,
         "pe_iokit_trace_complete": all(marker in combined for marker in PE_IOKIT_MARKERS),
+        "bsd_service_trace_complete": all(
+            marker in combined for marker in BSD_SERVICE_MARKERS
+        ),
         "ram_root_mounted": "QEMU RAM ROOT MOUNTED" in combined,
         "root_vnode_ready": "QEMU ROOTVNODE READY" in combined,
         "diagnostic_pid1_entered": PID1_MARKER in combined
@@ -159,10 +178,14 @@ def main():
         "payload_bytes": (out / "payload.bin").stat().st_size,
         "frames_examined": len(frame_paths),
         "qemu": result,
+        "qemu_cpu": args.cpu,
         "observations": {
             "timer_ppi27_text_ack_visible": TIMER_MARKER in combined,
             "pe_iokit_markers": {
                 marker: marker in combined for marker in PE_IOKIT_MARKERS
+            },
+            "bsd_service_markers": {
+                marker: marker in combined for marker in BSD_SERVICE_MARKERS
             },
         },
         "timer_irq_witness": timer_witness,
