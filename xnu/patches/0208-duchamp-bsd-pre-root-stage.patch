@@ -7,7 +7,7 @@ index ada7fc9..2a4ba0e 100644
  sweet_early_mark(unsigned int stage, const char *label)
  {
 -	if (early_disabled || stage > 154) {
-+	if (early_disabled || stage > 178) {
++	if (early_disabled || stage > 173) {
  		return;
  	}
  	uint32_t color = 0xff00ff00u | ((stage & 7u) * 32u << 16);
@@ -55,11 +55,11 @@ index 2ab6bfa..ea26cd1 100644
 +#endif
  	bsd_init_kprintf("calling bsd_bufferinit\n");
 +#if defined(ARM64_BOARD_CONFIG_SWEET)
-+	sweet_early_mark(174, "bsd_bufferinit entering");
++	sweet_early_mark(157, "bsd_bufferinit entering");
 +#endif
  	bsd_bufferinit();
 +#if defined(ARM64_BOARD_CONFIG_SWEET)
-+	sweet_early_mark(175, "bsd_bufferinit returned");
++	sweet_early_mark(157, "bsd_bufferinit returned");
 +#endif
  
  	/*
@@ -67,17 +67,17 @@ index 2ab6bfa..ea26cd1 100644
  	 */
  	bsd_init_kprintf("calling IOKitInitializeTime\n");
 +#if defined(ARM64_BOARD_CONFIG_SWEET)
-+	sweet_early_mark(176, "IOKit time entering");
++	sweet_early_mark(157, "IOKit time entering");
 +#endif
  	IOKitInitializeTime();
 +#if defined(ARM64_BOARD_CONFIG_SWEET)
-+	sweet_early_mark(177, "IOKit time returned");
++	sweet_early_mark(157, "IOKit time returned");
 +#endif
  
  	/* Initialize the file systems. */
  	bsd_init_kprintf("calling vfsinit\n");
 +#if defined(ARM64_BOARD_CONFIG_SWEET)
-+	sweet_early_mark(178, "vfsinit entering");
++	sweet_early_mark(157, "vfsinit entering");
 +#endif
  	vfsinit();
 +#if defined(ARM64_BOARD_CONFIG_SWEET)
