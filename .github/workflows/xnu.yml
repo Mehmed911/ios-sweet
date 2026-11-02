@@ -135,6 +135,7 @@ jobs:
           grep -Fq 'DUCHQEMU' xnu/osfmk/arm64/start.s
           grep -Fq 'sweet_early_timer_irq_witness' xnu/osfmk/arm64/sleh.c
           grep -Fq 'SWEET TIMER PPI%u IRQ CONFIRMED' xnu/osfmk/kern/startup.c
+          grep -Fq 'SWEET PE TRACE 12: PE_INIT_IOKIT RETURNING' xnu/pexpert/arm/pe_init.c
           cmp ../duchamp/drivers/duchamp_gic_boot.h xnu/pexpert/arm/duchamp_gic_boot.h
           cmp ../duchamp/drivers/duchamp_timer_boot.h xnu/osfmk/arm/duchamp_timer_boot.h
           cmp ../duchamp/drivers/duchamp_counter_probe.h xnu/osfmk/arm/duchamp_counter_probe.h

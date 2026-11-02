@@ -9,6 +9,7 @@ import subprocess
 
 
 TIMER_MARKER = "SWEET TIMER PPI27 IRQ CONFIRMED"
+PE_IOKIT_MARKER = "SWEET PE TRACE 12: PE_INIT_IOKIT RETURNING"
 PID1_MARKER = "*** SWEET userspace: init running as PID 1 ***"
 
 
@@ -108,6 +109,7 @@ def main():
         "no_visible_panic": result.get("status") == "no_panic_observed"
         and "SWEET EARLY PANIC:" not in combined,
         "timer_ppi27_text_ack": TIMER_MARKER in combined,
+        "pe_iokit_trace_complete": PE_IOKIT_MARKER in combined,
         "ram_root_mounted": "QEMU RAM ROOT MOUNTED" in combined,
         "root_vnode_ready": "QEMU ROOTVNODE READY" in combined,
         "diagnostic_pid1_entered": PID1_MARKER in combined

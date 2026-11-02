@@ -1,0 +1,68 @@
+diff --git a/pexpert/arm/pe_init.c b/pexpert/arm/pe_init.c
+--- a/pexpert/arm/pe_init.c
++++ b/pexpert/arm/pe_init.c
+@@ -248,16 +248,27 @@ PE_init_iokit(void)
+ 	uint32_t        populate_registry_time_value = 0;
+ #if defined(DUCHAMP)
+ 	sweet_early_mark(124, "PE iokit entering");
++	kprintf("SWEET PE TRACE 01: PE_INIT_IOKIT ENTERED\n");
++	kprintf("SWEET PE TRACE 02: PRE PE_INIT_PRINTF\n");
+ #endif
+ 
+ 	PE_init_printf(TRUE);
++#if defined(DUCHAMP)
++	kprintf("SWEET PE TRACE 03: PE_INIT_PRINTF RETURNED\n");
++#endif
+ 
+ 	printf("iBoot version: %s\n", iBoot_version);
++#if defined(DUCHAMP)
++	kprintf("SWEET PE TRACE 04: IBOOT VERSION PRINT RETURNED\n");
++#endif
+ #if defined(TARGET_OS_OSX) && defined(__arm64__)
+ 	printf("iBoot Stage 2 version: %s\n", iBoot_Stage_2_version);
+ #endif /* defined(TARGET_OS_OSX) && defined(__arm64__) */
+ #if defined(DUCHAMP)
++	kprintf("SWEET PE TRACE 05: IBOOT STAGE2 PRINT RETURNED\n");
+ 	sweet_early_mark(125, "PE printf ready");
++	kprintf("SWEET PE TRACE 06: EARLY MARK 125 RETURNED\n");
++	kprintf("SWEET PE TRACE 07: PRE MEMORY MAP LOOKUP\n");
+ #endif
+ 
+ 	if (kSuccess == SecureDTLookupEntry(0, "/chosen/memory-map", &entry)) {
+@@ -277,7 +288,13 @@ PE_init_iokit(void)
+ 		}
+ 	}
+ 
++#if defined(DUCHAMP)
++	kprintf("SWEET PE TRACE 08: MEMORY MAP BLOCK RETURNED\n");
++#endif
+ 	pe_prepare_images();
++#if defined(DUCHAMP)
++	kprintf("SWEET PE TRACE 09: PREPARE IMAGES RETURNED\n");
++#endif
+ 
+ 	scale = PE_state.video.v_scale;
+ 	flip = 1;
+@@ -368,17 +385,22 @@ PE_init_iokit(void)
+ #if defined(DUCHAMP)
+ 	sweet_early_mark(126, "PE pre InitIOKit");
+ 	sweet_early_mark(127, "InitIOKit entering");
++	kprintf("SWEET PE TRACE 10: INITIOKIT ENTERING\n");
+ #endif
+ 	InitIOKit(PE_state.deviceTreeHead);
+ #if defined(DUCHAMP)
++	kprintf("SWEET PE TRACE 10R: INITIOKIT RETURNED\n");
+ 	sweet_early_mark(128, "InitIOKit returned");
+ 	sweet_early_mark(129, "DUCHAMP PRE CONFIGURE IOKIT");
+ 	sweet_early_mark(130, "ConfigureIOKit entering");
++	kprintf("SWEET PE TRACE 11: CONFIGUREIOKIT ENTERING\n");
+ #endif
+ 	ConfigureIOKit();
+ #if defined(DUCHAMP)
++	kprintf("SWEET PE TRACE 11R: CONFIGUREIOKIT RETURNED\n");
+ 	sweet_early_mark(131, "ConfigureIOKit returned");
+ 	sweet_early_mark(132, "DUCHAMP POST CONFIGURE IOKIT");
++	kprintf("SWEET PE TRACE 12: PE_INIT_IOKIT RETURNING\n");
+ #endif
+ }
+
