@@ -38,6 +38,8 @@ def tracked_inputs(repo):
         repo / "duchamp/drivers/ufs_readonly.h",
         repo / "tools/check-duchamp-fdt.sh",
         repo / "tools/inspect-duchamp-hardware.py",
+        repo / "tools/assess-mt6897-ufs-dma-map.py",
+        repo / "tools/test-mt6897-ufs-dma-map.py",
         repo / "tools/report-duchamp-mt6897-ownership.py",
         repo / "tools/test-report-duchamp-mt6897-ownership.py",
         repo / "tools/test-duchamp-psci-boot.py",
@@ -273,6 +275,18 @@ def main():
             str(repo / "tools/test-mt6897-ufs-dma-route.py"),
             str(output / "ufs-dma-route-contract"),
         ],
+        "ufs_dma_map_model_tests": [
+            sys.executable,
+            str(repo / "tools/test-mt6897-ufs-dma-map.py"),
+        ],
+        "ufs_dma_map_candidate": [
+            sys.executable,
+            str(repo / "tools/assess-mt6897-ufs-dma-map.py"),
+            str(output / "ufs-dma-map-candidate/result.json"),
+            "--fdt", str(fdt),
+            "--runtime-evidence", str(runtime_evidence),
+            "--prdt-evidence", str(prdt_evidence),
+        ],
         "ownership": [
             sys.executable,
             str(repo / "tools/report-duchamp-mt6897-ownership.py"),
@@ -317,6 +331,9 @@ def main():
         cache_backend = load_pass(output / "ufs-cache-backend/result.json")
         dma_route_contract = load_pass(
             output / "ufs-dma-route-contract/result.json"
+        )
+        dma_map_candidate = load_pass(
+            output / "ufs-dma-map-candidate/result.json"
         )
         ownership = json.loads(
             Path(components["ownership"]["log"]).read_text(encoding="utf-8")
@@ -447,6 +464,29 @@ def main():
                     "ufs_command"):
             if dma_route_scope.get(key) is not False:
                 raise ValueError("unsafe UFS DMA-route action: " + key)
+        dma_map_translation = dma_map_candidate.get("candidate", {})
+        dma_map_bounce = dma_map_candidate.get("bounce", {})
+        dma_map_safety = dma_map_candidate.get("safety", {})
+        if (dma_map_translation.get(
+                "static_dt_translation_model_proven") is not True or
+                dma_map_translation.get(
+                    "runtime_dma_range_entries_proven") is not False or
+                dma_map_translation.get(
+                    "raw_dma_equals_cpu_pa_proven") is not False or
+                dma_map_translation.get(
+                    "direct_route_receipt_issuable") is not False or
+                dma_map_bounce.get("disposition") != "unknown" or
+                dma_map_bounce.get("sample_no_swiotlb") is not True or
+                dma_map_bounce.get(
+                    "global_bounce_disposition_proven") is not False or
+                dma_map_bounce.get(
+                    "bounce_route_receipt_issuable") is not False):
+            raise ValueError("UFS DMA-map candidate promoted saved evidence")
+        for key in ("phone_access", "mmio_access", "smc_execution",
+                    "dma_or_ufs_commands", "partition_access",
+                    "physical_backend_enabled"):
+            if dma_map_safety.get(key) is not False:
+                raise ValueError("unsafe UFS DMA-map candidate action: " + key)
         if current_ufs.get("blockers") != [
             "firmware_effect_contract",
             "resource_ownership",
@@ -704,6 +744,27 @@ def main():
                 ],
                 "physical_backend": dma_route_policy["physical_backend"],
             },
+            "ufs_dma_map_candidate": {
+                "model_tests_passed": components[
+                    "ufs_dma_map_model_tests"
+                ]["passed"],
+                "windows": dma_map_translation["windows"],
+                "static_dt_translation_model_proven": dma_map_translation[
+                    "static_dt_translation_model_proven"
+                ],
+                "runtime_dma_range_entries_proven": dma_map_translation[
+                    "runtime_dma_range_entries_proven"
+                ],
+                "raw_dma_equals_cpu_pa_proven": dma_map_translation[
+                    "raw_dma_equals_cpu_pa_proven"
+                ],
+                "sample_no_swiotlb": dma_map_bounce[
+                    "sample_no_swiotlb"
+                ],
+                "sample_segments": dma_map_bounce["sample_segments"],
+                "bounce_disposition": dma_map_bounce["disposition"],
+                "physical_backend": "disabled",
+            },
             "ownership": {
                 "dtb_sha256": ownership["dtb"]["sha256"],
                 "categories": sorted(ownership["categories"]),
@@ -741,8 +802,9 @@ def main():
             "installed_firmware_contract": "unverified",
             "ufs_dma_or_iommu_route": "unverified",
             "ufs_dma_route_contract": (
-                "implemented fail-closed; raw PA-to-DMA and bounce evidence "
-                "remain unavailable"
+                "implemented fail-closed; saved DT translation candidate "
+                "passes, but live PA-to-DMA and global bounce disposition "
+                "remain unverified"
             ),
             "ufs_activation_lease_provider": (
                 "implemented fail-closed; no physical lease available"
