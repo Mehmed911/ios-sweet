@@ -1,3 +1,41 @@
+MT6897 non-coherent UFS cache contract/XNU replay — verified (2026-11-04):
+Commit f3e24e3c087ce3ad1ddbc3e7bc7423e446506437 on duchamp-bootstrap adds a
+lease-bound, disabled-by-default cache ownership state machine. It requires an
+exact boot lease and immutable receipt, exclusive whole-cache-line ownership,
+no CPU aliases, serialized handoffs, and identified clean-to-PoC,
+clean+invalidate-to-PoC and barrier implementations. The contract contains no
+cache instructions. Missing/stale evidence, changed receipts, wrong ownership,
+callback failure or a fault before dispatch permanently denies access. Native
+sanitizer and actual ARM64 QEMU models each PASSed 560 checks; the deterministic
+race test PASSed 35 checks with fault-before-callback and zero range callbacks.
+The six successful handoffs use only a synthetic lease and private RAM. Current
+Duchamp evidence executes zero cache callbacks. The 18-component combined
+offline gate PASSed in 37.919s. Result SHA256 values are
+609dddf2bec639cacff52c76953cf2b45cfd750bc3394fa68b5612155b034283
+(combined gate) and
+c4a8448b95e4be7942a557654c6e8abf2895e4d5729bb54e096b180ffa66c9cb
+(cache runner).
+GitHub Actions run 41716783413 PASSed all build/package/collect steps. Artifact
+13270913854 archive SHA256 is
+45e93099403b3794da1e40ac57f4ed4b40864047b484ac5ba89d9f3f89efed33;
+kernel.development.sweet SHA256 is
+d29620071fb48f7d36b7b613bea83888ee1fc1aaf61e2ddae064c2ad685b535f.
+The full read-only HFS+ QEMU replay PASSed 31/31 checks in 76.265s with 16
+frames, no undecodable glyphs or observed panic, PID 1 heartbeat, unchanged
+host image, and 512/512 virtual timer IRQ pixels. It emitted the mandatory
+QEMU XNU UFS CACHE CONTRACT DEFAULT CLOSED marker. Verification JSON SHA256 is
+66fa005d8cacd0e966fc2a8512a118773defc3ea8982ca71deff93a29e6e546d;
+payload SHA256 is
+b94c3e990eb012326f06d16d3d21d0f22947a6333c9e055716263fa53bebaf7e.
+This proves the local fail-closed policy and virtual XNU path only. PA-to-DMA
+translation, bounce/SWIOTLB disposition, physical cache implementation and
+firmware/resource ownership remain unresolved; physical UFS stays disabled.
+No phone, USB, ADB, fastboot, partition, physical MMIO, SMC, DMA, IOMMU or UFS
+command was used. See duchamp/MT6897-UFS-FAIL-CLOSED.md and
+work/ci-41716783413-ufs-cache-contract/qemu-backends-cache-contract-v1/verification.json.
+Preserve all user edits.
+End of MT6897 non-coherent UFS cache contract/XNU replay.
+
 MT6897 direct-DMA/IOMMU evidence replay — verified limited result (2026-11-03):
 The saved-evidence audit was rerun offline from the pinned FDT, runtime probe,
 UFS client, GKI source, BL31 audit and iomem receipts. The generated report is

@@ -147,3 +147,26 @@ in `work/ufs-cache-contract-20261103-v3/result.json` and
 The result must keep all physical flags false and report the current profile
 as denied. A passing local test means the policy fails closed; it does not mean
 that physical UFS or full system boot is ready.
+
+## Full XNU replay
+
+Commit `f3e24e3c087ce3ad1ddbc3e7bc7423e446506437` was built by GitHub
+Actions run `41716783413`; all build, package and collect steps passed. The
+`xnu-kernel` artifact is `13270913854`, its archive SHA-256 is
+`45e93099403b3794da1e40ac57f4ed4b40864047b484ac5ba89d9f3f89efed33`,
+and the extracted `kernel.development.sweet` SHA-256 is
+`d29620071fb48f7d36b7b613bea83888ee1fc1aaf61e2ddae064c2ad685b535f`.
+
+The pinned read-only HFS+ QEMU replay passed all 31 checks in 76.265 host
+seconds with 16 sampled frames, no undecodable glyphs and no observed panic.
+XNU mounted the virtual root, reached the diagnostic PID 1 heartbeat, retained
+the read-only image unchanged, and produced the 512/512 virtual timer IRQ
+witness. The compiled in-kernel test emitted
+`QEMU XNU UFS CACHE CONTRACT DEFAULT CLOSED`; it therefore proves the denied
+dispatch path and zero physical enablement, not an MT6897 cache operation.
+The verification JSON SHA-256 is
+`66fa005d8cacd0e966fc2a8512a118773defc3ea8982ca71deff93a29e6e546d`
+and the payload SHA-256 is
+`b94c3e990eb012326f06d16d3d21d0f22947a6333c9e055716263fa53bebaf7e`.
+No phone, ADB, fastboot, partition, physical MMIO, SMC, DMA, IOMMU or UFS
+command was used.
