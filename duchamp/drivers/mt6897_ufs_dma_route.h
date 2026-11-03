@@ -138,6 +138,8 @@ struct mt6897_ufs_dma_route_mapping {
     uint64_t dma_physical_address;
     uint64_t device_address;
     uint64_t bytes;
+    uint64_t route_instance_id;
+    uint64_t operation_id;
     uint64_t cookie;
     uint32_t direction;
     uint32_t bounced;
@@ -170,6 +172,8 @@ struct mt6897_ufs_dma_route {
     struct mt6897_ufs_dma_route_ops ops;
     struct mt6897_ufs_dma_route_mapping active;
     uint64_t receipt_fingerprint;
+    uint64_t route_instance_id;
+    uint64_t next_operation_id;
     uint64_t transitions;
     uint32_t state;
     uint32_t fault_pending;

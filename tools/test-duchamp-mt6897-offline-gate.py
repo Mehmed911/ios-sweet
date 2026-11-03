@@ -400,12 +400,18 @@ def main():
         if (dma_route_concurrency.get("checks", 0) <= 0 or
                 dma_route_concurrency.get(
                     "fault_before_route_callback") is not True or
+                dma_route_concurrency.get(
+                    "active_clear_before_cpu_owned_publish") is not True or
                 dma_route_concurrency.get("copy_callbacks") != 0):
             raise ValueError("UFS DMA-route concurrency proof differs")
         if (dma_route_policy.get("default_closed") is not True or
                 dma_route_policy.get(
                     "lease_checked_at_bind_and_every_transition") is not True or
                 dma_route_policy.get("immutable_receipt_fingerprint") is not True or
+                dma_route_policy.get(
+                    "unique_boot_local_route_instance_id") is not True or
+                dma_route_policy.get(
+                    "unique_per_route_operation_id") is not True or
                 dma_route_policy.get("physical_backend") != "disabled"):
             raise ValueError("UFS DMA-route fail-closed policy differs")
         for key in ("phone_access", "mmio", "cache_instruction", "dma",
@@ -634,6 +640,16 @@ def main():
                 "concurrency_checks": dma_route_concurrency["checks"],
                 "fault_before_route_callback": dma_route_concurrency[
                     "fault_before_route_callback"
+                ],
+                "active_clear_before_cpu_owned_publish":
+                    dma_route_concurrency[
+                        "active_clear_before_cpu_owned_publish"
+                    ],
+                "unique_boot_local_route_instance_id": dma_route_policy[
+                    "unique_boot_local_route_instance_id"
+                ],
+                "unique_per_route_operation_id": dma_route_policy[
+                    "unique_per_route_operation_id"
                 ],
                 "arm64_model_checks": dma_route_arm64["checks"],
                 "arm64_matches_native": dma_route_arm64[

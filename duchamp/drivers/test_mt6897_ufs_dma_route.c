@@ -355,6 +355,9 @@ test_successful_routes(unsigned *direct_mappings, unsigned *bounce_mappings)
             CHECK(mapping.source_physical_address ==
                 request.physical_address);
             CHECK(mapping.bytes == request.bytes);
+            CHECK(mapping.route_instance_id == route.route_instance_id);
+            CHECK(mapping.route_instance_id != 0);
+            CHECK(mapping.operation_id == 1);
             CHECK(mapping.direction == direction);
             if (bounced) {
                 ++*bounce_mappings;
@@ -381,6 +384,9 @@ test_successful_routes(unsigned *direct_mappings, unsigned *bounce_mappings)
                 &blockers) == MT6897_UFS_DMA_ROUTE_OK);
             CHECK(route.state == MT6897_UFS_DMA_ROUTE_STATE_CPU_OWNED);
             CHECK(route.transitions == 2);
+            CHECK(route.active.operation_id == 0);
+            CHECK(route.active.route_instance_id == 0);
+            CHECK(route.active.cookie == 0);
             expected_copy_from = bounced &&
                 direction != MT6897_UFS_DMA_TO_DEVICE;
             CHECK(model.copy_from_calls == expected_copy_from);
@@ -393,6 +399,71 @@ test_successful_routes(unsigned *direct_mappings, unsigned *bounce_mappings)
                 &blockers) == MT6897_UFS_DMA_ROUTE_STATE);
         }
     }
+}
+
+static void
+test_stale_mapping_rejection(void)
+{
+    struct mt6897_ufs_gate gate = { 0 };
+    struct mt6897_ufs_gate_lease lease = { 0 };
+    struct mt6897_ufs_dma_route route = { 0 };
+    struct route_model model = { 0 };
+    struct mt6897_ufs_dma_route_request request =
+        valid_request(MT6897_UFS_DMA_BIDIRECTIONAL);
+    struct mt6897_ufs_dma_route_mapping first = { 0 };
+    struct mt6897_ufs_dma_route_mapping second = { 0 };
+    uint64_t blockers = 0;
+
+    bind_route(&gate, &lease, &route, &model, 0);
+    CHECK(mt6897_ufs_dma_route_for_device(&route, &request, &first,
+        &blockers) == MT6897_UFS_DMA_ROUTE_OK);
+    CHECK(first.operation_id != 0);
+    CHECK(mt6897_ufs_dma_route_for_cpu(&route, &first, &blockers) ==
+        MT6897_UFS_DMA_ROUTE_OK);
+    CHECK(route.active.route_instance_id == 0 &&
+        route.active.operation_id == 0 && route.active.cookie == 0);
+
+    CHECK(mt6897_ufs_dma_route_for_device(&route, &request, &second,
+        &blockers) == MT6897_UFS_DMA_ROUTE_OK);
+    CHECK(second.operation_id == first.operation_id + 1);
+    CHECK(second.cookie != first.cookie);
+    CHECK(mt6897_ufs_dma_route_for_cpu(&route, &first, &blockers) ==
+        MT6897_UFS_DMA_ROUTE_FAULTED);
+    CHECK(route.state == MT6897_UFS_DMA_ROUTE_STATE_FAULTED);
+}
+
+static void
+test_cross_route_mapping_rejection(void)
+{
+    struct mt6897_ufs_gate first_gate = { 0 };
+    struct mt6897_ufs_gate second_gate = { 0 };
+    struct mt6897_ufs_gate_lease first_lease = { 0 };
+    struct mt6897_ufs_gate_lease second_lease = { 0 };
+    struct mt6897_ufs_dma_route first_route = { 0 };
+    struct mt6897_ufs_dma_route second_route = { 0 };
+    struct route_model first_model = { 0 };
+    struct route_model second_model = { 0 };
+    struct mt6897_ufs_dma_route_request request =
+        valid_request(MT6897_UFS_DMA_BIDIRECTIONAL);
+    struct mt6897_ufs_dma_route_mapping first = { 0 };
+    struct mt6897_ufs_dma_route_mapping second = { 0 };
+    uint64_t blockers = 0;
+
+    bind_route(&first_gate, &first_lease, &first_route, &first_model, 0);
+    bind_route(&second_gate, &second_lease, &second_route, &second_model, 0);
+    CHECK(first_route.route_instance_id != second_route.route_instance_id);
+    CHECK(mt6897_ufs_dma_route_for_device(&first_route, &request, &first,
+        &blockers) == MT6897_UFS_DMA_ROUTE_OK);
+    CHECK(mt6897_ufs_dma_route_for_device(&second_route, &request, &second,
+        &blockers) == MT6897_UFS_DMA_ROUTE_OK);
+    CHECK(first.operation_id == second.operation_id);
+    CHECK(first.route_instance_id != second.route_instance_id);
+    CHECK(first.cookie != second.cookie);
+    CHECK(mt6897_ufs_dma_route_for_cpu(&second_route, &first, &blockers) ==
+        MT6897_UFS_DMA_ROUTE_FAULTED);
+    CHECK(second_route.state == MT6897_UFS_DMA_ROUTE_STATE_FAULTED);
+    CHECK(mt6897_ufs_dma_route_for_cpu(&first_route, &first, &blockers) ==
+        MT6897_UFS_DMA_ROUTE_OK);
 }
 
 static void
@@ -625,6 +696,8 @@ main(void)
 
     test_default_closed(&current_callbacks);
     test_successful_routes(&direct_mappings, &bounce_mappings);
+    test_stale_mapping_rejection();
+    test_cross_route_mapping_rejection();
     test_range_rejection();
     test_bad_receipts();
     test_tampering_and_callbacks();

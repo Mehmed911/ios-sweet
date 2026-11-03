@@ -154,6 +154,14 @@ leases or callback failures cannot publish a device address. The current
 Duchamp evidence cannot obtain a lease, so the XNU QEMU default-closed path
 executes zero route callbacks.
 
+Every mapping also carries a monotonic boot-local route-instance identity and
+a monotonic per-route operation identity, both covered by the cookie and the
+active-mapping comparison. This rejects a mapping replayed from an earlier
+operation or a different route object. Returning ownership clears the active
+mapping while the state is still `TO_CPU`; only then can `CPU_OWNED` be
+published. A concurrent device handoff therefore cannot install a new mapping
+that the previous handoff later clears.
+
 The saved passive PRDT sample proves that 17,437 Linux-mapped segments inverted
 back to their original SG physical addresses and that none used the observed
 SWIOTLB pool. It still does not record raw DMA-address equality, the live
@@ -172,19 +180,21 @@ operation classes with a valid synthetic lease, while negative tests prove
 missing, stale and concurrently revoked leases produce zero denied dispatches.
 The combined Duchamp offline gate also runs this component.
 
-The 2026-11-04 v12 run passed 708 native and 708 ARM64 gate checks, 140 gate
+The 2026-11-04 v15 run passed 708 native and 708 ARM64 gate checks, 140 gate
 concurrency checks, 107 native and 107 ARM64 provider checks, and 35 provider
 concurrency checks. The cache contract separately passed 560 native sanitizer
 checks, the same 560 checks on an actual ARM64 QEMU CPU, all six synthetic
 ownership handoffs, and 35 concurrency checks; current Duchamp evidence reached
-zero cache callbacks. The DMA-route contract passed 656 native sanitizer checks
-and the same 656 checks on an actual ARM64 QEMU CPU, three direct and three
-bounce mappings, and 37 deterministic race checks with zero copy callbacks
-after a fault. The combined 19-component gate passed in 38.482 seconds. Results
-are in `work/offline-gate-ufs-20261104-v12/ufs-dma-route-contract/result.json`
-and `work/offline-gate-ufs-20261104-v12/result.json`; their SHA-256 values are
-`00fc49ff1b2cfede769087bb2348f678e91572923213d26d143f15d69c647aa0`
-and `9a5c367b57b591713c35b50a236044ca012d1962e5832140dd56445e44a6d212`.
+zero cache callbacks. The DMA-route contract passed 791 native sanitizer checks
+and the same 791 checks on an actual ARM64 QEMU CPU, three direct and three
+bounce mappings, stale-operation and cross-route replay rejection, and 80
+deterministic race checks. Its concurrency binary also passed a separate
+200/200 replay. The combined 19-component gate passed in 35.137 seconds.
+Results are in
+`work/offline-gate-ufs-20261104-v15/ufs-dma-route-contract/result.json` and
+`work/offline-gate-ufs-20261104-v15/result.json`; their SHA-256 values are
+`a011df2bf04f8537725027ee9019ab34e09d09953a423958aefcf74951a88b34`
+and `693caecd777da46c3edd26cd88d63c3196e7689770307a9e090aefec856363c7`.
 
 The result must keep all physical flags false and report the current profile
 as denied. A passing local test means the policy fails closed; it does not mean

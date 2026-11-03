@@ -7,6 +7,8 @@
 #include <stdlib.h>
 
 #define BOOT_GENERATION UINT64_C(0x202611040302)
+#define HOOK_AFTER_LEASE_CHECK 1
+#define HOOK_BEFORE_CPU_OWNED_PUBLISH 2
 
 static _Atomic unsigned checks;
 #define CHECK(expression) do { \
@@ -23,6 +25,7 @@ struct route_race {
     pthread_cond_t condition;
     int hook_entered;
     int hook_release;
+    int hook_target;
     unsigned lease_verifier_calls;
     unsigned receipt_verifier_calls;
     unsigned copy_to_calls;
@@ -40,21 +43,33 @@ static struct route_race *active_race;
 _Alignas(64) static unsigned char source_buffer[256];
 _Alignas(64) static unsigned char bounce_buffer[256];
 
-void
-mt6897_ufs_dma_route_test_after_lease_check(void)
+static void
+wait_at_test_hook(int hook)
 {
     struct route_race *race = active_race;
 
-    if (race == 0) {
+    if (race == 0 || race->hook_target != hook) {
         return;
     }
     CHECK(pthread_mutex_lock(&race->mutex) == 0);
-    race->hook_entered = 1;
+    race->hook_entered = hook;
     CHECK(pthread_cond_broadcast(&race->condition) == 0);
     while (!race->hook_release) {
         CHECK(pthread_cond_wait(&race->condition, &race->mutex) == 0);
     }
     CHECK(pthread_mutex_unlock(&race->mutex) == 0);
+}
+
+void
+mt6897_ufs_dma_route_test_after_lease_check(void)
+{
+    wait_at_test_hook(HOOK_AFTER_LEASE_CHECK);
+}
+
+void
+mt6897_ufs_dma_route_test_before_cpu_owned_publish(void)
+{
+    wait_at_test_hook(HOOK_BEFORE_CPU_OWNED_PUBLISH);
 }
 
 static enum mt6897_ufs_gate_verdict
@@ -127,6 +142,115 @@ handoff_thread(void *context)
     return 0;
 }
 
+static void *
+return_thread(void *context)
+{
+    struct route_race *race = (struct route_race *)context;
+
+    race->result = mt6897_ufs_dma_route_for_cpu(&race->route,
+        &race->mapping, &race->blockers);
+    return 0;
+}
+
+static void
+test_active_clear_before_cpu_owned_publish(void)
+{
+    struct route_race race = { 0 };
+    struct mt6897_ufs_gate_evidence evidence =
+        mt6897_ufs_gate_duchamp_known_evidence(BOOT_GENERATION);
+    struct mt6897_ufs_dma_route_receipt receipt = { 0 };
+    const struct mt6897_ufs_dma_route_ops ops = {
+        &race, verify_receipt, copy_to, copy_from
+    };
+    struct mt6897_ufs_dma_route_mapping first;
+    struct mt6897_ufs_dma_route_mapping denied = { 0 };
+    struct mt6897_ufs_dma_route_mapping second = { 0 };
+    pthread_t thread;
+    uint64_t blockers = 0;
+
+    evidence.asserted |= MT6897_UFS_E_COMMON_REQUIRED |
+        MT6897_UFS_E_DIRECT_BASE_REQUIRED |
+        MT6897_UFS_E_BOUNCE_NOT_REQUIRED;
+    evidence.known = evidence.asserted;
+    CHECK(pthread_mutex_init(&race.mutex, 0) == 0);
+    CHECK(pthread_cond_init(&race.condition, 0) == 0);
+    CHECK(mt6897_ufs_gate_init(&race.gate, BOOT_GENERATION) ==
+        MT6897_UFS_GATE_INIT_OK);
+    CHECK(mt6897_ufs_gate_authorize(&race.gate, &evidence, approve_lease,
+        &race, &race.lease, &blockers) == MT6897_UFS_GATE_LEASED);
+
+    receipt.version = MT6897_UFS_DMA_ROUTE_CONTRACT_VERSION;
+    receipt.flags = MT6897_UFS_DMA_DIRECT_FLAGS;
+    receipt.route = MT6897_UFS_DMA_ROUTE_DIRECT_AFFINE;
+    receipt.bounce_disposition = MT6897_UFS_DMA_BOUNCE_NOT_REQUIRED;
+    receipt.boot_generation = race.lease.boot_generation;
+    receipt.dma_owner_id = race.lease.dma_owner_id;
+    receipt.cache_owner_id = race.lease.cache_owner_id;
+    receipt.controller_owner_id = race.lease.controller_owner_id;
+    receipt.firmware_owner_id = race.lease.firmware_owner_id;
+    receipt.source_owner_id = UINT64_C(0x8808);
+    receipt.source_cpu_begin = (uint64_t)(uintptr_t)source_buffer;
+    receipt.source_pa_begin = UINT64_C(0x100000000);
+    receipt.source_bytes = sizeof(source_buffer);
+    receipt.device_begin = UINT64_C(0x200000000);
+    receipt.device_bytes = sizeof(source_buffer);
+    receipt.dma_limit = MT6897_UFS_DUCHAMP_DMA_LIMIT;
+    receipt.dma_address_bits = MT6897_UFS_DUCHAMP_DMA_BITS;
+    receipt.alignment = 64;
+    receipt.translation_implementation_id = UINT64_C(0xd0010001);
+    receipt.firewall_receipt_id = UINT64_C(0xf0010002);
+    receipt.cache_contract_id = UINT64_C(0xca000003);
+    CHECK(mt6897_ufs_dma_route_bind(&race.route, &race.gate, &race.lease,
+        &receipt, &ops, &blockers) == MT6897_UFS_DMA_ROUTE_OK);
+
+    race.request.cpu_address = (uint64_t)(uintptr_t)source_buffer;
+    race.request.physical_address = UINT64_C(0x100000000);
+    race.request.bytes = sizeof(source_buffer);
+    race.request.direction = MT6897_UFS_DMA_BIDIRECTIONAL;
+    CHECK(mt6897_ufs_dma_route_for_device(&race.route, &race.request,
+        &race.mapping, &blockers) == MT6897_UFS_DMA_ROUTE_OK);
+    first = race.mapping;
+
+    race.hook_target = HOOK_BEFORE_CPU_OWNED_PUBLISH;
+    active_race = &race;
+    CHECK(pthread_create(&thread, 0, return_thread, &race) == 0);
+    CHECK(pthread_mutex_lock(&race.mutex) == 0);
+    while (race.hook_entered != HOOK_BEFORE_CPU_OWNED_PUBLISH) {
+        CHECK(pthread_cond_wait(&race.condition, &race.mutex) == 0);
+    }
+    CHECK(pthread_mutex_unlock(&race.mutex) == 0);
+
+    CHECK(race.route.state == MT6897_UFS_DMA_ROUTE_STATE_TO_CPU);
+    CHECK(race.route.active.route_instance_id == 0);
+    CHECK(race.route.active.operation_id == 0);
+    CHECK(race.route.active.cookie == 0);
+    CHECK(mt6897_ufs_dma_route_for_device(&race.route, &race.request,
+        &denied, &blockers) == MT6897_UFS_DMA_ROUTE_STATE);
+    CHECK(denied.route_instance_id == 0 && denied.operation_id == 0 &&
+        denied.cookie == 0);
+
+    CHECK(pthread_mutex_lock(&race.mutex) == 0);
+    race.hook_release = 1;
+    CHECK(pthread_cond_broadcast(&race.condition) == 0);
+    CHECK(pthread_mutex_unlock(&race.mutex) == 0);
+    CHECK(pthread_join(thread, 0) == 0);
+    active_race = 0;
+    CHECK(race.result == MT6897_UFS_DMA_ROUTE_OK);
+    CHECK(race.route.state == MT6897_UFS_DMA_ROUTE_STATE_CPU_OWNED);
+    CHECK(race.route.active.route_instance_id == 0 &&
+        race.route.active.operation_id == 0 &&
+        race.route.active.cookie == 0);
+
+    CHECK(mt6897_ufs_dma_route_for_device(&race.route, &race.request,
+        &second, &blockers) == MT6897_UFS_DMA_ROUTE_OK);
+    CHECK(second.operation_id == first.operation_id + 1);
+    CHECK(second.cookie != first.cookie);
+    CHECK(mt6897_ufs_dma_route_for_cpu(&race.route, &second, &blockers) ==
+        MT6897_UFS_DMA_ROUTE_OK);
+    CHECK(pthread_cond_destroy(&race.condition) == 0);
+    CHECK(pthread_mutex_destroy(&race.mutex) == 0);
+}
+
 int
 main(void)
 {
@@ -191,6 +315,7 @@ main(void)
     race.request.physical_address = UINT64_C(0x100000000);
     race.request.bytes = sizeof(source_buffer);
     race.request.direction = MT6897_UFS_DMA_BIDIRECTIONAL;
+    race.hook_target = HOOK_AFTER_LEASE_CHECK;
     active_race = &race;
     CHECK(pthread_create(&thread, 0, handoff_thread, &race) == 0);
     CHECK(pthread_mutex_lock(&race.mutex) == 0);
@@ -227,8 +352,10 @@ main(void)
 
     CHECK(pthread_cond_destroy(&race.condition) == 0);
     CHECK(pthread_mutex_destroy(&race.mutex) == 0);
+    test_active_clear_before_cpu_owned_publish();
     (void)printf("%u MT6897 UFS concurrent DMA-route checks passed; "
-        "fault_before_route_callback=1 copy_callbacks=0\n",
+        "fault_before_route_callback=1 active_clear_before_publish=1 "
+        "copy_callbacks=0\n",
         atomic_load_explicit(&checks, memory_order_relaxed));
     return 0;
 }

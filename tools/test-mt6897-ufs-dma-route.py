@@ -169,7 +169,8 @@ def main():
         )
         concurrency_match = re.search(
             r"(?m)^(\d+) MT6897 UFS concurrent DMA-route checks passed; "
-            r"fault_before_route_callback=1 copy_callbacks=0\s*$",
+            r"fault_before_route_callback=1 active_clear_before_publish=1 "
+            r"copy_callbacks=0\s*$",
             concurrency_output,
         )
         require(concurrency_match is not None,
@@ -288,6 +289,7 @@ def main():
                 "checks": concurrency_checks,
                 "sanitizers": "ASan + UBSan",
                 "fault_before_route_callback": True,
+                "active_clear_before_cpu_owned_publish": True,
                 "copy_callbacks": 0,
             },
             "arm64_object": {
@@ -309,6 +311,8 @@ def main():
                 "default_closed": True,
                 "lease_checked_at_bind_and_every_transition": True,
                 "immutable_receipt_fingerprint": True,
+                "unique_boot_local_route_instance_id": True,
+                "unique_per_route_operation_id": True,
                 "direct_translation": "pinned affine PA-to-DMA window",
                 "bounce_translation": "dedicated pinned pool",
                 "cache_contract": "pinned identifier; executed separately",

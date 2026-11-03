@@ -4,10 +4,14 @@
 
 #ifdef MT6897_UFS_DMA_ROUTE_TEST_HOOKS
 extern void mt6897_ufs_dma_route_test_after_lease_check(void);
+extern void mt6897_ufs_dma_route_test_before_cpu_owned_publish(void);
 #endif
 
 #define DMA_ROUTE_FNV_OFFSET UINT64_C(1469598103934665603)
 #define DMA_ROUTE_FNV_PRIME UINT64_C(1099511628211)
+
+/* Monotonic for this kernel boot; zero and UINT64_MAX are terminal. */
+static uint64_t dma_route_instance_counter = 1;
 
 static uint64_t
 hash_u64(uint64_t hash, uint64_t value)
@@ -72,6 +76,8 @@ mapping_fingerprint(const struct mt6897_ufs_dma_route_mapping *mapping,
     HASH_MAPPING(dma_physical_address);
     HASH_MAPPING(device_address);
     HASH_MAPPING(bytes);
+    HASH_MAPPING(route_instance_id);
+    HASH_MAPPING(operation_id);
     HASH_MAPPING(direction);
     HASH_MAPPING(bounced);
 #undef HASH_MAPPING
@@ -151,6 +157,8 @@ copy_mapping(struct mt6897_ufs_dma_route_mapping *destination,
     destination->dma_physical_address = source->dma_physical_address;
     destination->device_address = source->device_address;
     destination->bytes = source->bytes;
+    destination->route_instance_id = source->route_instance_id;
+    destination->operation_id = source->operation_id;
     destination->cookie = source->cookie;
     destination->direction = source->direction;
     destination->bounced = source->bounced;
@@ -160,6 +168,25 @@ static int
 power_of_two(uint64_t value)
 {
     return value != 0 && (value & (value - 1)) == 0;
+}
+
+static int
+allocate_route_instance_id(uint64_t *instance_id)
+{
+    uint64_t current = __atomic_load_n(&dma_route_instance_counter,
+        __ATOMIC_ACQUIRE);
+
+    while (current != 0 && current != UINT64_MAX) {
+        uint64_t next = current + 1;
+
+        if (__atomic_compare_exchange_n(&dma_route_instance_counter,
+            &current, next, 0, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
+            *instance_id = current;
+            return 1;
+        }
+    }
+    *instance_id = 0;
+    return 0;
 }
 
 static int
@@ -253,7 +280,9 @@ mapping_zero(const struct mt6897_ufs_dma_route_mapping *mapping)
         mapping->dma_cpu_address == 0 &&
         mapping->dma_physical_address == 0 &&
         mapping->device_address == 0 && mapping->bytes == 0 &&
-        mapping->cookie == 0 && mapping->direction == 0 &&
+        mapping->route_instance_id == 0 && mapping->operation_id == 0 &&
+        mapping->cookie == 0 &&
+        mapping->direction == 0 &&
         mapping->bounced == 0;
 }
 
@@ -266,6 +295,8 @@ mapping_clear(struct mt6897_ufs_dma_route_mapping *mapping)
     mapping->dma_physical_address = 0;
     mapping->device_address = 0;
     mapping->bytes = 0;
+    mapping->route_instance_id = 0;
+    mapping->operation_id = 0;
     mapping->cookie = 0;
     mapping->direction = 0;
     mapping->bounced = 0;
@@ -278,7 +309,8 @@ route_zero(const struct mt6897_ufs_dma_route *route)
         receipt_zero(&route->receipt) && route->ops.context == 0 &&
         route->ops.verify == 0 && route->ops.copy_to_bounce == 0 &&
         route->ops.copy_from_bounce == 0 && mapping_zero(&route->active) &&
-        route->receipt_fingerprint == 0 && route->transitions == 0 &&
+        route->receipt_fingerprint == 0 && route->route_instance_id == 0 &&
+        route->next_operation_id == 0 && route->transitions == 0 &&
         route->state == 0 && route->fault_pending == 0;
 }
 
@@ -395,7 +427,7 @@ request_valid(const struct mt6897_ufs_dma_route_receipt *receipt,
 static void
 make_mapping(const struct mt6897_ufs_dma_route *route,
     const struct mt6897_ufs_dma_route_request *request,
-    struct mt6897_ufs_dma_route_mapping *mapping)
+    uint64_t operation_id, struct mt6897_ufs_dma_route_mapping *mapping)
 {
     uint64_t offset = request->physical_address -
         route->receipt.source_pa_begin;
@@ -404,6 +436,8 @@ make_mapping(const struct mt6897_ufs_dma_route *route,
     mapping->source_cpu_address = request->cpu_address;
     mapping->source_physical_address = request->physical_address;
     mapping->bytes = request->bytes;
+    mapping->route_instance_id = route->route_instance_id;
+    mapping->operation_id = operation_id;
     mapping->direction = request->direction;
     if (route->receipt.route == MT6897_UFS_DMA_ROUTE_DIRECT_AFFINE) {
         mapping->dma_cpu_address = request->cpu_address;
@@ -429,7 +463,10 @@ mapping_equal(const struct mt6897_ufs_dma_route_mapping *left,
         left->dma_cpu_address == right->dma_cpu_address &&
         left->dma_physical_address == right->dma_physical_address &&
         left->device_address == right->device_address &&
-        left->bytes == right->bytes && left->cookie == right->cookie &&
+        left->bytes == right->bytes &&
+        left->route_instance_id == right->route_instance_id &&
+        left->operation_id == right->operation_id &&
+        left->cookie == right->cookie &&
         left->direction == right->direction &&
         left->bounced == right->bounced && left->cookie != 0;
 }
@@ -606,6 +643,7 @@ mt6897_ufs_dma_route_bind(struct mt6897_ufs_dma_route *route,
     struct mt6897_ufs_dma_route_ops saved_ops;
     enum mt6897_ufs_gate_result lease_result;
     uint64_t fingerprint;
+    uint64_t route_instance_id;
 
     if (route == 0 || gate == 0 || lease == 0 || receipt == 0 || ops == 0 ||
         ops->verify == 0 || blockers_out == 0) {
@@ -652,10 +690,16 @@ mt6897_ufs_dma_route_bind(struct mt6897_ufs_dma_route *route,
         state_store(route, MT6897_UFS_DMA_ROUTE_STATE_FAULTED);
         return MT6897_UFS_DMA_ROUTE_LEASE;
     }
+    if (!allocate_route_instance_id(&route_instance_id)) {
+        return route_gate_fault(route, MT6897_UFS_BLOCK_BAD_STATE,
+            blockers_out);
+    }
     copy_receipt(&route->receipt, &saved_receipt);
     copy_ops(&route->ops, &saved_ops);
     mapping_clear(&route->active);
     route->receipt_fingerprint = fingerprint;
+    route->route_instance_id = route_instance_id;
+    route->next_operation_id = 1;
     route->transitions = 0;
     state_store(route, MT6897_UFS_DMA_ROUTE_STATE_CPU_OWNED);
     *blockers_out = 0;
@@ -670,6 +714,7 @@ mt6897_ufs_dma_route_for_device(struct mt6897_ufs_dma_route *route,
 {
     struct mt6897_ufs_dma_route_mapping mapping;
     enum mt6897_ufs_dma_route_result result;
+    uint64_t operation_id;
 
     if (route == 0 || request == 0 || mapping_out == 0 ||
         blockers_out == 0) {
@@ -707,7 +752,13 @@ mt6897_ufs_dma_route_for_device(struct mt6897_ufs_dma_route *route,
     if (result != MT6897_UFS_DMA_ROUTE_OK) {
         return result;
     }
-    make_mapping(route, request, &mapping);
+    operation_id = route->next_operation_id;
+    if (operation_id == 0) {
+        return route_gate_fault(route, MT6897_UFS_BLOCK_BAD_STATE,
+            blockers_out);
+    }
+    route->next_operation_id = operation_id + 1;
+    make_mapping(route, request, operation_id, &mapping);
     if (mapping.cookie == 0) {
         return route_gate_fault(route,
             MT6897_UFS_BLOCK_BAD_EVIDENCE_RECEIPT, blockers_out);
@@ -771,11 +822,17 @@ mt6897_ufs_dma_route_for_cpu(struct mt6897_ufs_dma_route *route,
             blockers_out);
         return MT6897_UFS_DMA_ROUTE_CALLBACK;
     }
+    /*
+     * Retire the active mapping while TO_CPU still excludes a new device
+     * handoff.  Publishing CPU_OWNED first would allow a new operation to
+     * install its mapping before this clear, losing the new mapping.
+     */
+    mapping_clear(&route->active);
+#ifdef MT6897_UFS_DMA_ROUTE_TEST_HOOKS
+    mt6897_ufs_dma_route_test_before_cpu_owned_publish();
+#endif
     result = finish_transition(route, MT6897_UFS_DMA_ROUTE_STATE_TO_CPU,
         MT6897_UFS_DMA_ROUTE_STATE_CPU_OWNED, blockers_out);
-    if (result == MT6897_UFS_DMA_ROUTE_OK) {
-        mapping_clear(&route->active);
-    }
     return result;
 }
 
