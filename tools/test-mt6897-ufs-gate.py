@@ -540,11 +540,19 @@ def main():
     gate_header = drivers / "mt6897_ufs_gate.h"
     test_source = drivers / "test_mt6897_ufs_gate.c"
     concurrency_source = drivers / "test_mt6897_ufs_gate_concurrency.c"
+    provider_source = drivers / "mt6897_ufs_provider.c"
+    provider_header = drivers / "mt6897_ufs_provider.h"
+    provider_test_source = drivers / "test_mt6897_ufs_provider.c"
+    provider_concurrency_source = (
+        drivers / "test_mt6897_ufs_provider_concurrency.c"
+    )
     script = Path(__file__).resolve()
     model_runtime = drivers / "test_mt6897_model_runtime.c"
     model_start = drivers / "test_mt6897_model_start.S"
     sources = [
         gate_source, gate_header, test_source, concurrency_source,
+        provider_source, provider_header, provider_test_source,
+        provider_concurrency_source,
         model_runtime, model_start, script
     ]
     for source in sources:
@@ -718,6 +726,85 @@ def main():
         require(concurrency_checks > 0,
                 "concurrent gate test reported no checks")
 
+        provider_native = temporary / "mt6897-ufs-provider-test"
+        provider_native_compile = [
+            clang,
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            "-fsanitize=address,undefined",
+            "-fno-sanitize-recover=all",
+            "-fno-omit-frame-pointer",
+            str(gate_source),
+            str(provider_source),
+            str(provider_test_source),
+            "-o",
+            str(provider_native),
+        ]
+        run_command(provider_native_compile, commands, temporary,
+                    "provider-native-compile")
+        provider_native_result = run_command(
+            [str(provider_native)], commands, temporary,
+            "provider-native-test", sanitizer_env)
+        provider_summary = re.search(
+            r"(?m)^(\d+) MT6897 UFS lease-provider checks passed; "
+            r"model_dispatches=(\d+) denied_dispatches=(\d+)\s*$",
+            provider_native_result.stdout,
+        )
+        require(provider_summary is not None,
+                "unexpected native provider-test summary")
+        provider_checks = int(provider_summary.group(1))
+        provider_model_dispatches = int(provider_summary.group(2))
+        provider_denied_dispatches = int(provider_summary.group(3))
+        require(provider_checks > 0, "provider test reported no checks")
+        require(provider_model_dispatches == 6,
+                "provider model did not cover all operation classes")
+        require(provider_denied_dispatches == 0,
+                "denied provider operation reached a callback")
+
+        provider_concurrency = (
+            temporary / "mt6897-ufs-provider-concurrency-test"
+        )
+        provider_concurrency_compile = [
+            clang,
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            "-fsanitize=address,undefined",
+            "-fno-sanitize-recover=all",
+            "-fno-omit-frame-pointer",
+            "-pthread",
+            "-DMT6897_UFS_PROVIDER_TEST_HOOKS",
+            str(gate_source),
+            str(provider_source),
+            str(provider_concurrency_source),
+            "-o",
+            str(provider_concurrency),
+        ]
+        run_command(provider_concurrency_compile, commands, temporary,
+                    "provider-concurrency-compile")
+        provider_concurrency_result = run_command(
+            [str(provider_concurrency)], commands, temporary,
+            "provider-concurrency-test", sanitizer_env)
+        provider_concurrency_summary = re.search(
+            r"(?m)^(\d+) MT6897 UFS concurrent provider checks passed; "
+            r"fault_before_dispatch=1 dispatches=0\s*$",
+            provider_concurrency_result.stdout,
+        )
+        require(provider_concurrency_summary is not None,
+                "unexpected concurrent provider-test summary")
+        provider_concurrency_checks = int(
+            provider_concurrency_summary.group(1)
+        )
+        require(provider_concurrency_checks > 0,
+                "concurrent provider test reported no checks")
+
         arm64_object = temporary / "mt6897_ufs_gate.arm64.o"
         arm64_compile = [
             clang,
@@ -744,6 +831,41 @@ def main():
             "arm64-imports",
         ).stdout.strip()
         require(imports == "", "unexpected freestanding imports: " + imports)
+
+        provider_arm64_object = temporary / "mt6897_ufs_provider.arm64.o"
+        provider_arm64_compile = [
+            clang,
+            "-target",
+            "aarch64-none-elf",
+            "-std=c11",
+            "-O2",
+            "-ffreestanding",
+            "-fno-builtin",
+            "-mgeneral-regs-only",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            "-c",
+            str(provider_source),
+            "-o",
+            str(provider_arm64_object),
+        ]
+        run_command(provider_arm64_compile, commands, temporary,
+                    "provider-arm64-compile")
+        provider_import_text = run_command(
+            [llvm_nm, "--undefined-only", str(provider_arm64_object)],
+            commands,
+            temporary,
+            "provider-arm64-imports",
+        ).stdout
+        provider_imports = sorted(
+            line.split()[-1] for line in provider_import_text.splitlines()
+            if line.split()
+        )
+        require(provider_imports == [
+            "mt6897_ufs_gate_fault",
+            "mt6897_ufs_gate_lease_check",
+        ], "unexpected provider imports: " + ", ".join(provider_imports))
 
         linker = temporary / "model.ld"
         linker.write_text(
@@ -795,6 +917,50 @@ def main():
                 "ARM64 model did not reproduce the native gate checks")
         require("MT6897 ARM64 MODEL PASS" in arm64_result.stdout,
                 "ARM64 model did not report a pass")
+
+        provider_arm64_elf = (
+            temporary / "mt6897-ufs-provider-model.arm64.elf"
+        )
+        provider_arm64_link = [
+            clang,
+            "-target", "aarch64-none-elf",
+            "-std=c11",
+            "-O2",
+            "-ffreestanding",
+            "-fno-builtin",
+            "-mgeneral-regs-only",
+            "-mstrict-align",
+            "-Wall", "-Wextra", "-Werror",
+            "-DMT6897_MODEL_FREESTANDING",
+            "-nostdlib",
+            "-fuse-ld=lld",
+            "-Wl,-T," + str(linker),
+            str(model_start),
+            str(model_runtime),
+            str(gate_source),
+            str(provider_source),
+            str(provider_test_source),
+            "-o", str(provider_arm64_elf),
+        ]
+        run_command(provider_arm64_link, commands, temporary,
+                    "provider-arm64-model-link")
+        provider_arm64_result = run_command([
+            qemu,
+            "-M", "virt",
+            "-cpu", "cortex-a76",
+            "-smp", "1",
+            "-m", "64M",
+            "-nographic",
+            "-monitor", "none",
+            "-serial", "stdio",
+            "-nic", "none",
+            "-semihosting-config", "enable=on,target=native",
+            "-kernel", str(provider_arm64_elf),
+        ], commands, temporary, "provider-arm64-model-test")
+        require(provider_native_result.stdout in provider_arm64_result.stdout,
+                "ARM64 model did not reproduce native provider checks")
+        require("MT6897 ARM64 MODEL PASS" in provider_arm64_result.stdout,
+                "ARM64 provider model did not report a pass")
 
         source_after = {
             str(path.relative_to(repo)).replace("\\", "/"): sha256_file(path)
@@ -849,6 +1015,19 @@ def main():
                 "verifier_calls": 1,
                 "simultaneous_second_authorization": "terminal fail-closed",
             },
+            "provider": {
+                "native_checks": provider_checks,
+                "native_model_dispatches": provider_model_dispatches,
+                "denied_dispatches": provider_denied_dispatches,
+                "concurrency_checks": provider_concurrency_checks,
+                "concurrent_fault_before_dispatch": "terminal fail-closed",
+                "freestanding_arm64_compile": True,
+                "arm64_checks": provider_checks,
+                "arm64_matches_native": True,
+                "arm64_object_sha256": sha256_file(provider_arm64_object),
+                "arm64_elf_sha256": sha256_file(provider_arm64_elf),
+                "physical_backend": "disabled",
+            },
             "freestanding_arm64_compile": True,
             "arm64_undefined_imports": [],
             "arm64_object_sha256": sha256_file(arm64_object),
@@ -876,6 +1055,7 @@ def main():
                 "smc_execution": False,
                 "dma_calls": 0,
                 "dma_access": False,
+                "provider_denied_dispatches": provider_denied_dispatches,
                 "phone_access": False,
                 "adb_access": False,
                 "fastboot_access": False,
@@ -885,7 +1065,8 @@ def main():
             "scope": (
                 "pinned saved-evidence validation, native sanitizer execution, "
                 "freestanding AArch64 compilation, and ARM64 QEMU policy-model "
-                "execution only; no physical UFS authorization"
+                "execution plus lease-guarded provider dispatch checks only; "
+                "no physical UFS authorization"
             ),
         }
         (temporary / "commands.json").write_text(

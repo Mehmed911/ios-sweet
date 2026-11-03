@@ -1,3 +1,32 @@
+MT6897 UFS lease-provider/XNU dispatch milestone — local verification (2026-11-03):
+Baseline ee9e771, duchamp-bootstrap. Local saved files/WSL/QEMU only: no phone,
+USB, ADB, fastboot, partition, physical MMIO, SMC or DMA access. Added
+drivers/mt6897_ufs_provider.[ch], a disabled-by-default dispatch shell for six
+operation classes: power, clock, PHY, MMIO, DMA and UFS command. Binding and
+every operation require the exact activation lease. Missing/stale leases and
+runtime callback failures latch a terminal fault. A fault racing before the
+CHECKING->DISPATCHING authorization point prevents dispatch; future physical
+callbacks still require platform locking once dispatch has begun. The opt-in
+XNU QEMU backend selftest now presents the pinned incomplete Duchamp evidence,
+proves the verifier is unreachable, attempts all six operations through both a
+zero provider and denied binding, and requires access/dispatch counters to stay
+zero. The XNU staging list now includes the provider C/H; full XNU CI compile
+and guest replay are still pending and must not be inferred from local models.
+The standalone v8 gate PASSed 708 native + 708 ARM64 lease checks, 140 gate
+concurrency checks, 107 native + 107 ARM64 provider checks and 35 deterministic
+provider concurrency checks. All denied dispatches were zero; the synthetic
+valid-lease RAM model covered all six operation classes. Result SHA256 is
+6e5dc0fc131bd90066e478ac2fd375d5e6a92e9738dcf31be5b15e6fe07c767f.
+The source-staging suite PASSed 8/8. The combined saved-DTB gate PASSed all 17
+components in 36.000s and records the lease provider as implemented fail-closed
+with no physical lease. Combined result SHA256 is
+8fbbcf07dffcd3222ab5dad81fa9a61c694a6b1d451244b255ea21839c33d967.
+Physical UFS remains disabled. Firmware effects, resource/cache ownership,
+direct address translation and bounce disposition remain unresolved. See
+duchamp/MT6897-UFS-FAIL-CLOSED.md and work/offline-gate-ufs-20261103-v8.
+Preserve all user edits.
+End of MT6897 UFS lease-provider/XNU dispatch local milestone.
+
 MT6897 UFS activation lease gate — local fail-closed milestone (2026-11-03):
 Baseline 8d8f4164ddc738734d100ad1c0e1cc658c2faa40, duchamp-bootstrap.
 Local saved files/WSL/QEMU only: no phone, USB, ADB, fastboot, partition,

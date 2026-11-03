@@ -324,6 +324,15 @@ def main():
                     "simultaneous_second_authorization") !=
                     "terminal fail-closed"):
             raise ValueError("UFS activation gate concurrency proof differs")
+        activation_provider = activation_gate.get("provider", {})
+        if (activation_provider.get("denied_dispatches") != 0 or
+                activation_provider.get("native_model_dispatches") != 6 or
+                activation_provider.get("concurrent_fault_before_dispatch") !=
+                "terminal fail-closed" or
+                activation_provider.get("freestanding_arm64_compile") is not True or
+                activation_provider.get("arm64_matches_native") is not True or
+                activation_provider.get("physical_backend") != "disabled"):
+            raise ValueError("UFS lease-provider fail-closed proof differs")
         if activation_gate.get("freestanding_arm64_compile") is not True:
             raise ValueError("UFS activation gate did not compile for ARM64")
         activation_arm64 = activation_gate.get("arm64_model", {})
@@ -499,6 +508,24 @@ def main():
                 "current_blockers": current_ufs["blockers"],
                 "verifier_calls": current_ufs["verifier_calls"],
                 "hardware_access": current_ufs["hardware_access"],
+                "lease_provider": {
+                    "native_checks": activation_provider["native_checks"],
+                    "concurrency_checks": activation_provider[
+                        "concurrency_checks"
+                    ],
+                    "operation_classes": activation_provider[
+                        "native_model_dispatches"
+                    ],
+                    "denied_dispatches": activation_provider[
+                        "denied_dispatches"
+                    ],
+                    "concurrent_fault_before_dispatch": activation_provider[
+                        "concurrent_fault_before_dispatch"
+                    ],
+                    "arm64_matches_native": activation_provider[
+                        "arm64_matches_native"
+                    ],
+                },
                 "physical_backend": "disabled",
             },
             "ownership": {
@@ -537,7 +564,9 @@ def main():
             "gic_and_firmware_resource_ownership": "unverified",
             "installed_firmware_contract": "unverified",
             "ufs_dma_or_iommu_route": "unverified",
-            "ufs_activation_lease_provider": "not implemented",
+            "ufs_activation_lease_provider": (
+                "implemented fail-closed; no physical lease available"
+            ),
             "ufs_topckgen_physical_backend": "disabled",
             "physical_ufs_backend": "disabled",
             "secondary_cpu_start_and_power": "unverified",

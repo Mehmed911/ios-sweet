@@ -64,9 +64,24 @@ attachment is not proof of physical identity or firewall bypass.
 
 ## Integration rule
 
-The gate is staged into the XNU source copy for build-time parity, but it is
-not wired to a physical provider. Before any future physical integration, the
-provider must:
+`drivers/mt6897_ufs_provider.[ch]` is now the only lease-guarded dispatch shell
+for future MT6897 UFS operations. A zero-initialized provider is disabled. It
+has six explicit operation classes: power, clock, PHY, MMIO, DMA and UFS
+command. Binding requires a valid lease, and every operation rechecks that
+lease immediately before changing state from `CHECKING` to `DISPATCHING`.
+Missing or stale leases permanently fault the provider without invoking its
+callback. A concurrent fault that wins before `DISPATCHING` also prevents the
+callback; once dispatch has begun, platform locking remains the responsibility
+of the future physical implementation.
+
+The gate and provider are staged into the XNU source copy. The opt-in QEMU XNU
+backend test presents the current pinned Duchamp evidence, confirms the gate
+denies it before the verifier callback, and then exercises all six provider
+entry points. Both the zero provider and the denied binding leave the model's
+hardware-access and dispatch counters at zero. This is source integration and
+a RAM-only selftest, not a physical provider.
+
+Before any future physical integration, the provider must:
 
 - derive a fresh boot generation from the boot session;
 - validate the exact saved/runtime receipts rather than set evidence bits by
@@ -83,9 +98,17 @@ Run the evidence-bound test runner with the saved DTB and three pinned reports.
 It compiles and runs a receipt extractor against the actual gate helper, then
 requires the embedded DTB, ATF, firmware-audit, runtime-DMA and PRDT hashes and
 all HCI/PHY/DMA/service constants to match those inputs. It also executes host
-sanitizers, the concurrent authorization test, and an ARM64 freestanding
-check/model only; it never contacts a phone. The combined Duchamp offline gate
-also runs this component.
+sanitizers, concurrent gate and provider tests, and two ARM64 freestanding
+QEMU models; it never contacts a phone. The provider model covers all six
+operation classes with a valid synthetic lease, while negative tests prove
+missing, stale and concurrently revoked leases produce zero denied dispatches.
+The combined Duchamp offline gate also runs this component.
+
+The 2026-11-03 v8 run passed 708 native and 708 ARM64 gate checks, 140 gate
+concurrency checks, 107 native and 107 ARM64 provider checks, and 35 provider
+concurrency checks. The combined 17-component gate also passed. Results are in
+`work/test-mt6897-ufs-gate-20261103-v8/result.json` and
+`work/offline-gate-ufs-20261103-v8/result.json`.
 
 The result must keep all physical flags false and report the current profile
 as denied. A passing local test means the policy fails closed; it does not mean

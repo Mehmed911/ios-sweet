@@ -22,6 +22,8 @@
 #include "mt6897_ufs_dma.h"
 #include "mt6897_ufs_platform.h"
 #include "mt6897_ufs_clocks.h"
+#include "mt6897_ufs_gate.h"
+#include "mt6897_ufs_provider.h"
 #include "mt6897_v7s.h"
 
 extern ppnum_t pmap_find_phys(pmap_t,addr64_t);
@@ -153,6 +155,19 @@ static int unreachable_sync(void *ctx,void *p,uint64_t n,enum md_direction d){
 static int unreachable_unmap(void *ctx,uint64_t c,uint64_t a,uint64_t n,enum md_direction d){
     (void)c;(void)a;(void)n;(void)d;((struct peripheral_model *)ctx)->accesses++;return -1;
 }
+static enum mt6897_ufs_gate_verdict unreachable_ufs_verifier(void *ctx,
+    const struct mt6897_ufs_gate_verifier_request *request,
+    struct mt6897_ufs_gate_lease *lease) {
+    (void)request;(void)lease;
+    ((struct peripheral_model *)ctx)->accesses++;
+    return MT6897_UFS_GATE_VERIFY_FAULT;
+}
+static int unreachable_ufs_dispatch(void *ctx,
+    const struct mt6897_ufs_provider_request *request,uint64_t *result) {
+    (void)request;(void)result;
+    ((struct peripheral_model *)ctx)->accesses++;
+    return -1;
+}
 static int profile(void) {
     uint64_t midr;__asm__ volatile("mrs %0,midr_el1":"=r"(midr));
     if((midr>>24)!=0x41 || ((midr>>4)&0xfff)!=0xd0b)return ENXIO;
@@ -250,6 +265,52 @@ int duchamp_qemu_backends_prepare(void) {
        peripheral.accesses!=accesses)return EIO;
     peripheral.dma_route_verified=0;
     sweet_early_mark(196,"QEMU XNU PHYSICAL PROVIDERS DEFAULT CLOSED");
+
+    struct mt6897_ufs_gate ufs_gate={0};
+    struct mt6897_ufs_gate_evidence ufs_evidence=
+        mt6897_ufs_gate_duchamp_known_evidence(UINT64_C(0x202611030103));
+    struct mt6897_ufs_gate_lease ufs_lease={0};
+    struct mt6897_ufs_provider ufs_provider={0};
+    struct mt6897_ufs_provider_ops ufs_ops={&peripheral,unreachable_ufs_dispatch};
+    uint64_t ufs_result=0,ufs_blockers=0;
+    accesses=peripheral.accesses;
+    if(mt6897_ufs_provider_power(&ufs_provider,1,&ufs_result,&ufs_blockers)!=
+           MT6897_UFS_PROVIDER_DISABLED ||
+       mt6897_ufs_provider_clock(&ufs_provider,0,0,1,&ufs_result,&ufs_blockers)!=
+           MT6897_UFS_PROVIDER_DISABLED ||
+       mt6897_ufs_provider_phy(&ufs_provider,1,&ufs_result,&ufs_blockers)!=
+           MT6897_UFS_PROVIDER_DISABLED ||
+       mt6897_ufs_provider_mmio(&ufs_provider,1,0,0,&ufs_result,&ufs_blockers)!=
+           MT6897_UFS_PROVIDER_DISABLED ||
+       mt6897_ufs_provider_dma(&ufs_provider,1,0,PAGE_SIZE,&ufs_result,&ufs_blockers)!=
+           MT6897_UFS_PROVIDER_DISABLED ||
+       mt6897_ufs_provider_command(&ufs_provider,0,0,0,0,&ufs_result,&ufs_blockers)!=
+           MT6897_UFS_PROVIDER_DISABLED ||
+       peripheral.accesses!=accesses || ufs_provider.dispatches!=0)return EIO;
+    if(mt6897_ufs_gate_init(&ufs_gate,UINT64_C(0x202611030103))!=
+           MT6897_UFS_GATE_INIT_OK ||
+       mt6897_ufs_gate_authorize(&ufs_gate,&ufs_evidence,unreachable_ufs_verifier,
+           &peripheral,&ufs_lease,&ufs_blockers)!=MT6897_UFS_GATE_DENIED ||
+       ufs_blockers!=MT6897_UFS_CURRENT_DUCHAMP_BLOCKERS ||
+       peripheral.accesses!=accesses)return EIO;
+    if(mt6897_ufs_provider_bind(&ufs_provider,&ufs_gate,&ufs_lease,&ufs_ops,
+           &ufs_blockers)!=MT6897_UFS_PROVIDER_LEASE ||
+       ufs_provider.state!=MT6897_UFS_PROVIDER_STATE_FAULTED ||
+       peripheral.accesses!=accesses || ufs_provider.dispatches!=0)return EIO;
+    if(mt6897_ufs_provider_power(&ufs_provider,1,&ufs_result,&ufs_blockers)!=
+           MT6897_UFS_PROVIDER_FAULTED ||
+       mt6897_ufs_provider_clock(&ufs_provider,0,0,1,&ufs_result,&ufs_blockers)!=
+           MT6897_UFS_PROVIDER_FAULTED ||
+       mt6897_ufs_provider_phy(&ufs_provider,1,&ufs_result,&ufs_blockers)!=
+           MT6897_UFS_PROVIDER_FAULTED ||
+       mt6897_ufs_provider_mmio(&ufs_provider,1,0,0,&ufs_result,&ufs_blockers)!=
+           MT6897_UFS_PROVIDER_FAULTED ||
+       mt6897_ufs_provider_dma(&ufs_provider,1,0,PAGE_SIZE,&ufs_result,&ufs_blockers)!=
+           MT6897_UFS_PROVIDER_FAULTED ||
+       mt6897_ufs_provider_command(&ufs_provider,0,0,0,0,&ufs_result,&ufs_blockers)!=
+           MT6897_UFS_PROVIDER_FAULTED ||
+       peripheral.accesses!=accesses || ufs_provider.dispatches!=0)return EIO;
+    sweet_early_mark(196,"QEMU XNU UFS LEASE PROVIDER DEFAULT CLOSED");
     int major=cdevsw_add(-1,&diagnostic);
     if(major<0 || !devfs_make_node(makedev(major,0),DEVFS_CHAR,UID_ROOT,GID_WHEEL,0440,"mbtest"))return ENXIO;
     ready=1;
