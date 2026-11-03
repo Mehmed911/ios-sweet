@@ -146,6 +146,7 @@ jobs:
           grep -Fq 'DUCHAMP QEMU backend selftest failed' xnu/iokit/bsddev/IOKitBSDInit.cpp
           grep -Fq 'QEMU XNU BACKENDS SELFTEST PASS' xnu/bsd/dev/duchamp_qemu_backends.c
           grep -Fq 'QEMU XNU UFS LEASE PROVIDER DEFAULT CLOSED' xnu/bsd/dev/duchamp_qemu_backends.c
+          grep -Fq 'QEMU XNU UFS CACHE CONTRACT DEFAULT CLOSED' xnu/bsd/dev/duchamp_qemu_backends.c
           for source in ../duchamp/drivers/mt6897*.c ../duchamp/drivers/mt6897*.h; do
             cmp "$source" "xnu/bsd/dev/$(basename "$source")"
           done

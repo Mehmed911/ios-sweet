@@ -22,6 +22,7 @@
 #include "mt6897_ufs_dma.h"
 #include "mt6897_ufs_platform.h"
 #include "mt6897_ufs_clocks.h"
+#include "mt6897_ufs_cache.h"
 #include "mt6897_ufs_gate.h"
 #include "mt6897_ufs_provider.h"
 #include "mt6897_v7s.h"
@@ -168,6 +169,26 @@ static int unreachable_ufs_dispatch(void *ctx,
     ((struct peripheral_model *)ctx)->accesses++;
     return -1;
 }
+static int unreachable_cache_verify(void *ctx,
+    const struct mt6897_ufs_cache_receipt *receipt,
+    const struct mt6897_ufs_gate_lease *lease) {
+    (void)receipt;(void)lease;
+    ((struct peripheral_model *)ctx)->accesses++;
+    return -1;
+}
+static int unreachable_cache_range(void *ctx,uint64_t cpu,uint64_t physical,
+    uint64_t bytes,enum mt6897_ufs_cache_direction direction) {
+    (void)cpu;(void)physical;(void)bytes;(void)direction;
+    ((struct peripheral_model *)ctx)->accesses++;
+    return -1;
+}
+static int unreachable_cache_barrier(void *ctx,
+    enum mt6897_ufs_cache_barrier_phase phase,
+    enum mt6897_ufs_cache_direction direction) {
+    (void)phase;(void)direction;
+    ((struct peripheral_model *)ctx)->accesses++;
+    return -1;
+}
 static int profile(void) {
     uint64_t midr;__asm__ volatile("mrs %0,midr_el1":"=r"(midr));
     if((midr>>24)!=0x41 || ((midr>>4)&0xfff)!=0xd0b)return ENXIO;
@@ -311,6 +332,43 @@ int duchamp_qemu_backends_prepare(void) {
            MT6897_UFS_PROVIDER_FAULTED ||
        peripheral.accesses!=accesses || ufs_provider.dispatches!=0)return EIO;
     sweet_early_mark(196,"QEMU XNU UFS LEASE PROVIDER DEFAULT CLOSED");
+
+    struct mt6897_ufs_cache ufs_cache={0};
+    struct mt6897_ufs_cache_receipt cache_receipt={
+        .version=MT6897_UFS_CACHE_CONTRACT_VERSION,
+        .flags=MT6897_UFS_CACHE_REQUIRED_FLAGS,
+        .boot_generation=UINT64_C(0x202611030103),
+        .cache_owner_id=ufs_lease.cache_owner_id,
+        .range_owner_id=UINT64_C(0x8808),
+        .cpu_address=(uint64_t)data_va,
+        .physical_address=data_pa,
+        .bytes=PAGE_SIZE,
+        .cache_line_size=64,
+        .clean_implementation_id=UINT64_C(0xc1ea0001),
+        .flush_implementation_id=UINT64_C(0xf1050002),
+        .barrier_implementation_id=UINT64_C(0xba220003)
+    };
+    struct mt6897_ufs_cache_ops cache_ops={&peripheral,
+        unreachable_cache_verify,unreachable_cache_range,
+        unreachable_cache_range,unreachable_cache_barrier};
+    if(mt6897_ufs_cache_for_device(&ufs_cache,
+           MT6897_UFS_CACHE_BIDIRECTIONAL,&ufs_blockers)!=
+           MT6897_UFS_CACHE_DISABLED ||
+       mt6897_ufs_cache_for_cpu(&ufs_cache,
+           MT6897_UFS_CACHE_BIDIRECTIONAL,&ufs_blockers)!=
+           MT6897_UFS_CACHE_DISABLED || peripheral.accesses!=accesses)return EIO;
+    if(mt6897_ufs_cache_bind(&ufs_cache,&ufs_gate,&ufs_lease,&cache_receipt,
+           &cache_ops,&ufs_blockers)!=MT6897_UFS_CACHE_LEASE ||
+       ufs_cache.state!=MT6897_UFS_CACHE_STATE_FAULTED ||
+       peripheral.accesses!=accesses || ufs_cache.transitions!=0)return EIO;
+    if(mt6897_ufs_cache_for_device(&ufs_cache,
+           MT6897_UFS_CACHE_BIDIRECTIONAL,&ufs_blockers)!=
+           MT6897_UFS_CACHE_FAULTED ||
+       mt6897_ufs_cache_for_cpu(&ufs_cache,
+           MT6897_UFS_CACHE_BIDIRECTIONAL,&ufs_blockers)!=
+           MT6897_UFS_CACHE_FAULTED || peripheral.accesses!=accesses ||
+       ufs_cache.transitions!=0)return EIO;
+    sweet_early_mark(196,"QEMU XNU UFS CACHE CONTRACT DEFAULT CLOSED");
     int major=cdevsw_add(-1,&diagnostic);
     if(major<0 || !devfs_make_node(makedev(major,0),DEVFS_CHAR,UID_ROOT,GID_WHEEL,0440,"mbtest"))return ENXIO;
     ready=1;

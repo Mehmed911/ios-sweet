@@ -92,6 +92,37 @@ Before any future physical integration, the provider must:
 - call `mt6897_ufs_gate_fault()` on the first provider/runtime failure;
 - never route MT6897 through the legacy Qualcomm `sweet_ufs_rootdev` path.
 
+## Non-coherent cache ownership contract
+
+`drivers/mt6897_ufs_cache.[ch]` adds a separate disabled-by-default contract;
+it does not contain cache instructions. Binding and every CPU/device handoff
+require the exact activation lease. The receipt must pin the cache owner, an
+exclusive whole-cache-line range, the boot generation, and nonzero identities
+for the clean-to-PoC, clean+invalidate-to-PoC and barrier implementations. It
+also forbids CPU aliases and requires serialized ownership.
+
+The modeled handoff is deliberately explicit:
+
+- CPU to device: verify the receipt, clean the entire owned range to PoC, then
+  execute the handoff barrier for every DMA direction;
+- device to CPU for `TO_DEVICE`: execute ordering barriers without a flush;
+- device to CPU for `FROM_DEVICE` or `BIDIRECTIONAL`: barrier, flush the entire
+  owned range to PoC, then barrier;
+- any stale lease, changed receipt, wrong state or callback failure faults both
+  the contract and activation gate permanently.
+
+The `CHECKING_* -> TO_*` compare-and-swap is the cache-callback authorization
+point. A concurrent fault which wins before it prevents every cache callback.
+The sanitizer race test proves that case with zero range callbacks. If a fault
+arrives after authorization, the current callback may already have started;
+the future physical implementation still needs platform locking.
+
+The XNU QEMU backend binds the current incomplete Duchamp evidence and proves
+the zero object and denied lease execute no verify, clean, flush or barrier
+callback. Successful direction tests use only a synthetic lease and private
+RAM under QEMU. They do not establish physical cache ownership or authorize a
+phone test.
+
 ## Local verification
 
 Run the evidence-bound test runner with the saved DTB and three pinned reports.
@@ -104,11 +135,14 @@ operation classes with a valid synthetic lease, while negative tests prove
 missing, stale and concurrently revoked leases produce zero denied dispatches.
 The combined Duchamp offline gate also runs this component.
 
-The 2026-11-03 v8 run passed 708 native and 708 ARM64 gate checks, 140 gate
+The 2026-11-03 v10 run passed 708 native and 708 ARM64 gate checks, 140 gate
 concurrency checks, 107 native and 107 ARM64 provider checks, and 35 provider
-concurrency checks. The combined 17-component gate also passed. Results are in
-`work/test-mt6897-ufs-gate-20261103-v8/result.json` and
-`work/offline-gate-ufs-20261103-v8/result.json`.
+concurrency checks. The cache contract separately passed 560 native sanitizer
+checks, the same 560 checks on an actual ARM64 QEMU CPU, all six synthetic
+ownership handoffs, and 35 concurrency checks; current Duchamp evidence reached
+zero cache callbacks. The combined 18-component gate also passed. Results are
+in `work/ufs-cache-contract-20261103-v3/result.json` and
+`work/offline-gate-ufs-20261103-v10/result.json`.
 
 The result must keep all physical flags false and report the current profile
 as denied. A passing local test means the policy fails closed; it does not mean

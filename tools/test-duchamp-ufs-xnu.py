@@ -57,7 +57,9 @@ def main():
         required|={'_duchamp_qemu_backends_prepare','_mv7_map','_mv7_seal','_mb_iommu_install',
                    '_mb_pmic_voltage','_mb_pmif_transfer','_mb_firmware_ufs','_mp_prepare',
                    '_md_bind','_mufs_clock_set','_mt6897_ufs_gate_authorize',
-                   '_mt6897_ufs_provider_bind','_mt6897_ufs_provider_command'}
+                   '_mt6897_ufs_provider_bind','_mt6897_ufs_provider_command',
+                   '_mt6897_ufs_cache_bind','_mt6897_ufs_cache_for_device',
+                   '_mt6897_ufs_cache_for_cpu'}
     if not required<=names: ap.error('kernel lacks the new BSD/core integration')
     physical_symbols={}
     if args.backends:
@@ -113,6 +115,7 @@ def main():
             'QEMU XNU FIRMWARE CONTRACT UNVERIFIED REFUSED',
             'QEMU XNU PHYSICAL PROVIDERS DEFAULT CLOSED',
             'QEMU XNU UFS LEASE PROVIDER DEFAULT CLOSED',
+            'QEMU XNU UFS CACHE CONTRACT DEFAULT CLOSED',
             'QEMU XNU BACKENDS SELFTEST PASS',
             'DUCHAMP XNU BACKENDS PASS tables=1 mmu=1 pmic=1 fw_verified=0 physical=0',
             'DUCHAMP XNU BACKEND RECEIPT EOF EROFS PASS']

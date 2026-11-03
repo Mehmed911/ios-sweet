@@ -255,6 +255,11 @@ def main():
             "--firmware-evidence", str(firmware_evidence),
             "--prdt-evidence", str(prdt_evidence),
         ],
+        "ufs_cache_contract": [
+            sys.executable,
+            str(repo / "tools/test-mt6897-ufs-cache.py"),
+            str(output / "ufs-cache-contract"),
+        ],
         "ownership": [
             sys.executable,
             str(repo / "tools/report-duchamp-mt6897-ownership.py"),
@@ -295,6 +300,7 @@ def main():
         topckgen = load_pass(output / "ufs-topckgen/result.json")
         polling = load_pass(output / "ufs-polling/result.json")
         activation_gate = load_pass(output / "ufs-activation-gate/result.json")
+        cache_contract = load_pass(output / "ufs-cache-contract/result.json")
         ownership = json.loads(
             Path(components["ownership"]["log"]).read_text(encoding="utf-8")
         )
@@ -341,6 +347,37 @@ def main():
             raise ValueError("UFS activation gate ARM64 model did not match native")
         if current_ufs.get("decision") != "denied":
             raise ValueError("current Duchamp UFS evidence was not denied")
+        cache_current = cache_contract.get("current_duchamp_evidence", {})
+        cache_native = cache_contract.get("native", {})
+        cache_arm64 = cache_contract.get("arm64_qemu_model", {})
+        cache_concurrency = cache_contract.get("concurrency", {})
+        cache_policy = cache_contract.get("contract", {})
+        if (cache_current.get("activation_lease_available") is not False or
+                cache_current.get("cache_callbacks") != 0 or
+                cache_current.get(
+                    "physical_cache_maintenance_authorized") is not False):
+            raise ValueError("UFS cache contract promoted current Duchamp evidence")
+        if (cache_native.get("current_duchamp_callbacks") != 0 or
+                cache_native.get("synthetic_model_handoffs") != 6 or
+                cache_arm64.get("passed") is not True or
+                cache_arm64.get("same_output_as_native") is not True):
+            raise ValueError("UFS cache contract model proof differs")
+        if (cache_concurrency.get("checks", 0) <= 0 or
+                cache_concurrency.get("fault_before_cache_callback") is not True or
+                cache_concurrency.get("range_callbacks") != 0):
+            raise ValueError("UFS cache contract concurrency proof differs")
+        if (cache_policy.get("default_closed") is not True or
+                cache_policy.get("lease_checked_at_bind_and_every_transition")
+                is not True or
+                cache_policy.get("physical_backend") != "disabled"):
+            raise ValueError("UFS cache contract fail-closed policy differs")
+        cache_safety = cache_contract.get("safety", {})
+        for key in ("phone_access", "adb_access", "fastboot_access",
+                    "mmio_access", "smc_execution", "dma_access",
+                    "cache_instruction_execution_by_contract",
+                    "partition_access"):
+            if cache_safety.get(key) is not False:
+                raise ValueError("unsafe UFS cache-contract action: " + key)
         if current_ufs.get("blockers") != [
             "firmware_effect_contract",
             "resource_ownership",
@@ -528,6 +565,27 @@ def main():
                 },
                 "physical_backend": "disabled",
             },
+            "ufs_cache_contract": {
+                "native_checks": cache_native["checks"],
+                "current_duchamp_callbacks": cache_native[
+                    "current_duchamp_callbacks"
+                ],
+                "synthetic_model_handoffs": cache_native[
+                    "synthetic_model_handoffs"
+                ],
+                "concurrency_checks": cache_concurrency["checks"],
+                "fault_before_cache_callback": cache_concurrency[
+                    "fault_before_cache_callback"
+                ],
+                "arm64_model_checks": cache_arm64["checks"],
+                "arm64_matches_native": cache_arm64[
+                    "same_output_as_native"
+                ],
+                "lease_checked_at_bind_and_every_transition": cache_policy[
+                    "lease_checked_at_bind_and_every_transition"
+                ],
+                "physical_backend": cache_policy["physical_backend"],
+            },
             "ownership": {
                 "dtb_sha256": ownership["dtb"]["sha256"],
                 "categories": sorted(ownership["categories"]),
@@ -566,6 +624,9 @@ def main():
             "ufs_dma_or_iommu_route": "unverified",
             "ufs_activation_lease_provider": (
                 "implemented fail-closed; no physical lease available"
+            ),
+            "ufs_noncoherent_cache_contract": (
+                "implemented fail-closed; no physical lease or cache callbacks"
             ),
             "ufs_topckgen_physical_backend": "disabled",
             "physical_ufs_backend": "disabled",
