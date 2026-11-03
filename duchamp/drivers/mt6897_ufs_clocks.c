@@ -35,9 +35,10 @@ int mufs_clock_set(struct mufs_clocks *c,unsigned bank,unsigned id,int enable) {
     if(c->ops.write32(c->ops.context,bank,enable?12:8,mask)) return fault(c,MUFS_IO);
     c->ops.barrier(c->ops.context);
     uint64_t start=c->ops.microseconds(c->ops.context);
-    do {
+    for(uint32_t poll=0;poll<c->timeout_us;poll++) {
         if(c->ops.read32(c->ops.context,bank,4,&value)) return fault(c,MUFS_IO);
         if(((value&mask)==0)==enable) return 0;
-    } while(c->ops.microseconds(c->ops.context)-start<c->timeout_us);
+        if(c->ops.microseconds(c->ops.context)-start>=c->timeout_us) break;
+    }
     return fault(c,MUFS_TIMEOUT);
 }

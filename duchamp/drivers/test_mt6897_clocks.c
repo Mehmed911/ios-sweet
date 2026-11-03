@@ -6,9 +6,9 @@ static unsigned checks;
 #define CHECK(v) do { checks++; assert(v); } while(0)
 struct model {
     uint32_t status[2],last_offset,last_mask;
-    unsigned reads,writes,barriers;
+    unsigned reads,writes,barriers,time_calls;
     uint64_t tick;
-    int permitted,stall,read_error,write_error;
+    int permitted,stall,read_error,write_error,frozen;
 };
 static int authorise(void *v,unsigned b,unsigned id) { (void)b;(void)id;return ((struct model *)v)->permitted; }
 static int read32(void *v,unsigned b,uint32_t off,uint32_t *value) {
@@ -25,7 +25,11 @@ static int write32(void *v,unsigned b,uint32_t off,uint32_t mask) {
     return 0;
 }
 static void barrier(void *v) { ((struct model *)v)->barriers++; }
-static uint64_t ticks(void *v) { return ++((struct model *)v)->tick; }
+static uint64_t ticks(void *v) {
+    struct model *m=v; m->time_calls++;
+    if(!m->frozen) m->tick++;
+    return m->tick;
+}
 static struct mufs_clock_ops ops(struct model *m) {
     return (struct mufs_clock_ops){m,authorise,read32,write32,barrier,ticks};
 }
@@ -56,6 +60,18 @@ int main(void) {
         CHECK(mufs_clock_set(&c,9,0,1)==MUFS_ARGUMENT);
         CHECK(mufs_clock_set(&c,bank,id,2)==MUFS_ARGUMENT);
         CHECK(accesses==m.reads+m.writes);
+    }
+    {
+        struct model m={.status={0xffffffff,0xffffffff},.permitted=1,
+            .stall=1,.frozen=1};
+        struct mufs_clocks c={0}; struct mufs_clock_ops o=ops(&m);
+        CHECK(mufs_clocks_bind(&c,&o,5)==0);
+        CHECK(mufs_clock_set(&c,0,0,1)==MUFS_TIMEOUT);
+        CHECK(c.state==2 && m.tick==0 && m.status[0]==0xffffffff);
+        CHECK(m.reads==6 && m.writes==1 && m.barriers==1 && m.time_calls==6);
+        unsigned accesses=m.reads+m.writes, time_calls=m.time_calls;
+        CHECK(mufs_clock_set(&c,0,0,1)==MUFS_FAULTED);
+        CHECK(accesses==m.reads+m.writes && time_calls==m.time_calls);
     }
     for(int mode=0;mode<3;mode++) {
         struct model m={.status={0xffffffff,0xffffffff},.permitted=1};

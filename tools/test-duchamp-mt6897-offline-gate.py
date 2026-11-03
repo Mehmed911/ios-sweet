@@ -30,6 +30,7 @@ def tracked_inputs(repo):
         repo / "duchamp/drivers/test_duchamp_timer_probe.c",
         repo / "duchamp/drivers/mt6897-platform-sources.json",
         repo / "duchamp/drivers/test_mt6897_ufs_topckgen.c",
+        repo / "duchamp/drivers/test_mt6897_ufs_gate.c",
         repo / "duchamp/drivers/ufs_readonly.c",
         repo / "duchamp/drivers/ufs_readonly.h",
         repo / "tools/check-duchamp-fdt.sh",
@@ -111,6 +112,9 @@ def main():
     parser.add_argument("--boot-sources", type=Path, required=True)
     parser.add_argument("--platform-sources", type=Path, required=True)
     parser.add_argument("--backend-sources", type=Path, required=True)
+    parser.add_argument("--runtime-evidence", type=Path, required=True)
+    parser.add_argument("--firmware-evidence", type=Path, required=True)
+    parser.add_argument("--prdt-evidence", type=Path, required=True)
     parser.add_argument("--jobs", type=int, default=7)
     parser.add_argument("--timeout-seconds", type=int, default=120)
     args = parser.parse_args()
@@ -129,6 +133,9 @@ def main():
     boot_sources = args.boot_sources.resolve()
     platform_sources = args.platform_sources.resolve()
     backend_sources = args.backend_sources.resolve()
+    runtime_evidence = args.runtime_evidence.resolve()
+    firmware_evidence = args.firmware_evidence.resolve()
+    prdt_evidence = args.prdt_evidence.resolve()
     if sha256(fdt) != FDT_SHA256:
         parser.error("saved Duchamp DTB provenance differs")
 
@@ -137,6 +144,9 @@ def main():
         "fdt": sha256(fdt),
         "template": sha256(template),
         "board": sha256(repo / "duchamp/board.toml"),
+        "runtime_evidence": sha256(runtime_evidence),
+        "firmware_evidence": sha256(firmware_evidence),
+        "prdt_evidence": sha256(prdt_evidence),
     }
     started = time.monotonic()
     output.mkdir(parents=True)
@@ -236,6 +246,15 @@ def main():
             str(repo / "tools/test-duchamp-ufs-poll.py"),
             str(output / "ufs-polling"),
         ],
+        "ufs_activation_gate": [
+            sys.executable,
+            str(repo / "tools/test-mt6897-ufs-gate.py"),
+            str(output / "ufs-activation-gate"),
+            "--fdt", str(fdt),
+            "--runtime-evidence", str(runtime_evidence),
+            "--firmware-evidence", str(firmware_evidence),
+            "--prdt-evidence", str(prdt_evidence),
+        ],
         "ownership": [
             sys.executable,
             str(repo / "tools/report-duchamp-mt6897-ownership.py"),
@@ -275,6 +294,7 @@ def main():
         clocks = load_pass(output / "ufs-clocks/result.json")
         topckgen = load_pass(output / "ufs-topckgen/result.json")
         polling = load_pass(output / "ufs-polling/result.json")
+        activation_gate = load_pass(output / "ufs-activation-gate/result.json")
         ownership = json.loads(
             Path(components["ownership"]["log"]).read_text(encoding="utf-8")
         )
@@ -289,6 +309,47 @@ def main():
             raise ValueError("power/DMA test unexpectedly enabled a physical backend")
         if providers.get("physical_backend_enabled") is not False:
             raise ValueError("provider test unexpectedly enabled a physical backend")
+        current_ufs = activation_gate.get("current_duchamp_evidence", {})
+        if activation_gate.get("evidence_bound") is not True:
+            raise ValueError("UFS activation gate was not bound to saved evidence")
+        activation_receipts = activation_gate.get("input_receipts", {})
+        compiled_receipts = activation_gate.get("compiled_receipts", {})
+        if activation_receipts.get("fdt", {}).get("sha256") != FDT_SHA256:
+            raise ValueError("UFS activation gate input FDT receipt differs")
+        if compiled_receipts.get("fdt") != FDT_SHA256:
+            raise ValueError("compiled UFS gate FDT receipt differs")
+        activation_concurrency = activation_gate.get("concurrency", {})
+        if (activation_concurrency.get("verifier_calls") != 1 or
+                activation_concurrency.get(
+                    "simultaneous_second_authorization") !=
+                    "terminal fail-closed"):
+            raise ValueError("UFS activation gate concurrency proof differs")
+        if activation_gate.get("freestanding_arm64_compile") is not True:
+            raise ValueError("UFS activation gate did not compile for ARM64")
+        activation_arm64 = activation_gate.get("arm64_model", {})
+        if (activation_arm64.get("passed") is not True or
+                activation_arm64.get("same_output_as_native") is not True):
+            raise ValueError("UFS activation gate ARM64 model did not match native")
+        if current_ufs.get("decision") != "denied":
+            raise ValueError("current Duchamp UFS evidence was not denied")
+        if current_ufs.get("blockers") != [
+            "firmware_effect_contract",
+            "resource_ownership",
+            "cache_maintenance_ownership",
+            "direct_address_translation",
+            "bounce_disposition",
+        ]:
+            raise ValueError("current Duchamp UFS blocker set changed")
+        if current_ufs.get("blocker_mask") != "0x000100000000040e":
+            raise ValueError("current Duchamp UFS blocker mask changed")
+        for key in ("verifier_calls", "hardware_calls", "mmio_calls",
+                    "smc_calls", "dma_calls"):
+            if current_ufs.get(key) != 0:
+                raise ValueError("UFS activation gate side effect: " + key)
+        for key in ("hardware_access", "mmio_access", "smc_execution",
+                    "dma_access", "phone_access"):
+            if current_ufs.get(key) is not False:
+                raise ValueError("UFS activation gate safety changed: " + key)
         if psci.get("physical_psci_authorized") is not False:
             raise ValueError("PSCI gate unexpectedly authorized physical CPU_ON")
         if psci.get("smc_executed") is not False:
@@ -422,6 +483,24 @@ def main():
                 "native": polling["native_checks"],
                 "arm64": polling["arm64_checks"],
             },
+            "ufs_activation_gate": {
+                "native_checks": activation_gate["native"]["checks"],
+                "concurrency_checks": activation_concurrency["checks"],
+                "compiled_receipts_match_saved_inputs": True,
+                "freestanding_arm64_compile": activation_gate[
+                    "freestanding_arm64_compile"
+                ],
+                "arm64_model_checks": activation_arm64["checks"],
+                "arm64_matches_native": activation_arm64[
+                    "same_output_as_native"
+                ],
+                "evidence_bound": activation_gate["evidence_bound"],
+                "current_decision": current_ufs["decision"],
+                "current_blockers": current_ufs["blockers"],
+                "verifier_calls": current_ufs["verifier_calls"],
+                "hardware_access": current_ufs["hardware_access"],
+                "physical_backend": "disabled",
+            },
             "ownership": {
                 "dtb_sha256": ownership["dtb"]["sha256"],
                 "categories": sorted(ownership["categories"]),
@@ -438,6 +517,9 @@ def main():
         "fdt": sha256(fdt),
         "template": sha256(template),
         "board": sha256(repo / "duchamp/board.toml"),
+        "runtime_evidence": sha256(runtime_evidence),
+        "firmware_evidence": sha256(firmware_evidence),
+        "prdt_evidence": sha256(prdt_evidence),
     }
     passed = failure is None and inputs_unchanged
     if not inputs_unchanged and failure is None:
@@ -455,6 +537,7 @@ def main():
             "gic_and_firmware_resource_ownership": "unverified",
             "installed_firmware_contract": "unverified",
             "ufs_dma_or_iommu_route": "unverified",
+            "ufs_activation_lease_provider": "not implemented",
             "ufs_topckgen_physical_backend": "disabled",
             "physical_ufs_backend": "disabled",
             "secondary_cpu_start_and_power": "unverified",

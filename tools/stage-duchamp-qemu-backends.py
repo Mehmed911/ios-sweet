@@ -9,11 +9,12 @@ from pathlib import Path
 def stage(root):
     repo=Path(__file__).resolve().parent.parent
     names=['mt6897_backends.h','mt6897_ufs_platform.h','mt6897_ufs_dma.h',
-           'mt6897_ufs_clocks.h','mt6897_ufs_topckgen.h','mt6897_v7s.h',
+           'mt6897_ufs_clocks.h','mt6897_ufs_topckgen.h','mt6897_ufs_gate.h',
+           'mt6897_v7s.h',
            'mt6897_pmif.c','mt6897_pmic.c',
            'mt6897_firmware.c','mt6897_iommu.c','mt6897_ufs_platform.c',
            'mt6897_ufs_dma.c','mt6897_ufs_clocks.c','mt6897_ufs_topckgen.c',
-           'mt6897_v7s.c']
+           'mt6897_ufs_gate.c','mt6897_v7s.c']
     paths={'bsd/dev/'+n:repo/'duchamp/drivers'/n for n in names}
     paths['bsd/dev/duchamp_qemu_backends.c']=repo/'duchamp/xnu/qemu_backends.c'
     config=root/'bsd/conf/files';iokit=root/'iokit/bsddev/IOKitBSDInit.cpp'

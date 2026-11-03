@@ -224,6 +224,9 @@ python3 tools/test-duchamp-mt6897-offline-gate.py \
   --boot-sources research/mt6897-boot/sources \
   --platform-sources research/mt6897-platform/sources \
   --backend-sources research/mt6897-backends/sources \
+  --runtime-evidence research/mt6897-dma-ownership/live-20261101-v2/result.json \
+  --firmware-evidence research/mt6897-firmware-live/20261101-v1/ufs-sip-audit-v2.json \
+  --prdt-evidence research/mt6897-dma-ownership/prdt-interpretation-20261101-v1/interpretation.json \
   --jobs 7 --timeout-seconds 120
 ```
 
@@ -231,3 +234,10 @@ The gate explicitly keeps physical access, MMIO, flashing and phone execution
 disabled. It reports the installed firmware contract, physical UFS DMA/IOMMU
 route, runtime interrupt/timer delivery, secondary CPUs and Mali as unresolved;
 passing it is not authorization for a phone trial.
+
+The current gate additionally runs the evidence-bound UFS activation policy in
+native ASan/UBSan, a concurrent one-shot authorization test, and an ARM64 QEMU
+CPU model. It extracts the receipts compiled into the gate and compares them
+with the supplied DTB and saved reports. The saved Duchamp profile must remain
+denied for firmware-effect, ownership, cache, direct-translation and
+bounce-disposition blockers; see `MT6897-UFS-FAIL-CLOSED.md`.

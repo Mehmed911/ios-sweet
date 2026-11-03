@@ -1,3 +1,38 @@
+MT6897 UFS activation lease gate — local fail-closed milestone (2026-11-03):
+Baseline 8d8f4164ddc738734d100ad1c0e1cc658c2faa40, duchamp-bootstrap.
+Local saved files/WSL/QEMU only: no phone, USB, ADB, fastboot, partition,
+physical MMIO, SMC or DMA access. Added a one-shot UFS activation gate whose
+success is a boot-generation/evidence-bound, non-revocable resource lease, not
+a persistent boolean. The gate has no reset/rearm API, atomically claims its
+verifier at most once, validates the exact DTB/ATF/runtime/PRDT receipts and
+controller/PHY/DMA route, requires owner tokens for firmware/resources/cache/
+translation, and
+must be checked before every future operation. Re-entry, stale/mutated leases,
+receipt changes and provider failures latch a terminal fault. The saved Duchamp
+profile correctly remains DENIED with blocker mask 0x000100000000040e:
+firmware runtime effect, resource ownership, cache ownership, direct address
+translation and bounce disposition. Its verifier was not called and all
+hardware counters remained zero. Native ASan/UBSan and actual ARM64 QEMU model
+both PASS the same 708 policy checks; 140 native concurrency checks plus 200
+stress repetitions prove a simultaneous second authorization cannot invoke a
+second verifier or publish a usable lease; the compiled
+receipt extractor matches the saved DTB/ATF/runtime/PRDT inputs; the
+freestanding ARM64 object has zero undefined imports. Result SHA256 is
+a5b89518c41022181765b03b0e3375238368aac243119a26e42bf2470e3675dc.
+UFS leaf-clock polling now has an independent bounded iteration limit when the
+time source freezes: 129 sanitizer checks PASS plus ARM64 freestanding compile;
+result SHA256 a42056f974cd27468452125d5277144ce0f317817f6c901e7ad7c1a9b7b04cb5.
+The source-staging suite PASSes 8/8 and stages the gate C/H with the other XNU
+backends. The combined saved-DTB gate PASSes all 17 components in 27.796s,
+including 708 native + 708 ARM64 activation checks, 176 power, 199 DMA,
+provider, GIC, timer, clock and bounded-UFS suites. Combined result SHA256 is
+f82f99cfbe78d0969fb5f9d9de7582a8c8028edad9ec889d01119ab26165b4a1.
+Physical UFS remains disabled: no physical lease provider exists and the five
+blockers above are unresolved. Passing this milestone is not phone-test or
+full-system-boot authorization. See duchamp/MT6897-UFS-FAIL-CLOSED.md and
+work/offline-gate-ufs-20261103-v7/result.json. Preserve all user edits.
+End of MT6897 UFS activation lease-gate milestone.
+
 Latest-kernel Duchamp phone bootstrap candidate — local milestone (2026-10-31):
 Baseline e81afba, duchamp-bootstrap. No phone/USB/ADB/fastboot/partition access.
 Built phone/QEMU twin payloads from kernel8d47bba (CI41156122045/artifact13025606915)
