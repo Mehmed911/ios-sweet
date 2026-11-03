@@ -1,3 +1,32 @@
+MT6897 UFS lease-provider/XNU integration replay — verified (2026-11-03):
+Commit 9e567ec6ac0bf7da487face7f54560e2b4dbcc56 on duchamp-bootstrap.
+GitHub Actions XNU run 41707709521 PASSed all build/package/collect steps.
+The xnu-kernel artifact is id 13265849833; archive SHA256 is
+06b191da9897d932403070a7fb6b535d35e82c1ecbe09f7baafb615286726b46.
+The extracted kernel.development.sweet SHA256 is
+cba64bd6139b1bb8f8b95da3202ab8c6b1d889f1fc7cc1368eb3ffb809020cdb;
+the compiled image exports the lease-provider bind/command symbols and embeds
+the mandatory QEMU XNU UFS LEASE PROVIDER DEFAULT CLOSED marker. The pinned
+read-only HFS+ backend replay PASSed all 30 checks in 85.912 host seconds with
+16 sampled frames, zero undecodable glyphs and no observed panic. XNU mounted
+the RAM root, verified root vnode and read-only UFS semantics, entered PID 1
+and stopped at its heartbeat. The virtual timer IRQ witness PASSed 512/512
+pixels. The in-kernel selftest reported firmware unverified, physical=0,
+physical providers default closed and the lease provider default closed; it
+therefore proves dispatch denial, not physical MT6897 UFS readiness. A separate
+native concurrency stress replay PASSed 200/200 runs with fault-before-dispatch
+and zero callbacks. Verification JSON SHA256 is
+06c13a7567bfb411dd4b500fe588718471eff1d2745f1d71117bea5346fc5a96;
+payload SHA256 is
+4d372bf71645d7d9c7793c78f763ef7bfbdc9e46f7cc9f008ce4e11aac23d770.
+All execution was local/Actions/QEMU only: no phone, USB, ADB, fastboot,
+partition, physical MMIO, SMC or DMA access. The next evidence milestone is
+documented direct-DMA versus IOMMU routing and cache/firmware ownership before
+any physical provider can obtain a lease. See
+work/ci-41707709521-ufs-lease-provider/qemu-backends/verification.json.
+Preserve all user edits.
+End of MT6897 UFS lease-provider/XNU integration replay.
+
 MT6897 UFS lease-provider/XNU dispatch milestone — local verification (2026-11-03):
 Baseline ee9e771, duchamp-bootstrap. Local saved files/WSL/QEMU only: no phone,
 USB, ADB, fastboot, partition, physical MMIO, SMC or DMA access. Added
