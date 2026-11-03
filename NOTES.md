@@ -1,3 +1,21 @@
+MT6897 direct-DMA/IOMMU evidence replay — verified limited result (2026-11-03):
+The saved-evidence audit was rerun offline from the pinned FDT, runtime probe,
+UFS client, GKI source, BL31 audit and iomem receipts. The generated report is
+byte-identical to the canonical report: SHA256
+71236c08c0354ff0733d44a64e505d117dfd4594e370bedd81fad3ec93d1bf4d.
+All 14 mutation/polarity tests PASS. Evidence proves that Linux selected its
+generic dma-direct API path at observation, no Linux UFS IOMMU group/fwspec/
+domain was attached, both live masks were 64-bit and bus_dma_limit imposed a
+36-bit ceiling. It does not prove physical PA-to-DMA identity, firewall or
+secure-world bypass, whether a transfer used the observed SWIOTLB pool, or
+cache-maintenance ownership/correctness for the non-coherent device. Therefore
+DIRECT_ADDRESS_TRANSLATION, BOUNCE_DISPOSITION and CACHE_MAINTENANCE_OWNERSHIP
+remain blockers and the physical provider remains unable to obtain a lease.
+This replay used local files only and performed no phone, ADB, MMIO, SMC, DMA,
+storage-command or partition access. See
+work/dma-iommu-ownership-replay-20261103-v1/result.json. Preserve user edits.
+End of MT6897 direct-DMA/IOMMU evidence replay.
+
 MT6897 UFS lease-provider/XNU integration replay — verified (2026-11-03):
 Commit 9e567ec6ac0bf7da487face7f54560e2b4dbcc56 on duchamp-bootstrap.
 GitHub Actions XNU run 41707709521 PASSed all build/package/collect steps.
