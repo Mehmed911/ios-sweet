@@ -260,6 +260,11 @@ def main():
             str(repo / "tools/test-mt6897-ufs-cache.py"),
             str(output / "ufs-cache-contract"),
         ],
+        "ufs_dma_route_contract": [
+            sys.executable,
+            str(repo / "tools/test-mt6897-ufs-dma-route.py"),
+            str(output / "ufs-dma-route-contract"),
+        ],
         "ownership": [
             sys.executable,
             str(repo / "tools/report-duchamp-mt6897-ownership.py"),
@@ -301,6 +306,9 @@ def main():
         polling = load_pass(output / "ufs-polling/result.json")
         activation_gate = load_pass(output / "ufs-activation-gate/result.json")
         cache_contract = load_pass(output / "ufs-cache-contract/result.json")
+        dma_route_contract = load_pass(
+            output / "ufs-dma-route-contract/result.json"
+        )
         ownership = json.loads(
             Path(components["ownership"]["log"]).read_text(encoding="utf-8")
         )
@@ -378,6 +386,32 @@ def main():
                     "partition_access"):
             if cache_safety.get(key) is not False:
                 raise ValueError("unsafe UFS cache-contract action: " + key)
+        dma_route_native = dma_route_contract.get("native", {})
+        dma_route_arm64 = dma_route_contract.get("arm64_qemu_model", {})
+        dma_route_concurrency = dma_route_contract.get("concurrency", {})
+        dma_route_policy = dma_route_contract.get("contract", {})
+        dma_route_scope = dma_route_contract.get("scope", {})
+        if (dma_route_native.get("current_duchamp_callbacks") != 0 or
+                dma_route_native.get("synthetic_direct_mappings") != 3 or
+                dma_route_native.get("synthetic_bounce_mappings") != 3 or
+                dma_route_arm64.get("passed") is not True or
+                dma_route_arm64.get("same_output_as_native") is not True):
+            raise ValueError("UFS DMA-route model proof differs")
+        if (dma_route_concurrency.get("checks", 0) <= 0 or
+                dma_route_concurrency.get(
+                    "fault_before_route_callback") is not True or
+                dma_route_concurrency.get("copy_callbacks") != 0):
+            raise ValueError("UFS DMA-route concurrency proof differs")
+        if (dma_route_policy.get("default_closed") is not True or
+                dma_route_policy.get(
+                    "lease_checked_at_bind_and_every_transition") is not True or
+                dma_route_policy.get("immutable_receipt_fingerprint") is not True or
+                dma_route_policy.get("physical_backend") != "disabled"):
+            raise ValueError("UFS DMA-route fail-closed policy differs")
+        for key in ("phone_access", "mmio", "cache_instruction", "dma",
+                    "ufs_command"):
+            if dma_route_scope.get(key) is not False:
+                raise ValueError("unsafe UFS DMA-route action: " + key)
         if current_ufs.get("blockers") != [
             "firmware_effect_contract",
             "resource_ownership",
@@ -586,6 +620,27 @@ def main():
                 ],
                 "physical_backend": cache_policy["physical_backend"],
             },
+            "ufs_dma_route_contract": {
+                "native_checks": dma_route_native["checks"],
+                "current_duchamp_callbacks": dma_route_native[
+                    "current_duchamp_callbacks"
+                ],
+                "synthetic_direct_mappings": dma_route_native[
+                    "synthetic_direct_mappings"
+                ],
+                "synthetic_bounce_mappings": dma_route_native[
+                    "synthetic_bounce_mappings"
+                ],
+                "concurrency_checks": dma_route_concurrency["checks"],
+                "fault_before_route_callback": dma_route_concurrency[
+                    "fault_before_route_callback"
+                ],
+                "arm64_model_checks": dma_route_arm64["checks"],
+                "arm64_matches_native": dma_route_arm64[
+                    "same_output_as_native"
+                ],
+                "physical_backend": dma_route_policy["physical_backend"],
+            },
             "ownership": {
                 "dtb_sha256": ownership["dtb"]["sha256"],
                 "categories": sorted(ownership["categories"]),
@@ -622,6 +677,10 @@ def main():
             "gic_and_firmware_resource_ownership": "unverified",
             "installed_firmware_contract": "unverified",
             "ufs_dma_or_iommu_route": "unverified",
+            "ufs_dma_route_contract": (
+                "implemented fail-closed; raw PA-to-DMA and bounce evidence "
+                "remain unavailable"
+            ),
             "ufs_activation_lease_provider": (
                 "implemented fail-closed; no physical lease available"
             ),

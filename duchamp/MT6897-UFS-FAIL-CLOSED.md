@@ -123,6 +123,43 @@ callback. Successful direction tests use only a synthetic lease and private
 RAM under QEMU. They do not establish physical cache ownership or authorize a
 phone test.
 
+## PA-to-DMA and bounce route contract
+
+`drivers/mt6897_ufs_dma_route.[ch]` adds an independent routing contract. It
+does not reuse the older evidence-bit DMA model and it never assumes that a
+Linux `dma-direct` selection means `DMA == PA`. A zero object is disabled and
+every transition requires the exact UFS activation lease plus an immutable
+receipt.
+
+The receipt permits exactly two modeled routes:
+
+- a pinned affine window, where the device address is derived from an explicit
+  source-PA/window offset rather than an identity assumption;
+- a dedicated, non-overlapping bounce pool with pinned CPU, PA and DMA bases,
+  owner token, bounds and copy implementations.
+
+Both routes pin the boot generation, DMA/cache/controller/firmware owners,
+source allocation owner, DMA ceiling and address width, translation
+implementation, firewall receipt and cache-contract identifier. Direct routing
+requires an explicit `bounce not required` disposition and zero bounce fields.
+Bounce routing requires an explicit `bounce required` disposition and an owned
+pool. The cache contract remains separate: it covers the source range for a
+direct route and the bounce range for a bounce route, and must complete before
+the future provider can dispatch a DMA command.
+
+The `CHECKING_* -> TO_*` transition is the route-callback authorization point.
+A fault that wins before it prevents verification and copy callbacks. Invalid
+ranges, mismatched CPU/PA offsets, altered mappings, changed receipts, stale
+leases or callback failures cannot publish a device address. The current
+Duchamp evidence cannot obtain a lease, so the XNU QEMU default-closed path
+executes zero route callbacks.
+
+The saved passive PRDT sample proves that 17,437 Linux-mapped segments inverted
+back to their original SG physical addresses and that none used the observed
+SWIOTLB pool. It still does not record raw DMA-address equality, the live
+`dma_range_map`, firewall permission or an XNU-owned bounce allocation. Those
+facts therefore remain blockers rather than being promoted into this receipt.
+
 ## Local verification
 
 Run the evidence-bound test runner with the saved DTB and three pinned reports.
@@ -135,14 +172,19 @@ operation classes with a valid synthetic lease, while negative tests prove
 missing, stale and concurrently revoked leases produce zero denied dispatches.
 The combined Duchamp offline gate also runs this component.
 
-The 2026-11-03 v10 run passed 708 native and 708 ARM64 gate checks, 140 gate
+The 2026-11-04 v12 run passed 708 native and 708 ARM64 gate checks, 140 gate
 concurrency checks, 107 native and 107 ARM64 provider checks, and 35 provider
 concurrency checks. The cache contract separately passed 560 native sanitizer
 checks, the same 560 checks on an actual ARM64 QEMU CPU, all six synthetic
 ownership handoffs, and 35 concurrency checks; current Duchamp evidence reached
-zero cache callbacks. The combined 18-component gate also passed. Results are
-in `work/ufs-cache-contract-20261103-v3/result.json` and
-`work/offline-gate-ufs-20261103-v10/result.json`.
+zero cache callbacks. The DMA-route contract passed 656 native sanitizer checks
+and the same 656 checks on an actual ARM64 QEMU CPU, three direct and three
+bounce mappings, and 37 deterministic race checks with zero copy callbacks
+after a fault. The combined 19-component gate passed in 38.482 seconds. Results
+are in `work/offline-gate-ufs-20261104-v12/ufs-dma-route-contract/result.json`
+and `work/offline-gate-ufs-20261104-v12/result.json`; their SHA-256 values are
+`00fc49ff1b2cfede769087bb2348f678e91572923213d26d143f15d69c647aa0`
+and `9a5c367b57b591713c35b50a236044ca012d1962e5832140dd56445e44a6d212`.
 
 The result must keep all physical flags false and report the current profile
 as denied. A passing local test means the policy fails closed; it does not mean

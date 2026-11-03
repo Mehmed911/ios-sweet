@@ -23,6 +23,7 @@
 #include "mt6897_ufs_platform.h"
 #include "mt6897_ufs_clocks.h"
 #include "mt6897_ufs_cache.h"
+#include "mt6897_ufs_dma_route.h"
 #include "mt6897_ufs_gate.h"
 #include "mt6897_ufs_provider.h"
 #include "mt6897_v7s.h"
@@ -186,6 +187,19 @@ static int unreachable_cache_barrier(void *ctx,
     enum mt6897_ufs_cache_barrier_phase phase,
     enum mt6897_ufs_cache_direction direction) {
     (void)phase;(void)direction;
+    ((struct peripheral_model *)ctx)->accesses++;
+    return -1;
+}
+static int unreachable_dma_route_verify(void *ctx,
+    const struct mt6897_ufs_dma_route_receipt *route_receipt,
+    const struct mt6897_ufs_gate_lease *lease) {
+    (void)route_receipt;(void)lease;
+    ((struct peripheral_model *)ctx)->accesses++;
+    return -1;
+}
+static int unreachable_dma_route_copy(void *ctx,uint64_t destination,
+    uint64_t source,uint64_t bytes) {
+    (void)destination;(void)source;(void)bytes;
     ((struct peripheral_model *)ctx)->accesses++;
     return -1;
 }
@@ -369,6 +383,55 @@ int duchamp_qemu_backends_prepare(void) {
            MT6897_UFS_CACHE_FAULTED || peripheral.accesses!=accesses ||
        ufs_cache.transitions!=0)return EIO;
     sweet_early_mark(196,"QEMU XNU UFS CACHE CONTRACT DEFAULT CLOSED");
+
+    struct mt6897_ufs_dma_route dma_route={0};
+    struct mt6897_ufs_dma_route_receipt dma_route_receipt={
+        .version=MT6897_UFS_DMA_ROUTE_CONTRACT_VERSION,
+        .flags=MT6897_UFS_DMA_DIRECT_FLAGS,
+        .route=MT6897_UFS_DMA_ROUTE_DIRECT_AFFINE,
+        .bounce_disposition=MT6897_UFS_DMA_BOUNCE_NOT_REQUIRED,
+        .boot_generation=UINT64_C(0x202611030103),
+        .dma_owner_id=ufs_lease.dma_owner_id,
+        .cache_owner_id=ufs_lease.cache_owner_id,
+        .controller_owner_id=ufs_lease.controller_owner_id,
+        .firmware_owner_id=ufs_lease.firmware_owner_id,
+        .source_owner_id=UINT64_C(0x8808),
+        .source_cpu_begin=(uint64_t)data_va,
+        .source_pa_begin=data_pa,
+        .source_bytes=PAGE_SIZE,
+        .device_begin=data_pa,
+        .device_bytes=PAGE_SIZE,
+        .dma_limit=MT6897_UFS_DUCHAMP_DMA_LIMIT,
+        .dma_address_bits=MT6897_UFS_DUCHAMP_DMA_BITS,
+        .alignment=PAGE_SIZE,
+        .translation_implementation_id=UINT64_C(0xd0010001),
+        .firewall_receipt_id=UINT64_C(0xf0010002),
+        .cache_contract_id=UINT64_C(0xca000003)
+    };
+    struct mt6897_ufs_dma_route_ops dma_route_ops={&peripheral,
+        unreachable_dma_route_verify,unreachable_dma_route_copy,
+        unreachable_dma_route_copy};
+    struct mt6897_ufs_dma_route_request dma_route_request={
+        .cpu_address=(uint64_t)data_va,.physical_address=data_pa,
+        .bytes=PAGE_SIZE,.direction=MT6897_UFS_DMA_BIDIRECTIONAL
+    };
+    struct mt6897_ufs_dma_route_mapping dma_route_mapping={0};
+    if(mt6897_ufs_dma_route_for_device(&dma_route,&dma_route_request,
+           &dma_route_mapping,&ufs_blockers)!=MT6897_UFS_DMA_ROUTE_DISABLED ||
+       mt6897_ufs_dma_route_for_cpu(&dma_route,&dma_route_mapping,
+           &ufs_blockers)!=MT6897_UFS_DMA_ROUTE_DISABLED ||
+       peripheral.accesses!=accesses)return EIO;
+    if(mt6897_ufs_dma_route_bind(&dma_route,&ufs_gate,&ufs_lease,
+           &dma_route_receipt,&dma_route_ops,&ufs_blockers)!=
+           MT6897_UFS_DMA_ROUTE_LEASE ||
+       dma_route.state!=MT6897_UFS_DMA_ROUTE_STATE_FAULTED ||
+       peripheral.accesses!=accesses || dma_route.transitions!=0)return EIO;
+    if(mt6897_ufs_dma_route_for_device(&dma_route,&dma_route_request,
+           &dma_route_mapping,&ufs_blockers)!=MT6897_UFS_DMA_ROUTE_FAULTED ||
+       mt6897_ufs_dma_route_for_cpu(&dma_route,&dma_route_mapping,
+           &ufs_blockers)!=MT6897_UFS_DMA_ROUTE_FAULTED ||
+       peripheral.accesses!=accesses || dma_route.transitions!=0)return EIO;
+    sweet_early_mark(196,"QEMU XNU UFS DMA ROUTE DEFAULT CLOSED");
     int major=cdevsw_add(-1,&diagnostic);
     if(major<0 || !devfs_make_node(makedev(major,0),DEVFS_CHAR,UID_ROOT,GID_WHEEL,0440,"mbtest"))return ENXIO;
     ready=1;
