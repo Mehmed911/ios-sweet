@@ -31,6 +31,9 @@ def tracked_inputs(repo):
         repo / "duchamp/drivers/mt6897-platform-sources.json",
         repo / "duchamp/drivers/test_mt6897_ufs_topckgen.c",
         repo / "duchamp/drivers/test_mt6897_ufs_gate.c",
+        repo / "duchamp/xnu/mt6897_ufs_cache_backend.c",
+        repo / "duchamp/xnu/mt6897_ufs_cache_backend.h",
+        repo / "duchamp/xnu/test_mt6897_ufs_cache_backend.c",
         repo / "duchamp/drivers/ufs_readonly.c",
         repo / "duchamp/drivers/ufs_readonly.h",
         repo / "tools/check-duchamp-fdt.sh",
@@ -260,6 +263,11 @@ def main():
             str(repo / "tools/test-mt6897-ufs-cache.py"),
             str(output / "ufs-cache-contract"),
         ],
+        "ufs_cache_backend": [
+            sys.executable,
+            str(repo / "tools/test-mt6897-ufs-cache-backend.py"),
+            str(output / "ufs-cache-backend"),
+        ],
         "ufs_dma_route_contract": [
             sys.executable,
             str(repo / "tools/test-mt6897-ufs-dma-route.py"),
@@ -306,6 +314,7 @@ def main():
         polling = load_pass(output / "ufs-polling/result.json")
         activation_gate = load_pass(output / "ufs-activation-gate/result.json")
         cache_contract = load_pass(output / "ufs-cache-contract/result.json")
+        cache_backend = load_pass(output / "ufs-cache-backend/result.json")
         dma_route_contract = load_pass(
             output / "ufs-dma-route-contract/result.json"
         )
@@ -386,6 +395,26 @@ def main():
                     "partition_access"):
             if cache_safety.get(key) is not False:
                 raise ValueError("unsafe UFS cache-contract action: " + key)
+        cache_backend_native = cache_backend.get("native", {})
+        cache_backend_arm64 = cache_backend.get("arm64_qemu_model", {})
+        cache_backend_object = cache_backend.get("production_arm64_object", {})
+        cache_backend_policy = cache_backend.get("contract", {})
+        if (cache_backend_native.get("checks", 0) <= 0 or
+                cache_backend_arm64.get("passed") is not True or
+                cache_backend_arm64.get("same_checks_as_native") is not True or
+                cache_backend_object.get("undefined_imports") != [
+                    "CleanPoC_DcacheRegion", "FlushPoC_DcacheRegion"] or
+                cache_backend_object.get("dsb_sy_present") is not True or
+                cache_backend_object.get("isb_present") is not True or
+                cache_backend_policy.get("exact_receipt_pinned") is not True or
+                cache_backend_policy.get("default_activation") != "none"):
+            raise ValueError("XNU UFS cache backend proof differs")
+        cache_backend_safety = cache_backend.get("safety", {})
+        for key in ("phone_access", "adb_access", "fastboot_access",
+                    "mmio_access", "smc_execution", "dma_access",
+                    "partition_access", "production_cache_primitive_executed"):
+            if cache_backend_safety.get(key) is not False:
+                raise ValueError("unsafe XNU UFS cache-backend action: " + key)
         dma_route_native = dma_route_contract.get("native", {})
         dma_route_arm64 = dma_route_contract.get("arm64_qemu_model", {})
         dma_route_concurrency = dma_route_contract.get("concurrency", {})
@@ -626,6 +655,24 @@ def main():
                 ],
                 "physical_backend": cache_policy["physical_backend"],
             },
+            "ufs_cache_backend": {
+                "native_checks": cache_backend_native["checks"],
+                "arm64_model_checks": cache_backend_arm64["checks"],
+                "arm64_matches_native": cache_backend_arm64[
+                    "same_checks_as_native"
+                ],
+                "production_imports": cache_backend_object[
+                    "undefined_imports"
+                ],
+                "dsb_sy_present": cache_backend_object["dsb_sy_present"],
+                "isb_present": cache_backend_object["isb_present"],
+                "cache_line_size": 64,
+                "default_activation": cache_backend_policy[
+                    "default_activation"
+                ],
+                "full_xnu_qemu_execution": "separate gate",
+                "physical_backend": "disabled",
+            },
             "ufs_dma_route_contract": {
                 "native_checks": dma_route_native["checks"],
                 "current_duchamp_callbacks": dma_route_native[
@@ -702,6 +749,10 @@ def main():
             ),
             "ufs_noncoherent_cache_contract": (
                 "implemented fail-closed; no physical lease or cache callbacks"
+            ),
+            "ufs_xnu_cache_backend": (
+                "generic ARM64 PoC primitives audited; MT6897 outer/system-cache "
+                "reachability and ownership remain unverified"
             ),
             "ufs_topckgen_physical_backend": "disabled",
             "physical_ufs_backend": "disabled",

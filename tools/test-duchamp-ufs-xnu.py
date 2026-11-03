@@ -59,7 +59,8 @@ def main():
                    '_md_bind','_mufs_clock_set','_mt6897_ufs_gate_authorize',
                    '_mt6897_ufs_provider_bind','_mt6897_ufs_provider_command',
                    '_mt6897_ufs_cache_bind','_mt6897_ufs_cache_for_device',
-                   '_mt6897_ufs_cache_for_cpu','_mt6897_ufs_dma_route_bind',
+                   '_mt6897_ufs_cache_for_cpu','_mt6897_ufs_xnu_cache_backend_init',
+                   '_mt6897_ufs_xnu_cache_backend_ops','_mt6897_ufs_dma_route_bind',
                    '_mt6897_ufs_dma_route_for_device',
                    '_mt6897_ufs_dma_route_for_cpu'}
     if not required<=names: ap.error('kernel lacks the new BSD/core integration')
@@ -118,6 +119,7 @@ def main():
             'QEMU XNU PHYSICAL PROVIDERS DEFAULT CLOSED',
             'QEMU XNU UFS LEASE PROVIDER DEFAULT CLOSED',
             'QEMU XNU UFS CACHE CONTRACT DEFAULT CLOSED',
+            'QEMU XNU UFS CACHE PRIMITIVES PASS',
             'QEMU XNU UFS DMA ROUTE DEFAULT CLOSED',
             'QEMU XNU BACKENDS SELFTEST PASS',
             'DUCHAMP XNU BACKENDS PASS tables=1 mmu=1 pmic=1 fw_verified=0 physical=0',

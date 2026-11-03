@@ -25,7 +25,7 @@ class StageTests(unittest.TestCase):
     def test_fresh(self):
         result=stage.stage(self.root)
         self.assertFalse(result['already_staged'])
-        self.assertEqual(len(result['files']),24)
+        self.assertEqual(len(result['files']),26)
         self.assertIn('backend_error',self.cpp.read_text())
         for name,digest in result['files'].items():
             import hashlib
@@ -53,6 +53,7 @@ class StageTests(unittest.TestCase):
     def test_all_workflow_core_globs_staged(self):
         result=stage.stage(self.root)
         expected={p.name for glob in ('mt6897*.c','mt6897*.h') for p in (REPO/'duchamp/drivers').glob(glob)}
+        expected|={'mt6897_ufs_cache_backend.c','mt6897_ufs_cache_backend.h'}
         actual={Path(p).name for p in result['files'] if p.startswith('bsd/dev/mt6897')}
         self.assertEqual(expected,actual)
 

@@ -23,6 +23,7 @@
 #include "mt6897_ufs_platform.h"
 #include "mt6897_ufs_clocks.h"
 #include "mt6897_ufs_cache.h"
+#include "mt6897_ufs_cache_backend.h"
 #include "mt6897_ufs_dma_route.h"
 #include "mt6897_ufs_gate.h"
 #include "mt6897_ufs_provider.h"
@@ -203,6 +204,38 @@ static int unreachable_dma_route_copy(void *ctx,uint64_t destination,
     ((struct peripheral_model *)ctx)->accesses++;
     return -1;
 }
+struct qemu_ufs_verifier {
+    uint64_t boot_generation;
+    unsigned calls;
+};
+static enum mt6897_ufs_gate_verdict qemu_ufs_cache_verifier(void *ctx,
+    const struct mt6897_ufs_gate_verifier_request *request,
+    struct mt6897_ufs_gate_lease *lease) {
+    struct qemu_ufs_verifier *verifier=ctx;
+    const uint64_t required=MT6897_UFS_E_COMMON_REQUIRED |
+        MT6897_UFS_E_DIRECT_BASE_REQUIRED | MT6897_UFS_E_BOUNCE_NOT_REQUIRED;
+    if(!verifier || !request || !lease || verifier->calls ||
+       request->version!=MT6897_UFS_GATE_EVIDENCE_VERSION ||
+       request->route!=MT6897_UFS_GATE_ROUTE_DIRECT_DMA ||
+       request->required!=required ||
+       request->evidence.boot_generation!=verifier->boot_generation ||
+       request->evidence_fingerprint==0)return MT6897_UFS_GATE_VERIFY_FAULT;
+    verifier->calls++;
+    *lease=(struct mt6897_ufs_gate_lease){
+        .version=MT6897_UFS_GATE_LEASE_VERSION,
+        .flags=MT6897_UFS_LEASE_REQUIRED_FLAGS,
+        .boot_generation=verifier->boot_generation,
+        .evidence_fingerprint=request->evidence_fingerprint,
+        .lease_id=UINT64_C(0x51454d554c454153),
+        .provider_epoch=UINT64_C(0x202611040301),
+        .controller_owner_id=UINT64_C(0x51434f4e54524f4c),
+        .phy_owner_id=UINT64_C(0x515048594f574e52),
+        .dma_owner_id=UINT64_C(0x51444d414f574e52),
+        .cache_owner_id=UINT64_C(0x51434143484f574e),
+        .firmware_owner_id=UINT64_C(0x514649524d4f574e)
+    };
+    return MT6897_UFS_GATE_VERIFY_APPROVE;
+}
 static int profile(void) {
     uint64_t midr;__asm__ volatile("mrs %0,midr_el1":"=r"(midr));
     if((midr>>24)!=0x41 || ((midr>>4)&0xfff)!=0xd0b)return ENXIO;
@@ -357,7 +390,7 @@ int duchamp_qemu_backends_prepare(void) {
         .cpu_address=(uint64_t)data_va,
         .physical_address=data_pa,
         .bytes=PAGE_SIZE,
-        .cache_line_size=64,
+        .cache_line_size=MT6897_UFS_XNU_CACHE_LINE_SIZE,
         .clean_implementation_id=UINT64_C(0xc1ea0001),
         .flush_implementation_id=UINT64_C(0xf1050002),
         .barrier_implementation_id=UINT64_C(0xba220003)
@@ -383,6 +416,65 @@ int duchamp_qemu_backends_prepare(void) {
            MT6897_UFS_CACHE_FAULTED || peripheral.accesses!=accesses ||
        ufs_cache.transitions!=0)return EIO;
     sweet_early_mark(196,"QEMU XNU UFS CACHE CONTRACT DEFAULT CLOSED");
+
+    /* This second gate is a QEMU-only synthetic receipt.  profile() above
+     * binds it to the private fixture before any lease is constructed.  It
+     * exercises XNU's real PoC cache primitives only on data_va/data_pa; it
+     * is not device evidence and cannot activate the physical UFS provider. */
+    const uint64_t qemu_cache_generation=UINT64_C(0x202611040301);
+    struct mt6897_ufs_gate qemu_cache_gate={0};
+    struct mt6897_ufs_gate_evidence qemu_cache_evidence=
+        mt6897_ufs_gate_duchamp_known_evidence(qemu_cache_generation);
+    struct mt6897_ufs_gate_lease qemu_cache_lease={0};
+    struct qemu_ufs_verifier qemu_verifier={qemu_cache_generation,0};
+    struct mt6897_ufs_xnu_cache_backend cache_backend={0};
+    struct mt6897_ufs_cache qemu_cache={0};
+    struct mt6897_ufs_cache_ops qemu_cache_ops={0};
+    qemu_cache_evidence.known|=MT6897_UFS_E_FIRMWARE_EFFECT_CONTRACT |
+        MT6897_UFS_E_RESOURCE_OWNERSHIP |
+        MT6897_UFS_E_CACHE_MAINTENANCE_OWNERSHIP |
+        MT6897_UFS_E_DIRECT_ADDRESS_TRANSLATION |
+        MT6897_UFS_E_BOUNCE_NOT_REQUIRED;
+    qemu_cache_evidence.asserted=qemu_cache_evidence.known;
+    struct mt6897_ufs_cache_receipt qemu_cache_receipt={
+        .version=MT6897_UFS_CACHE_CONTRACT_VERSION,
+        .flags=MT6897_UFS_CACHE_REQUIRED_FLAGS,
+        .boot_generation=qemu_cache_generation,
+        .cache_owner_id=UINT64_C(0x51434143484f574e),
+        .range_owner_id=UINT64_C(0x5143414348524e47),
+        .cpu_address=(uint64_t)data_va,
+        .physical_address=data_pa,
+        .bytes=PAGE_SIZE,
+        .cache_line_size=MT6897_UFS_XNU_CACHE_LINE_SIZE,
+        .clean_implementation_id=MT6897_UFS_XNU_CACHE_CLEAN_ID,
+        .flush_implementation_id=MT6897_UFS_XNU_CACHE_FLUSH_ID,
+        .barrier_implementation_id=MT6897_UFS_XNU_CACHE_BARRIER_ID
+    };
+    ((volatile uint64_t *)data_va)[0]=UINT64_C(0x51454d5543414348);
+    if(mt6897_ufs_gate_init(&qemu_cache_gate,qemu_cache_generation)!=
+           MT6897_UFS_GATE_INIT_OK ||
+       mt6897_ufs_gate_authorize(&qemu_cache_gate,&qemu_cache_evidence,
+           qemu_ufs_cache_verifier,&qemu_verifier,&qemu_cache_lease,
+           &ufs_blockers)!=MT6897_UFS_GATE_LEASED ||
+       qemu_verifier.calls!=1 || ufs_blockers!=0 ||
+       mt6897_ufs_xnu_cache_backend_init(&cache_backend,
+           &qemu_cache_receipt)!=MT6897_UFS_XNU_CACHE_BACKEND_OK ||
+       mt6897_ufs_xnu_cache_backend_ops(&cache_backend,&qemu_cache_ops)!=
+           MT6897_UFS_XNU_CACHE_BACKEND_OK ||
+       mt6897_ufs_cache_bind(&qemu_cache,&qemu_cache_gate,&qemu_cache_lease,
+           &qemu_cache_receipt,&qemu_cache_ops,&ufs_blockers)!=
+           MT6897_UFS_CACHE_OK ||
+       mt6897_ufs_cache_for_device(&qemu_cache,
+           MT6897_UFS_CACHE_BIDIRECTIONAL,&ufs_blockers)!=
+           MT6897_UFS_CACHE_OK ||
+       mt6897_ufs_cache_for_cpu(&qemu_cache,
+           MT6897_UFS_CACHE_BIDIRECTIONAL,&ufs_blockers)!=
+           MT6897_UFS_CACHE_OK || ufs_blockers!=0 ||
+       qemu_cache.state!=MT6897_UFS_CACHE_STATE_CPU_OWNED ||
+       qemu_cache.transitions!=2 || cache_backend.clean_calls!=1 ||
+       cache_backend.flush_calls!=1 || cache_backend.barrier_calls!=3 ||
+       cache_backend.faulted!=0)return EIO;
+    sweet_early_mark(196,"QEMU XNU UFS CACHE PRIMITIVES PASS");
 
     struct mt6897_ufs_dma_route dma_route={0};
     struct mt6897_ufs_dma_route_receipt dma_route_receipt={

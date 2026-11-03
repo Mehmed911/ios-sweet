@@ -147,10 +147,13 @@ jobs:
           grep -Fq 'QEMU XNU BACKENDS SELFTEST PASS' xnu/bsd/dev/duchamp_qemu_backends.c
           grep -Fq 'QEMU XNU UFS LEASE PROVIDER DEFAULT CLOSED' xnu/bsd/dev/duchamp_qemu_backends.c
           grep -Fq 'QEMU XNU UFS CACHE CONTRACT DEFAULT CLOSED' xnu/bsd/dev/duchamp_qemu_backends.c
+          grep -Fq 'QEMU XNU UFS CACHE PRIMITIVES PASS' xnu/bsd/dev/duchamp_qemu_backends.c
           grep -Fq 'QEMU XNU UFS DMA ROUTE DEFAULT CLOSED' xnu/bsd/dev/duchamp_qemu_backends.c
           for source in ../duchamp/drivers/mt6897*.c ../duchamp/drivers/mt6897*.h; do
             cmp "$source" "xnu/bsd/dev/$(basename "$source")"
           done
+          cmp ../duchamp/xnu/mt6897_ufs_cache_backend.c xnu/bsd/dev/mt6897_ufs_cache_backend.c
+          cmp ../duchamp/xnu/mt6897_ufs_cache_backend.h xnu/bsd/dev/mt6897_ufs_cache_backend.h
           grep -Fq 'QEMU RAM ROOT MOUNTED' xnu/bsd/kern/bsd_init.c
           grep -Fq 'QEMU RAM ROOT MOUNT FAILED' xnu/bsd/kern/bsd_init.c
           grep -Fq 'QEMU ROOTVNODE READY' xnu/bsd/kern/bsd_init.c
