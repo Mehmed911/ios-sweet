@@ -202,23 +202,26 @@ that physical UFS or full system boot is ready.
 
 ## Full XNU replay
 
-Commit `f3e24e3c087ce3ad1ddbc3e7bc7423e446506437` was built by GitHub
-Actions run `41716783413`; all build, package and collect steps passed. The
-`xnu-kernel` artifact is `13270913854`, its archive SHA-256 is
-`45e93099403b3794da1e40ac57f4ed4b40864047b484ac5ba89d9f3f89efed33`,
+Commit `2d65b02ffda3c442bcdf6c52a4c34490ee5b222c` was built by GitHub
+Actions run `41731254174`; all build, package and collect steps passed. The
+`xnu-kernel` artifact is `13276494290`, its archive SHA-256 is
+`87a8bf0341eb9ef9767378d9677e92e8c46ccf33f7d986882f5597593d6dc1f6`,
 and the extracted `kernel.development.sweet` SHA-256 is
-`d29620071fb48f7d36b7b613bea83888ee1fc1aaf61e2ddae064c2ad685b535f`.
+`6fcab2806164848b031ac98dd348f14f2180f359a7fbd9edbb8e3770344e2778`.
+The image exports the route bind/device/CPU symbols and embeds the required
+default-closed marker.
 
-The pinned read-only HFS+ QEMU replay passed all 31 checks in 76.265 host
+The pinned read-only HFS+ QEMU replay passed all 32 checks in 81.108 host
 seconds with 16 sampled frames, no undecodable glyphs and no observed panic.
 XNU mounted the virtual root, reached the diagnostic PID 1 heartbeat, retained
 the read-only image unchanged, and produced the 512/512 virtual timer IRQ
-witness. The compiled in-kernel test emitted
-`QEMU XNU UFS CACHE CONTRACT DEFAULT CLOSED`; it therefore proves the denied
-dispatch path and zero physical enablement, not an MT6897 cache operation.
-The verification JSON SHA-256 is
-`66fa005d8cacd0e966fc2a8512a118773defc3ea8982ca71deff93a29e6e546d`
+witness. The compiled in-kernel test emitted both
+`QEMU XNU UFS CACHE CONTRACT DEFAULT CLOSED` and
+`QEMU XNU UFS DMA ROUTE DEFAULT CLOSED`; it therefore proves the denied
+dispatch path and zero physical enablement, not a physical MT6897 DMA/cache
+operation. The verification JSON SHA-256 is
+`8036b9834c15fca9417e25747c25e269309bddb3f03957b9ae95214b10d7fd67`
 and the payload SHA-256 is
-`b94c3e990eb012326f06d16d3d21d0f22947a6333c9e055716263fa53bebaf7e`.
+`9cfc459f9e53f233c948612858acf75f8442e43ee7139b1fc28b80046f646e17`.
 No phone, ADB, fastboot, partition, physical MMIO, SMC, DMA, IOMMU or UFS
 command was used.

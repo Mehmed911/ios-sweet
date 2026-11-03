@@ -1,3 +1,41 @@
+MT6897 PA-to-DMA/bounce route contract/XNU replay — verified (2026-11-04):
+Commits 06c27a97a996cb6fbe2eb8a3540d28c33f99222c and
+2d65b02ffda3c442bcdf6c52a4c34490ee5b222c on duchamp-bootstrap add and
+harden a disabled-by-default route contract. It permits only a pinned affine
+PA-to-DMA window or a dedicated owned bounce pool, rechecks the exact lease and
+immutable receipt on every handoff, and performs no physical MMIO, DMA, cache
+instruction or UFS command. Boot-local route identities and per-route operation
+identities reject stale and cross-route mapping replay. The active mapping is
+cleared while state remains TO_CPU, before CPU_OWNED is published, closing the
+new-operation race found during independent review.
+Native ASan/UBSan and actual ARM64 QEMU models each PASSed 791 checks; the
+deterministic concurrency suite PASSed 80 checks and its binary replayed
+200/200 times. Current Duchamp evidence reached zero callbacks. The final
+19-component saved-DTB gate PASSed in 35.137s. Route-result SHA256 is
+a011df2bf04f8537725027ee9019ab34e09d09953a423958aefcf74951a88b34;
+combined-result SHA256 is
+693caecd777da46c3edd26cd88d63c3196e7689770307a9e090aefec856363c7.
+GitHub Actions run 41731254174 PASSed all build/package/collect steps. Artifact
+13276494290 archive SHA256 is
+87a8bf0341eb9ef9767378d9677e92e8c46ccf33f7d986882f5597593d6dc1f6;
+kernel.development.sweet SHA256 is
+6fcab2806164848b031ac98dd348f14f2180f359a7fbd9edbb8e3770344e2778.
+The full read-only HFS+ QEMU replay PASSed 32/32 checks in 81.108s with 16
+frames, no undecodable glyphs or observed panic, PID 1 heartbeat, unchanged
+host image, and 512/512 virtual timer IRQ pixels. It emitted the mandatory
+QEMU XNU UFS DMA ROUTE DEFAULT CLOSED marker. Verification JSON SHA256 is
+8036b9834c15fca9417e25747c25e269309bddb3f03957b9ae95214b10d7fd67;
+payload SHA256 is
+9cfc459f9e53f233c948612858acf75f8442e43ee7139b1fc28b80046f646e17.
+This proves only the local fail-closed policy and virtual XNU path. Raw
+PA-to-DMA translation, the physical SWIOTLB/bounce disposition, real cache
+callbacks and firmware/resource ownership remain unproven, so physical UFS
+stays disabled. No phone, USB, ADB, fastboot, partition, physical MMIO, SMC,
+DMA, IOMMU or UFS command was used. See duchamp/MT6897-UFS-FAIL-CLOSED.md and
+work/ci-41731254174-ufs-dma-route/qemu-backends-dma-route-v1/verification.json.
+Preserve all user edits.
+End of MT6897 PA-to-DMA/bounce route contract/XNU replay.
+
 MT6897 non-coherent UFS cache contract/XNU replay — verified (2026-11-04):
 Commit f3e24e3c087ce3ad1ddbc3e7bc7423e446506437 on duchamp-bootstrap adds a
 lease-bound, disabled-by-default cache ownership state machine. It requires an
