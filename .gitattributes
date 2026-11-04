@@ -4,3 +4,6 @@ tools/test-sweet-userland.sh text eol=lf
 tools/test-sweet-dynamic.sh text eol=lf
 tools/test-sweet-launchd.sh text eol=lf
 tools/test-sweet-launchctl.sh text eol=lf
+
+# Preserve the pinned QEMU verification artifact byte-for-byte for SHA-256 checks.
+duchamp/diagnostics/ufs-cache-xnu-qemu/RAW-VERIFICATION-2026-11-04.json -text

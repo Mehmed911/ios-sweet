@@ -16,6 +16,10 @@ TOOL = REPO / "tools/assess-mt6897-ufs-resource-ownership.py"
 FDT = REPO.parent / "phone-fdt.bin"
 RUNTIME = REPO / "research/mt6897-dma-ownership/live-20261101-v2/result.json"
 FIRMWARE = REPO / "research/mt6897-firmware-live/20261101-v1/ufs-sip-audit-v2.json"
+LIVE_RUNTIME = (
+    REPO
+    / "research/mt6897-live-evidence/14480520-210535/runtime-report-v7.json"
+)
 
 SPEC = importlib.util.spec_from_file_location("mt6897_ufs_resource_ownership", TOOL)
 if SPEC is None or SPEC.loader is None:
@@ -28,7 +32,9 @@ SPEC.loader.exec_module(MODULE)
 class ResourceOwnershipTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.report = MODULE.build_report(REPO, FDT, RUNTIME, FIRMWARE)
+        cls.report = MODULE.build_report(
+            REPO, FDT, RUNTIME, FIRMWARE, LIVE_RUNTIME
+        )
 
     def test_exact_mmio_manifest_is_declaration_only(self):
         mmio = self.report["declarations"]["mmio"]
@@ -67,6 +73,17 @@ class ResourceOwnershipTests(unittest.TestCase):
         )
         self.assertFalse(declarations["dma_coherent"])
         self.assertFalse(declarations["iommu_binding_present"])
+
+    def test_linux_irq_mapping_and_delivery_do_not_promote_xnu_ownership(self):
+        observed = self.report["runtime_observations"]
+        self.assertTrue(observed["linux_ufs_irq_mapping_proven"])
+        self.assertTrue(observed["linux_ufs_irq_delivery_observed"])
+        self.assertEqual(observed["linux_ufs_irq_total_delta"], 47)
+        self.assertEqual(observed["linux_ufs_irq_rows_with_delivery"], 7)
+        self.assertFalse(observed["xnu_ufs_irq_delivery_observed"])
+        self.assertFalse(observed["xnu_ufs_irq_delegation_proven"])
+        self.assertFalse(observed["ufs_interrupt_ownership_proven"])
+        self.assertFalse(self.report["runtime_proofs"]["ufs_interrupt_ownership"])
 
     def test_static_firmware_path_never_becomes_runtime_ownership(self):
         firmware = self.report["firmware_contract"]
@@ -117,6 +134,7 @@ class ResourceOwnershipTests(unittest.TestCase):
                 "--fdt", str(FDT),
                 "--runtime-evidence", str(RUNTIME),
                 "--firmware-evidence", str(FIRMWARE),
+                "--live-runtime-evidence", str(LIVE_RUNTIME),
             ]
             result = subprocess.run(
                 command, cwd=REPO, text=True,
@@ -145,6 +163,7 @@ class ResourceOwnershipTests(unittest.TestCase):
                     "--fdt", str(FDT),
                     "--runtime-evidence", str(changed),
                     "--firmware-evidence", str(FIRMWARE),
+                    "--live-runtime-evidence", str(LIVE_RUNTIME),
                 ],
                 cwd=REPO, text=True,
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30,

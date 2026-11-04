@@ -34,6 +34,9 @@ def tracked_inputs(repo):
         repo / "duchamp/xnu/mt6897_ufs_cache_backend.c",
         repo / "duchamp/xnu/mt6897_ufs_cache_backend.h",
         repo / "duchamp/xnu/test_mt6897_ufs_cache_backend.c",
+        repo / "duchamp/diagnostics/ufs-cache-xnu-qemu/RAW-VERIFICATION-2026-11-04.json",
+        repo / "tools/interpret-duchamp-xnu-cache-qemu.py",
+        repo / "tools/test-interpret-duchamp-xnu-cache-qemu.py",
         repo / "duchamp/drivers/ufs_readonly.c",
         repo / "duchamp/drivers/ufs_readonly.h",
         repo / "tools/check-duchamp-fdt.sh",
@@ -45,6 +48,8 @@ def tracked_inputs(repo):
         repo / "duchamp/diagnostics/ufs-prdt-observer-v3/PHONE-RESULT-2026-11-04.json",
         repo / "tools/assess-mt6897-ufs-resource-ownership.py",
         repo / "tools/test-mt6897-ufs-resource-ownership.py",
+        repo / "research/mt6897-live-evidence/14480520-210535/"
+            "runtime-report-v7.json",
         repo / "tools/report-duchamp-mt6897-ownership.py",
         repo / "tools/test-report-duchamp-mt6897-ownership.py",
         repo / "tools/test-duchamp-psci-boot.py",
@@ -148,6 +153,11 @@ def main():
     firmware_evidence = args.firmware_evidence.resolve()
     prdt_evidence = args.prdt_evidence.resolve()
     prdt_v3_evidence = args.prdt_v3_evidence.resolve()
+    resource_live_runtime = (
+        repo
+        / "research/mt6897-live-evidence/14480520-210535/"
+          "runtime-report-v7.json"
+    ).resolve()
     if sha256(fdt) != FDT_SHA256:
         parser.error("saved Duchamp DTB provenance differs")
 
@@ -160,6 +170,7 @@ def main():
         "firmware_evidence": sha256(firmware_evidence),
         "prdt_evidence": sha256(prdt_evidence),
         "prdt_v3_evidence": sha256(prdt_v3_evidence),
+        "resource_live_runtime": sha256(resource_live_runtime),
     }
     started = time.monotonic()
     output.mkdir(parents=True)
@@ -278,6 +289,17 @@ def main():
             str(repo / "tools/test-mt6897-ufs-cache-backend.py"),
             str(output / "ufs-cache-backend"),
         ],
+        "ufs_cache_xnu_qemu_tests": [
+            sys.executable,
+            str(repo / "tools/test-interpret-duchamp-xnu-cache-qemu.py"),
+        ],
+        "ufs_cache_xnu_qemu": [
+            sys.executable,
+            str(repo / "tools/interpret-duchamp-xnu-cache-qemu.py"),
+            str(repo / "duchamp/diagnostics/ufs-cache-xnu-qemu/"
+                "RAW-VERIFICATION-2026-11-04.json"),
+            str(output / "ufs-cache-xnu-qemu/result.json"),
+        ],
         "ufs_dma_route_contract": [
             sys.executable,
             str(repo / "tools/test-mt6897-ufs-dma-route.py"),
@@ -307,6 +329,7 @@ def main():
             "--fdt", str(fdt),
             "--runtime-evidence", str(runtime_evidence),
             "--firmware-evidence", str(firmware_evidence),
+            "--live-runtime-evidence", str(resource_live_runtime),
         ],
         "ownership": [
             sys.executable,
@@ -350,6 +373,7 @@ def main():
         activation_gate = load_pass(output / "ufs-activation-gate/result.json")
         cache_contract = load_pass(output / "ufs-cache-contract/result.json")
         cache_backend = load_pass(output / "ufs-cache-backend/result.json")
+        cache_xnu_qemu = load_pass(output / "ufs-cache-xnu-qemu/result.json")
         dma_route_contract = load_pass(
             output / "ufs-dma-route-contract/result.json"
         )
@@ -456,6 +480,42 @@ def main():
                     "partition_access", "production_cache_primitive_executed"):
             if cache_backend_safety.get(key) is not False:
                 raise ValueError("unsafe XNU UFS cache-backend action: " + key)
+        cache_xnu_proven = cache_xnu_qemu.get("proven", {})
+        cache_xnu_not_proven = cache_xnu_qemu.get("not_proven", {})
+        cache_xnu_safety = cache_xnu_qemu.get("safety", {})
+        if (cache_xnu_qemu.get("verdict") !=
+                "validated-xnu-cache-primitives-in-qemu" or
+                cache_xnu_proven.get("actual_xnu_kernel_executed") is not True or
+                cache_xnu_proven.get(
+                    "lease_bound_cache_backend_linked") is not True or
+                cache_xnu_proven.get(
+                    "clean_to_poc_callback_executed") is not True or
+                cache_xnu_proven.get(
+                    "flush_to_poc_callback_executed") is not True or
+                cache_xnu_proven.get("barrier_sequence_executed") is not True or
+                cache_xnu_proven.get("expected_clean_calls") != 1 or
+                cache_xnu_proven.get("expected_flush_calls") != 1 or
+                cache_xnu_proven.get("expected_barrier_calls") != 3 or
+                cache_xnu_proven.get(
+                    "fail_closed_physical_provider_path") is not True or
+                cache_xnu_proven.get("pid1_reached") is not True or
+                cache_xnu_proven.get(
+                    "no_kernel_panic_observed") is not True):
+            raise ValueError("XNU QEMU cache execution proof differs")
+        for key in ("mt6897_outer_or_system_cache_reachability",
+                    "mt6897_physical_cache_owner",
+                    "firmware_or_firewall_delegation",
+                    "ufs_controller_resource_ownership"):
+            if cache_xnu_not_proven.get(key) is not False:
+                raise ValueError("XNU cache evidence overclaims: " + key)
+        if (cache_xnu_safety.get("qemu_only") is not True or
+                cache_xnu_safety.get("phone_access") is not False or
+                cache_xnu_safety.get("mmio_access_on_phone") is not False or
+                cache_xnu_safety.get("smc_execution_on_phone") is not False or
+                cache_xnu_safety.get("partition_access") is not False or
+                cache_xnu_safety.get(
+                    "physical_ufs_backend_enabled") is not False):
+            raise ValueError("unsafe XNU QEMU cache execution evidence")
         dma_route_native = dma_route_contract.get("native", {})
         dma_route_arm64 = dma_route_contract.get("arm64_qemu_model", {})
         dma_route_concurrency = dma_route_contract.get("concurrency", {})
@@ -527,6 +587,7 @@ def main():
         resource_authorization = resource_ownership.get("authorization", {})
         resource_declarations = resource_ownership.get("declarations", {})
         resource_firmware = resource_ownership.get("firmware_contract", {})
+        resource_runtime = resource_ownership.get("runtime_observations", {})
         resource_safety = resource_ownership.get("safety", {})
         expected_resource_blockers = [
             "installed_firmware_identity",
@@ -564,6 +625,19 @@ def main():
                 resource_firmware.get(
                     "direct_xnu_secure_power_mmio_authorized") is not False):
             raise ValueError("UFS firmware/resource ownership proof differs")
+        if (resource_runtime.get("linux_ufs_irq_mapping_proven") is not True or
+                resource_runtime.get(
+                    "linux_ufs_irq_delivery_observed") is not True or
+                resource_runtime.get("linux_ufs_irq_total_delta") != 47 or
+                resource_runtime.get(
+                    "linux_ufs_irq_rows_with_delivery") != 7 or
+                resource_runtime.get(
+                    "xnu_ufs_irq_delivery_observed") is not False or
+                resource_runtime.get(
+                    "xnu_ufs_irq_delegation_proven") is not False or
+                resource_runtime.get(
+                    "ufs_interrupt_ownership_proven") is not False):
+            raise ValueError("UFS runtime IRQ evidence differs")
         if resource_authorization != {
                 "physical_backend_enabled": False,
                 "mmio_callbacks": 0,
@@ -802,7 +876,18 @@ def main():
                 "default_activation": cache_backend_policy[
                     "default_activation"
                 ],
-                "full_xnu_qemu_execution": "separate gate",
+                "full_xnu_qemu_execution": cache_xnu_qemu["verdict"],
+                "xnu_qemu_clean_calls": cache_xnu_proven[
+                    "expected_clean_calls"
+                ],
+                "xnu_qemu_flush_calls": cache_xnu_proven[
+                    "expected_flush_calls"
+                ],
+                "xnu_qemu_barrier_calls": cache_xnu_proven[
+                    "expected_barrier_calls"
+                ],
+                "xnu_qemu_pid1_reached": cache_xnu_proven["pid1_reached"],
+                "mt6897_physical_cache_owner_proven": False,
                 "physical_backend": "disabled",
             },
             "ufs_dma_route_contract": {
@@ -900,6 +985,18 @@ def main():
                 "runtime_effect_contract_proven": resource_firmware[
                     "runtime_effect_contract_proven"
                 ],
+                "linux_irq_mapping_proven": resource_runtime[
+                    "linux_ufs_irq_mapping_proven"
+                ],
+                "linux_irq_delivery_observed": resource_runtime[
+                    "linux_ufs_irq_delivery_observed"
+                ],
+                "linux_irq_total_delta": resource_runtime[
+                    "linux_ufs_irq_total_delta"
+                ],
+                "xnu_irq_delegation_proven": resource_runtime[
+                    "xnu_ufs_irq_delegation_proven"
+                ],
                 "receipt_issuable": resource_receipt[
                     "receipt_issuable"
                 ],
@@ -935,6 +1032,7 @@ def main():
         "firmware_evidence": sha256(firmware_evidence),
         "prdt_evidence": sha256(prdt_evidence),
         "prdt_v3_evidence": sha256(prdt_v3_evidence),
+        "resource_live_runtime": sha256(resource_live_runtime),
     }
     passed = failure is None and inputs_unchanged
     if not inputs_unchanged and failure is None:
@@ -952,8 +1050,9 @@ def main():
             "gic_and_firmware_resource_ownership": "unverified",
             "installed_firmware_contract": "unverified",
             "ufs_resource_ownership_receipt": (
-                "implemented fail-closed; exact MMIO/clock/reset/IRQ/PHY/"
-                "regulator manifest passes, but runtime ownership receipt is denied"
+                "implemented fail-closed; exact resource manifest and Linux UFS "
+                "IRQ mapping/delivery pass, but XNU delegation and runtime "
+                "ownership receipt remain denied"
             ),
             "ufs_dma_or_iommu_route": (
                 "validated for the observed Linux UFS workload: live 64-GiB "
@@ -969,11 +1068,13 @@ def main():
                 "implemented fail-closed; no physical lease available"
             ),
             "ufs_noncoherent_cache_contract": (
-                "implemented fail-closed; no physical lease or cache callbacks"
+                "implemented fail-closed; QEMU callbacks passed, but no "
+                "physical MT6897 lease or cache-ownership receipt exists"
             ),
             "ufs_xnu_cache_backend": (
-                "generic ARM64 PoC primitives audited; MT6897 outer/system-cache "
-                "reachability and ownership remain unverified"
+                "actual XNU clean/flush/barrier callbacks executed in QEMU and "
+                "reached PID 1; MT6897 outer/system-cache reachability and "
+                "physical cache ownership remain unverified"
             ),
             "ufs_topckgen_physical_backend": "disabled",
             "physical_ufs_backend": "disabled",
@@ -987,8 +1088,8 @@ def main():
             "phone_execution_authorized": False,
         },
         "scope": (
-            "pinned DT/runtime/live-PRDT evidence, host sanitizers and local "
-            "ARM64/QEMU models only"
+            "pinned DT/runtime/live-PRDT and XNU-QEMU evidence, host "
+            "sanitizers and local ARM64/QEMU gates; no physical backend"
         ),
     }
     if failure is not None:

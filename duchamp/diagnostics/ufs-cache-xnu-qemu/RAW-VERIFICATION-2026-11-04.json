@@ -1,0 +1,105 @@
+{
+  "passed": true,
+  "checks": {
+    "QEMU RAM ROOT MOUNTED": true,
+    "QEMU ROOTVNODE READY": true,
+    "DUCHAMP UFS PID1 ENTERED": true,
+    "DUCHAMP UFS ROOT DEVICE MATCH": true,
+    "DUCHAMP UFS RAW HEADER READ PASS": true,
+    "DUCHAMP UFS WRITE OPEN REFUSED EROFS": true,
+    "DUCHAMP UFS OFFSET READ PASS": true,
+    "DUCHAMP UFS USER COPY FAULT HANDLED": true,
+    "DUCHAMP UFS HFS FILE BYTES MATCH": true,
+    "DUCHAMP UFS PID1 READ PASS": true,
+    "DUCHAMP UFS PID1 heartbeat": true,
+    "QEMU XNU IOMMU MODEL PASS UFS REFUSED": true,
+    "QEMU XNU FIRMWARE CONTRACT UNVERIFIED REFUSED": true,
+    "QEMU XNU PHYSICAL PROVIDERS DEFAULT CLOSED": true,
+    "QEMU XNU UFS LEASE PROVIDER DEFAULT CLOSED": true,
+    "QEMU XNU UFS CACHE CONTRACT DEFAULT CLOSED": true,
+    "QEMU XNU UFS CACHE PRIMITIVES PASS": true,
+    "QEMU XNU UFS DMA ROUTE DEFAULT CLOSED": true,
+    "QEMU XNU BACKENDS SELFTEST PASS": true,
+    "DUCHAMP XNU BACKENDS PASS tables=1 mmu=1 pmic=1 fw_verified=0 physical=0": true,
+    "DUCHAMP XNU BACKEND RECEIPT EOF EROFS PASS": true,
+    "pe_iokit_trace_complete": true,
+    "runner_exit_zero": true,
+    "decoded_framebuffer": true,
+    "no_observed_panic": true,
+    "success_stop": true,
+    "host_image_unchanged": true,
+    "readonly_no_ramdisk": true,
+    "kernel_pin_preserved": true,
+    "compiled_adapter_symbols_present": true,
+    "virtual_timer_irq_witness": true,
+    "test_sources_unchanged": true,
+    "physical_root_alignment_and_range": true
+  },
+  "kernel_sha256": "cbaba0812c449d67e0e3e6c718e696b52b3f43228d9f020c145e8b5b28926b30",
+  "early_log_visibility": {
+    "DUCHAMP QUFS READY": true,
+    "DUCHAMP QUFS ROOT SELECTED": true
+  },
+  "test_source_hashes": {
+    "tools/qemu-sweet.py": "f5f4e58a72bcdfa61a70fb64c61344bf242f169f2a0bec264fc7944abb766a17",
+    "tools/qemu_ufs.py": "59deb2bb509450770ee8aa073bedaee13e50333c81303edd08c9e6cb7139631e",
+    "tools/duchamp-ufs-init.S": "f27019bf0c805ef0212f334c9952c9cab8d2605ee2750afbfaa63da304110f9b",
+    "tools/test-duchamp-ufs-xnu.py": "b060426bd7b722f8a7acbe9d6ee1f89ab143294b959016fe90f0093de4a398f1",
+    "tools/build-duchamp-ufs-fixture.py": "38de9f70a03afe86e64b9dffed35c0682e2815a240c3532b96efbfc8466021ac",
+    "tools/mkpayload.py": "25002752065319c60c286a73b33002c0fdbd6563a87566d3c2b17f6383aa0b46",
+    "tools/verify-duchamp-timer-irq-witness.py": "e7d5cf5978dee352d7677fbd7694742df38f63de6053dfad140a346fa4165f21",
+    "tools/duchamp-backend-init.S": "ae2f148922d9bf4642691004faf965620fcea5da6010389da9124c7ab8ad6d84"
+  },
+  "ci_run": "41740480659",
+  "ci_head": "03a3f9d0141848f3245f86598e477ad36d8ade4b",
+  "fixture": {
+    "scope": "offline fixture only; no VM or phone run",
+    "base_sha256": "e5b5c1b68c00db65ae31d8d29baef6ab88c8131e29940d8ce7b810536726414a",
+    "base_unchanged": true,
+    "sha256": {
+      "root.hfs": "0fed62ede32e7f77c31a42a1e94a4b70a4521f6522294ba9dc9f42f7794862ed",
+      "launchd": "4ff2d9f65ea6032b611a5ce3f0a7dea8c80ea4e0303b170fa4355368fe899b0d",
+      "ufs-expected.bin": "3789dbfad56e88dd987a8e37133b4ba568c13c74cac8514d79707608e33030bd",
+      "qemu-ufs.adt": "a82c9cc6e2891bacd444d9feac56f00fe58491a9f719292739f08cb73aa7fac9"
+    },
+    "root_bytes": 33554432,
+    "no_ramdisk": true,
+    "readonly_backend": true,
+    "init_source": "/mnt/c/Users/Mehmedamir/Documents/Codex/2026-10-23/referenced-chatgpt-conversation-this-is-an/work/ios-sweet-duchamp/tools/duchamp-backend-init.S",
+    "init_source_sha256": "ae2f148922d9bf4642691004faf965620fcea5da6010389da9124c7ab8ad6d84"
+  },
+  "payload_sha256": "ae2d1c41d61d81f8806dd521100325242464a0ef168da1bf3243ef8c52c9d4cc",
+  "source_root_unchanged": true,
+  "elapsed_host_seconds": 77.045,
+  "sampled_frames": 16,
+  "execution": {
+    "clock": "default",
+    "hardware_timing_claimed": false
+  },
+  "timer_irq_witness": {
+    "passed": true,
+    "expected_pixel": "0xff00ffff",
+    "marker": {
+      "x": 1204,
+      "y": 2680,
+      "width": 16,
+      "height": 32
+    },
+    "matching_pixels": 512,
+    "expected_pixels": 512,
+    "boundary_rows_not_marker_color": 32,
+    "expected_boundary_rows": 32,
+    "first_mismatch": null,
+    "source_format": "qemu-png",
+    "process_exit": 0
+  },
+  "framebuffer_is_sampled": true,
+  "backend_selftest_requested": true,
+  "stopped_guest_physical_addresses": {
+    "_root_pa": "0x1c2840000",
+    "_pool_pa": "0x1c2850000",
+    "_data_pa": "0x1c2854000"
+  },
+  "physical_diagnostics_read_only": true,
+  "scope": "XNU + virtual timer IRQ witness + read-only virtual UFS/HFS+ + diagnostic PID1; optional in-kernel backend/table RAM models, no physical phone/backend"
+}

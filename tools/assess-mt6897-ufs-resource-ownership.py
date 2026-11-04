@@ -24,6 +24,7 @@ REPORT_VERSION = 1
 FDT_SHA256 = "9c49589f70044127be8941a9ea5537977f440ccd5ac15cfd24e120c8a1181d29"
 RUNTIME_SHA256 = "71236c08c0354ff0733d44a64e505d117dfd4594e370bedd81fad3ec93d1bf4d"
 FIRMWARE_SHA256 = "65e4a5cdd2085c2e2bb48ad9829109f8e39b7a260669074ab59427419b5d110c"
+LIVE_RUNTIME_SHA256 = "fb1fa60b1b6df4f50f7794520be959ba7997f9433cea0f23dc818df9b5681660"
 
 UFS_SERVICE_ID = "0xc2000276"
 UFS_SELECTORS = {"refclk": 8, "mtcmos": 512, "mcq": 1024}
@@ -89,6 +90,8 @@ EXPECTED_INTERRUPTS = (
     (0, 183, 4, 0),
     (0, 184, 4, 0),
 )
+
+EXPECTED_GIC_HWIRQS = (200, 209, 210, 211, 212, 213, 214, 215, 216)
 
 EXPECTED_SUPPLIES = {
     "dvfsrc-vcore-supply": "/soc/dvfsrc@1c00f000/dvfsrc-vcore",
@@ -197,7 +200,8 @@ def evaluate_receipt(proofs):
     }
 
 
-def build_report(repo, fdt_path, runtime_path, firmware_path):
+def build_report(repo, fdt_path, runtime_path, firmware_path,
+                 live_runtime_path):
     fdt_raw = fdt_path.read_bytes()
     require(sha256(fdt_raw) == FDT_SHA256, "DTB hash differs")
     runtime, runtime_bytes = load_json(
@@ -205,6 +209,9 @@ def build_report(repo, fdt_path, runtime_path, firmware_path):
     )
     firmware, firmware_bytes = load_json(
         firmware_path, FIRMWARE_SHA256, "firmware evidence"
+    )
+    live_runtime, live_runtime_bytes = load_json(
+        live_runtime_path, LIVE_RUNTIME_SHA256, "live runtime evidence"
     )
     require(runtime.get("report_version") == 2 and
             runtime.get("audit_passed") is True,
@@ -214,6 +221,16 @@ def build_report(repo, fdt_path, runtime_path, firmware_path):
     require(firmware.get("report_version") == 1 and
             firmware.get("passed") is True,
             "firmware evidence did not pass")
+    require(live_runtime.get("report_version") == 2 and
+            live_runtime.get("result", {}).get("passed") is True,
+            "live runtime evidence did not pass")
+    live_safety = live_runtime.get("safety", {})
+    require(live_safety.get("offline_analysis_only") is True and
+            live_safety.get("read_only_inputs") is True and
+            live_safety.get("phone_write") is False and
+            live_safety.get("partition_access") is False and
+            live_safety.get("mmio_access") is False,
+            "live runtime evidence safety differs")
 
     tree, parser_path = load_tree(repo, fdt_raw)
     root = exact_node(tree, "/")
@@ -253,13 +270,38 @@ def build_report(repo, fdt_path, runtime_path, firmware_path):
             "UFS interrupt declaration differs")
     require(all(entry["provider"] == "/interrupt-controller" for entry in interrupts),
             "UFS interrupt provider differs")
+    live_ufs = live_runtime.get("runtime", {}).get("ufs", {})
+    require(tuple(live_ufs.get("dt_spi_ids", [])) ==
+            tuple(entry[1] for entry in EXPECTED_INTERRUPTS),
+            "live UFS DT SPI mapping differs")
+    require(tuple(live_ufs.get("expected_gic_hwirqs", [])) ==
+            EXPECTED_GIC_HWIRQS,
+            "live UFS GIC HWIRQ mapping differs")
+    rows = live_ufs.get("irq_rows", [])
+    require(len(rows) == len(EXPECTED_INTERRUPTS),
+            "live UFS IRQ row count differs")
+    require(tuple(row.get("hwirq") for row in rows) == EXPECTED_GIC_HWIRQS and
+            all(row.get("name") == "ufshcd" and
+                row.get("controller") == "GICv3" and
+                row.get("trigger") == "Level" for row in rows),
+            "live UFS IRQ routing differs")
+    irq_total_delta = sum(row.get("total_delta", -1) for row in rows)
+    require(irq_total_delta == live_ufs.get("total_delta") == 47 and
+            live_ufs.get("android_runtime_delivery_observed") is True and
+            live_ufs.get("xnu_phone_delivery_observed") is False,
+            "live UFS IRQ delivery evidence differs")
     interrupt_manifest = [{
         "provider": entry["provider"],
         "specifier": entry["args"],
+        "linux_gic_hwirq": row["hwirq"],
+        "linux_irq": row["linux_irq"],
+        "linux_mapping_proven": True,
+        "linux_delivery_observed": row["total_delta"] > 0,
+        "linux_delivery_delta": row["total_delta"],
+        "xnu_delivery_proven": False,
         "runtime_owner": "unproven",
-        "delivery_proven": False,
         "authorized": False,
-    } for entry in interrupts]
+    } for entry, row in zip(interrupts, rows)]
 
     phys = tree.references(host, "phys", "#phy-cells")
     require(len(phys) == 1 and phys[0]["provider"] == "/soc/ufsphy@112a0000"
@@ -367,6 +409,17 @@ def build_report(repo, fdt_path, runtime_path, firmware_path):
             "exclusive_owner_proven": False,
             "direct_xnu_secure_power_mmio_authorized": False,
         },
+        "runtime_observations": {
+            "linux_ufs_irq_mapping_proven": True,
+            "linux_ufs_irq_delivery_observed": True,
+            "linux_ufs_irq_total_delta": irq_total_delta,
+            "linux_ufs_irq_rows_with_delivery": sum(
+                row["total_delta"] > 0 for row in rows
+            ),
+            "xnu_ufs_irq_delivery_observed": False,
+            "xnu_ufs_irq_delegation_proven": False,
+            "ufs_interrupt_ownership_proven": False,
+        },
         "runtime_proofs": proofs,
         "ownership_receipt": receipt,
         "authorization": {
@@ -384,6 +437,9 @@ def build_report(repo, fdt_path, runtime_path, firmware_path):
             },
             "firmware_evidence": {
                 "sha256": FIRMWARE_SHA256, "bytes": firmware_bytes,
+            },
+            "live_runtime_evidence": {
+                "sha256": LIVE_RUNTIME_SHA256, "bytes": live_runtime_bytes,
             },
             "bounded_parser": str(parser_path.relative_to(repo)).replace("\\", "/"),
         },
@@ -412,6 +468,7 @@ def main():
     parser.add_argument("--fdt", type=Path, required=True)
     parser.add_argument("--runtime-evidence", type=Path, required=True)
     parser.add_argument("--firmware-evidence", type=Path, required=True)
+    parser.add_argument("--live-runtime-evidence", type=Path, required=True)
     args = parser.parse_args()
 
     repo = Path(__file__).resolve().parent.parent
@@ -423,6 +480,7 @@ def main():
         args.fdt.resolve(strict=True),
         args.runtime_evidence.resolve(strict=True),
         args.firmware_evidence.resolve(strict=True),
+        args.live_runtime_evidence.resolve(strict=True),
     )
     descriptor = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
