@@ -40,6 +40,8 @@ def tracked_inputs(repo):
         repo / "tools/inspect-duchamp-hardware.py",
         repo / "tools/assess-mt6897-ufs-dma-map.py",
         repo / "tools/test-mt6897-ufs-dma-map.py",
+        repo / "tools/assess-mt6897-ufs-resource-ownership.py",
+        repo / "tools/test-mt6897-ufs-resource-ownership.py",
         repo / "tools/report-duchamp-mt6897-ownership.py",
         repo / "tools/test-report-duchamp-mt6897-ownership.py",
         repo / "tools/test-duchamp-psci-boot.py",
@@ -287,6 +289,18 @@ def main():
             "--runtime-evidence", str(runtime_evidence),
             "--prdt-evidence", str(prdt_evidence),
         ],
+        "ufs_resource_ownership_tests": [
+            sys.executable,
+            str(repo / "tools/test-mt6897-ufs-resource-ownership.py"),
+        ],
+        "ufs_resource_ownership": [
+            sys.executable,
+            str(repo / "tools/assess-mt6897-ufs-resource-ownership.py"),
+            str(output / "ufs-resource-ownership/result.json"),
+            "--fdt", str(fdt),
+            "--runtime-evidence", str(runtime_evidence),
+            "--firmware-evidence", str(firmware_evidence),
+        ],
         "ownership": [
             sys.executable,
             str(repo / "tools/report-duchamp-mt6897-ownership.py"),
@@ -334,6 +348,9 @@ def main():
         )
         dma_map_candidate = load_pass(
             output / "ufs-dma-map-candidate/result.json"
+        )
+        resource_ownership = load_pass(
+            output / "ufs-resource-ownership/result.json"
         )
         ownership = json.loads(
             Path(components["ownership"]["log"]).read_text(encoding="utf-8")
@@ -487,6 +504,62 @@ def main():
                     "physical_backend_enabled"):
             if dma_map_safety.get(key) is not False:
                 raise ValueError("unsafe UFS DMA-map candidate action: " + key)
+        resource_receipt = resource_ownership.get("ownership_receipt", {})
+        resource_authorization = resource_ownership.get("authorization", {})
+        resource_declarations = resource_ownership.get("declarations", {})
+        resource_firmware = resource_ownership.get("firmware_contract", {})
+        resource_safety = resource_ownership.get("safety", {})
+        expected_resource_blockers = [
+            "installed_firmware_identity",
+            "firmware_effect_contract",
+            "secure_power_arbitration",
+            "mmio_resource_delegation",
+            "clock_and_hw_voter_ownership",
+            "reset_ownership",
+            "phy_ownership",
+            "regulator_ownership",
+            "ufs_interrupt_ownership",
+        ]
+        if (resource_receipt.get("status") != "denied" or
+                resource_receipt.get("receipt_issuable") is not False or
+                resource_receipt.get("payload") is not None or
+                resource_receipt.get("blockers") != expected_resource_blockers):
+            raise ValueError("UFS resource-ownership receipt was not denied")
+        if (resource_declarations.get(
+                "exact_saved_dtb_manifest_proven") is not True or
+                len(resource_declarations.get("mmio", [])) != 18 or
+                len(resource_declarations.get(
+                    "unlinked_ufs_named_mmio", [])) != 9 or
+                len(resource_declarations.get("clocks", [])) != 12 or
+                len(resource_declarations.get("resets", [])) != 3 or
+                len(resource_declarations.get("interrupts", [])) != 9 or
+                resource_declarations.get("clock_hw_voter") !=
+                "/syscon@10320000" or
+                resource_declarations.get("dma_coherent") is not False or
+                resource_declarations.get("iommu_binding_present") is not False):
+            raise ValueError("UFS resource declaration manifest differs")
+        if (resource_firmware.get("static_service_dispatch_proven") is not True or
+                resource_firmware.get("service_id") != "0xc2000276" or
+                resource_firmware.get("runtime_effect_contract_proven") is not False or
+                resource_firmware.get("exclusive_owner_proven") is not False or
+                resource_firmware.get(
+                    "direct_xnu_secure_power_mmio_authorized") is not False):
+            raise ValueError("UFS firmware/resource ownership proof differs")
+        if resource_authorization != {
+                "physical_backend_enabled": False,
+                "mmio_callbacks": 0,
+                "smc_callbacks": 0,
+                "dma_callbacks": 0,
+                "ufs_commands": 0,
+                "interrupt_reconfiguration_callbacks": 0,
+        }:
+            raise ValueError("UFS resource ownership enabled a callback")
+        for key in ("phone_access", "network_access", "adb_access",
+                    "fastboot_access", "mmio_access", "smc_execution",
+                    "dma_or_ufs_commands", "partition_access",
+                    "physical_backend_enabled"):
+            if resource_safety.get(key) is not False:
+                raise ValueError("unsafe UFS resource-ownership action: " + key)
         if current_ufs.get("blockers") != [
             "firmware_effect_contract",
             "resource_ownership",
@@ -765,6 +838,38 @@ def main():
                 "bounce_disposition": dma_map_bounce["disposition"],
                 "physical_backend": "disabled",
             },
+            "ufs_resource_ownership": {
+                "model_tests_passed": components[
+                    "ufs_resource_ownership_tests"
+                ]["passed"],
+                "mmio_resources": len(resource_declarations["mmio"]),
+                "clocks": len(resource_declarations["clocks"]),
+                "resets": len(resource_declarations["resets"]),
+                "interrupts": len(resource_declarations["interrupts"]),
+                "clock_hw_voter": resource_declarations[
+                    "clock_hw_voter"
+                ],
+                "captured_bl31_static_dispatch": resource_firmware[
+                    "static_service_dispatch_proven"
+                ],
+                "runtime_effect_contract_proven": resource_firmware[
+                    "runtime_effect_contract_proven"
+                ],
+                "receipt_issuable": resource_receipt[
+                    "receipt_issuable"
+                ],
+                "blockers": resource_receipt["blockers"],
+                "callbacks": {
+                    "mmio": resource_authorization["mmio_callbacks"],
+                    "smc": resource_authorization["smc_callbacks"],
+                    "dma": resource_authorization["dma_callbacks"],
+                    "ufs": resource_authorization["ufs_commands"],
+                    "interrupt_reconfiguration": resource_authorization[
+                        "interrupt_reconfiguration_callbacks"
+                    ],
+                },
+                "physical_backend": "disabled",
+            },
             "ownership": {
                 "dtb_sha256": ownership["dtb"]["sha256"],
                 "categories": sorted(ownership["categories"]),
@@ -800,6 +905,10 @@ def main():
             "runtime_timer_and_interrupt_delivery": "unverified",
             "gic_and_firmware_resource_ownership": "unverified",
             "installed_firmware_contract": "unverified",
+            "ufs_resource_ownership_receipt": (
+                "implemented fail-closed; exact MMIO/clock/reset/IRQ/PHY/"
+                "regulator manifest passes, but runtime ownership receipt is denied"
+            ),
             "ufs_dma_or_iommu_route": "unverified",
             "ufs_dma_route_contract": (
                 "implemented fail-closed; saved DT translation candidate "
