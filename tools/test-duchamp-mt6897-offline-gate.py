@@ -37,6 +37,18 @@ def tracked_inputs(repo):
         repo / "duchamp/diagnostics/ufs-cache-xnu-qemu/RAW-VERIFICATION-2026-11-04.json",
         repo / "tools/interpret-duchamp-xnu-cache-qemu.py",
         repo / "tools/test-interpret-duchamp-xnu-cache-qemu.py",
+        repo / "tools/verify-duchamp-bl31-runtime-identity.py",
+        repo / "tools/test-verify-duchamp-bl31-runtime-identity.py",
+        repo / "duchamp/diagnostics/bl31-runtime-identity/"
+            "ATF-LOG-2026-11-01.txt",
+        repo / "duchamp/diagnostics/bl31-runtime-identity/"
+            "VERIFICATION-2026-11-04.json",
+        repo / "research/mt6897-firmware-live/20261101-v1/tee_a.bin",
+        repo / "research/mt6897-shell-runtime/"
+            "read-only-20261101-maxspeed-v1/"
+            "root-atf_log_head.stdout.txt",
+        repo / "research/mt6897-shell-runtime/"
+            "read-only-20261101-maxspeed-v1/result.json",
         repo / "duchamp/drivers/ufs_readonly.c",
         repo / "duchamp/drivers/ufs_readonly.h",
         repo / "tools/check-duchamp-fdt.sh",
@@ -158,6 +170,25 @@ def main():
         / "research/mt6897-live-evidence/14480520-210535/"
           "runtime-report-v7.json"
     ).resolve()
+    firmware_identity_evidence = (
+        repo
+        / "duchamp/diagnostics/bl31-runtime-identity/"
+          "VERIFICATION-2026-11-04.json"
+    ).resolve()
+    bl31_tee = (
+        repo / "research/mt6897-firmware-live/20261101-v1/tee_a.bin"
+    ).resolve()
+    bl31_runtime_log = (
+        repo
+        / "research/mt6897-shell-runtime/"
+          "read-only-20261101-maxspeed-v1/"
+          "root-atf_log_head.stdout.txt"
+    ).resolve()
+    bl31_runtime_report = (
+        repo
+        / "research/mt6897-shell-runtime/"
+          "read-only-20261101-maxspeed-v1/result.json"
+    ).resolve()
     if sha256(fdt) != FDT_SHA256:
         parser.error("saved Duchamp DTB provenance differs")
 
@@ -171,6 +202,10 @@ def main():
         "prdt_evidence": sha256(prdt_evidence),
         "prdt_v3_evidence": sha256(prdt_v3_evidence),
         "resource_live_runtime": sha256(resource_live_runtime),
+        "firmware_identity_evidence": sha256(firmware_identity_evidence),
+        "bl31_tee": sha256(bl31_tee),
+        "bl31_runtime_log": sha256(bl31_runtime_log),
+        "bl31_runtime_report": sha256(bl31_runtime_report),
     }
     started = time.monotonic()
     output.mkdir(parents=True)
@@ -300,6 +335,18 @@ def main():
                 "RAW-VERIFICATION-2026-11-04.json"),
             str(output / "ufs-cache-xnu-qemu/result.json"),
         ],
+        "bl31_identity_tests": [
+            sys.executable,
+            str(repo / "tools/test-verify-duchamp-bl31-runtime-identity.py"),
+        ],
+        "bl31_identity": [
+            sys.executable,
+            str(repo / "tools/verify-duchamp-bl31-runtime-identity.py"),
+            str(bl31_tee),
+            str(bl31_runtime_log),
+            str(bl31_runtime_report),
+            str(output / "bl31-identity/result.json"),
+        ],
         "ufs_dma_route_contract": [
             sys.executable,
             str(repo / "tools/test-mt6897-ufs-dma-route.py"),
@@ -330,6 +377,8 @@ def main():
             "--runtime-evidence", str(runtime_evidence),
             "--firmware-evidence", str(firmware_evidence),
             "--live-runtime-evidence", str(resource_live_runtime),
+            "--firmware-identity-evidence",
+            str(firmware_identity_evidence),
         ],
         "ownership": [
             sys.executable,
@@ -374,6 +423,7 @@ def main():
         cache_contract = load_pass(output / "ufs-cache-contract/result.json")
         cache_backend = load_pass(output / "ufs-cache-backend/result.json")
         cache_xnu_qemu = load_pass(output / "ufs-cache-xnu-qemu/result.json")
+        bl31_identity = load_pass(output / "bl31-identity/result.json")
         dma_route_contract = load_pass(
             output / "ufs-dma-route-contract/result.json"
         )
@@ -516,6 +566,34 @@ def main():
                 cache_xnu_safety.get(
                     "physical_ufs_backend_enabled") is not False):
             raise ValueError("unsafe XNU QEMU cache execution evidence")
+        bl31_proofs = bl31_identity.get("proofs", {})
+        bl31_safety = bl31_identity.get("safety", {})
+        if (bl31_identity.get("verdict") !=
+                "installed-bl31-runtime-identity-matched" or
+                bl31_proofs.get(
+                    "captured_bl31_identity_extracted") is not True or
+                bl31_proofs.get(
+                    "running_bl31_identity_observed") is not True or
+                bl31_proofs.get("all_identity_fields_match") is not True or
+                bl31_proofs.get(
+                    "installed_firmware_identity_proven") is not True or
+                bl31_proofs.get(
+                    "installed_binary_byte_equivalence_proven") is not False or
+                bl31_proofs.get(
+                    "runtime_smc_effect_contract_proven") is not False or
+                bl31_proofs.get(
+                    "physical_resource_ownership_proven") is not False):
+            raise ValueError("BL31 runtime identity proof differs")
+        if (bl31_safety.get("offline_inputs_only") is not True or
+                bl31_safety.get("phone_access_by_this_tool") is not False or
+                bl31_safety.get(
+                    "firmware_executed_by_this_tool") is not False or
+                bl31_safety.get("smc_execution") is not False or
+                bl31_safety.get("mmio_access") is not False or
+                bl31_safety.get("partition_access") is not False or
+                bl31_safety.get(
+                    "physical_ufs_backend_enabled") is not False):
+            raise ValueError("unsafe BL31 runtime identity evidence")
         dma_route_native = dma_route_contract.get("native", {})
         dma_route_arm64 = dma_route_contract.get("arm64_qemu_model", {})
         dma_route_concurrency = dma_route_contract.get("concurrency", {})
@@ -590,7 +668,6 @@ def main():
         resource_runtime = resource_ownership.get("runtime_observations", {})
         resource_safety = resource_ownership.get("safety", {})
         expected_resource_blockers = [
-            "installed_firmware_identity",
             "firmware_effect_contract",
             "secure_power_arbitration",
             "mmio_resource_delegation",
@@ -620,6 +697,12 @@ def main():
             raise ValueError("UFS resource declaration manifest differs")
         if (resource_firmware.get("static_service_dispatch_proven") is not True or
                 resource_firmware.get("service_id") != "0xc2000276" or
+                resource_firmware.get(
+                    "installed_firmware_identity_proven") is not True or
+                resource_firmware.get("identity_match_strength") !=
+                    "runtime identity strings" or
+                resource_firmware.get(
+                    "installed_binary_byte_equivalence_proven") is not False or
                 resource_firmware.get("runtime_effect_contract_proven") is not False or
                 resource_firmware.get("exclusive_owner_proven") is not False or
                 resource_firmware.get(
@@ -789,6 +872,22 @@ def main():
                 "native": providers["native_checks"],
                 "raw_smc": providers["raw_smc_checks"],
                 "arm64_matches_native": providers["arm64_checks"] == providers["native_checks"],
+            },
+            "bl31_identity": {
+                "tests_passed": components["bl31_identity_tests"]["passed"],
+                "verdict": bl31_identity["verdict"],
+                "runtime_identity_match": bl31_proofs[
+                    "installed_firmware_identity_proven"
+                ],
+                "installed_binary_byte_equivalence": bl31_proofs[
+                    "installed_binary_byte_equivalence_proven"
+                ],
+                "runtime_smc_effect_contract": bl31_proofs[
+                    "runtime_smc_effect_contract_proven"
+                ],
+                "physical_resource_ownership": bl31_proofs[
+                    "physical_resource_ownership_proven"
+                ],
             },
             "ufs_clocks": {
                 "leaf_mapping_from_saved_fdt": clocks.get("captured_fdt_leaf_mapping_verified"),
@@ -982,6 +1081,12 @@ def main():
                 "captured_bl31_static_dispatch": resource_firmware[
                     "static_service_dispatch_proven"
                 ],
+                "installed_bl31_runtime_identity": resource_firmware[
+                    "installed_firmware_identity_proven"
+                ],
+                "installed_binary_byte_equivalence": resource_firmware[
+                    "installed_binary_byte_equivalence_proven"
+                ],
                 "runtime_effect_contract_proven": resource_firmware[
                     "runtime_effect_contract_proven"
                 ],
@@ -1033,6 +1138,10 @@ def main():
         "prdt_evidence": sha256(prdt_evidence),
         "prdt_v3_evidence": sha256(prdt_v3_evidence),
         "resource_live_runtime": sha256(resource_live_runtime),
+        "firmware_identity_evidence": sha256(firmware_identity_evidence),
+        "bl31_tee": sha256(bl31_tee),
+        "bl31_runtime_log": sha256(bl31_runtime_log),
+        "bl31_runtime_report": sha256(bl31_runtime_report),
     }
     passed = failure is None and inputs_unchanged
     if not inputs_unchanged and failure is None:
@@ -1048,7 +1157,11 @@ def main():
         "remaining_physical_blockers": {
             "runtime_timer_and_interrupt_delivery": "unverified",
             "gic_and_firmware_resource_ownership": "unverified",
-            "installed_firmware_contract": "unverified",
+            "installed_firmware_contract": (
+                "runtime BL31 identity strings match the analyzed tee_a "
+                "sample; byte equivalence and SMC effect contract remain "
+                "unverified"
+            ),
             "ufs_resource_ownership_receipt": (
                 "implemented fail-closed; exact resource manifest and Linux UFS "
                 "IRQ mapping/delivery pass, but XNU delegation and runtime "
@@ -1088,8 +1201,9 @@ def main():
             "phone_execution_authorized": False,
         },
         "scope": (
-            "pinned DT/runtime/live-PRDT and XNU-QEMU evidence, host "
-            "sanitizers and local ARM64/QEMU gates; no physical backend"
+            "pinned DT/runtime/live-PRDT, BL31 identity and XNU-QEMU "
+            "evidence, host sanitizers and local ARM64/QEMU gates; no "
+            "physical backend"
         ),
     }
     if failure is not None:

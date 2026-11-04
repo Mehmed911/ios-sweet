@@ -25,6 +25,9 @@ FDT_SHA256 = "9c49589f70044127be8941a9ea5537977f440ccd5ac15cfd24e120c8a1181d29"
 RUNTIME_SHA256 = "71236c08c0354ff0733d44a64e505d117dfd4594e370bedd81fad3ec93d1bf4d"
 FIRMWARE_SHA256 = "65e4a5cdd2085c2e2bb48ad9829109f8e39b7a260669074ab59427419b5d110c"
 LIVE_RUNTIME_SHA256 = "fb1fa60b1b6df4f50f7794520be959ba7997f9433cea0f23dc818df9b5681660"
+FIRMWARE_IDENTITY_SHA256 = (
+    "1a9060eec770e72f70d1e51b2d0e8b86ab5be45b0ccd6ca73ca6b345171dcba2"
+)
 
 UFS_SERVICE_ID = "0xc2000276"
 UFS_SELECTORS = {"refclk": 8, "mtcmos": 512, "mcq": 1024}
@@ -201,7 +204,7 @@ def evaluate_receipt(proofs):
 
 
 def build_report(repo, fdt_path, runtime_path, firmware_path,
-                 live_runtime_path):
+                 live_runtime_path, firmware_identity_path):
     fdt_raw = fdt_path.read_bytes()
     require(sha256(fdt_raw) == FDT_SHA256, "DTB hash differs")
     runtime, runtime_bytes = load_json(
@@ -212,6 +215,10 @@ def build_report(repo, fdt_path, runtime_path, firmware_path,
     )
     live_runtime, live_runtime_bytes = load_json(
         live_runtime_path, LIVE_RUNTIME_SHA256, "live runtime evidence"
+    )
+    firmware_identity, firmware_identity_bytes = load_json(
+        firmware_identity_path, FIRMWARE_IDENTITY_SHA256,
+        "firmware identity evidence"
     )
     require(runtime.get("report_version") == 2 and
             runtime.get("audit_passed") is True,
@@ -224,6 +231,29 @@ def build_report(repo, fdt_path, runtime_path, firmware_path,
     require(live_runtime.get("report_version") == 2 and
             live_runtime.get("result", {}).get("passed") is True,
             "live runtime evidence did not pass")
+    identity_proofs = firmware_identity.get("proofs", {})
+    identity_safety = firmware_identity.get("safety", {})
+    require(firmware_identity.get("report_version") == 1 and
+            firmware_identity.get("passed") is True and
+            firmware_identity.get("verdict") ==
+            "installed-bl31-runtime-identity-matched",
+            "firmware identity evidence did not pass")
+    require(identity_proofs.get(
+                "installed_firmware_identity_proven") is True and
+            identity_proofs.get(
+                "installed_binary_byte_equivalence_proven") is False and
+            identity_proofs.get(
+                "runtime_smc_effect_contract_proven") is False and
+            identity_proofs.get(
+                "physical_resource_ownership_proven") is False,
+            "firmware identity evidence overclaims its scope")
+    require(identity_safety.get("offline_inputs_only") is True and
+            identity_safety.get("phone_access_by_this_tool") is False and
+            identity_safety.get("smc_execution") is False and
+            identity_safety.get("mmio_access") is False and
+            identity_safety.get("partition_access") is False and
+            identity_safety.get("physical_ufs_backend_enabled") is False,
+            "firmware identity evidence safety differs")
     live_safety = live_runtime.get("safety", {})
     require(live_safety.get("offline_analysis_only") is True and
             live_safety.get("read_only_inputs") is True and
@@ -348,6 +378,12 @@ def build_report(repo, fdt_path, runtime_path, firmware_path,
             firmware_mmio.get("control_registers") == ["0x1c001e10", "0x1c001e14"] and
             firmware_mmio.get("safe_xnu_direct_readback_authorized") is False,
             "firmware MTCMOS resource boundary differs")
+    identity_capture = firmware_identity.get("capture", {})
+    require(identity_capture.get("tee_a_sha256") ==
+            firmware.get("tee_a", {}).get("sha256") and
+            identity_capture.get("atf_sha256") ==
+            firmware.get("atf", {}).get("sha256"),
+            "firmware identity/static audit capture differs")
 
     runtime_firmware = runtime.get("firmware_ownership", {})
     require(runtime_firmware.get("runtime_rtff_mtcmos_cap_observed") is True,
@@ -368,6 +404,7 @@ def build_report(repo, fdt_path, runtime_path, firmware_path,
             "runtime power-controller overlap differs")
 
     proofs = {name: False for name in RUNTIME_PROOFS}
+    proofs["installed_firmware_identity"] = True
     receipt = evaluate_receipt(proofs)
     return {
         "report_version": REPORT_VERSION,
@@ -404,7 +441,9 @@ def build_report(repo, fdt_path, runtime_path, firmware_path,
                 "end": "0x1c001fff",
                 "classification": "shared/delegated boundary",
             },
-            "installed_firmware_identity_proven": False,
+            "installed_firmware_identity_proven": True,
+            "identity_match_strength": "runtime identity strings",
+            "installed_binary_byte_equivalence_proven": False,
             "runtime_effect_contract_proven": False,
             "exclusive_owner_proven": False,
             "direct_xnu_secure_power_mmio_authorized": False,
@@ -441,6 +480,10 @@ def build_report(repo, fdt_path, runtime_path, firmware_path,
             "live_runtime_evidence": {
                 "sha256": LIVE_RUNTIME_SHA256, "bytes": live_runtime_bytes,
             },
+            "firmware_identity_evidence": {
+                "sha256": FIRMWARE_IDENTITY_SHA256,
+                "bytes": firmware_identity_bytes,
+            },
             "bounded_parser": str(parser_path.relative_to(repo)).replace("\\", "/"),
         },
         "safety": {
@@ -469,6 +512,8 @@ def main():
     parser.add_argument("--runtime-evidence", type=Path, required=True)
     parser.add_argument("--firmware-evidence", type=Path, required=True)
     parser.add_argument("--live-runtime-evidence", type=Path, required=True)
+    parser.add_argument("--firmware-identity-evidence", type=Path,
+                        required=True)
     args = parser.parse_args()
 
     repo = Path(__file__).resolve().parent.parent
@@ -481,6 +526,7 @@ def main():
         args.runtime_evidence.resolve(strict=True),
         args.firmware_evidence.resolve(strict=True),
         args.live_runtime_evidence.resolve(strict=True),
+        args.firmware_identity_evidence.resolve(strict=True),
     )
     descriptor = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(descriptor, "w", encoding="utf-8") as stream:

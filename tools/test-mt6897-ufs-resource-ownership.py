@@ -20,6 +20,11 @@ LIVE_RUNTIME = (
     REPO
     / "research/mt6897-live-evidence/14480520-210535/runtime-report-v7.json"
 )
+FIRMWARE_IDENTITY = (
+    REPO
+    / "duchamp/diagnostics/bl31-runtime-identity/"
+      "VERIFICATION-2026-11-04.json"
+)
 
 SPEC = importlib.util.spec_from_file_location("mt6897_ufs_resource_ownership", TOOL)
 if SPEC is None or SPEC.loader is None:
@@ -33,7 +38,7 @@ class ResourceOwnershipTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.report = MODULE.build_report(
-            REPO, FDT, RUNTIME, FIRMWARE, LIVE_RUNTIME
+            REPO, FDT, RUNTIME, FIRMWARE, LIVE_RUNTIME, FIRMWARE_IDENTITY
         )
 
     def test_exact_mmio_manifest_is_declaration_only(self):
@@ -85,13 +90,19 @@ class ResourceOwnershipTests(unittest.TestCase):
         self.assertFalse(observed["ufs_interrupt_ownership_proven"])
         self.assertFalse(self.report["runtime_proofs"]["ufs_interrupt_ownership"])
 
-    def test_static_firmware_path_never_becomes_runtime_ownership(self):
+    def test_runtime_identity_does_not_promote_effects_or_ownership(self):
         firmware = self.report["firmware_contract"]
         self.assertTrue(firmware["captured_bl31_artifact_pinned"])
         self.assertTrue(firmware["static_service_dispatch_proven"])
         self.assertEqual(firmware["service_id"], "0xc2000276")
         self.assertEqual(firmware["selectors"], MODULE.UFS_SELECTORS)
-        self.assertFalse(firmware["installed_firmware_identity_proven"])
+        self.assertTrue(firmware["installed_firmware_identity_proven"])
+        self.assertEqual(
+            firmware["identity_match_strength"], "runtime identity strings"
+        )
+        self.assertFalse(
+            firmware["installed_binary_byte_equivalence_proven"]
+        )
         self.assertFalse(firmware["runtime_effect_contract_proven"])
         self.assertFalse(firmware["exclusive_owner_proven"])
         self.assertFalse(firmware["direct_xnu_secure_power_mmio_authorized"])
@@ -101,7 +112,12 @@ class ResourceOwnershipTests(unittest.TestCase):
         self.assertEqual(receipt["status"], "denied")
         self.assertFalse(receipt["receipt_issuable"])
         self.assertIsNone(receipt["payload"])
-        self.assertEqual(tuple(receipt["blockers"]), MODULE.RUNTIME_PROOFS)
+        self.assertEqual(
+            tuple(receipt["blockers"]), MODULE.RUNTIME_PROOFS[1:]
+        )
+        self.assertTrue(
+            self.report["runtime_proofs"]["installed_firmware_identity"]
+        )
         self.assertEqual(
             self.report["authorization"],
             {
@@ -135,6 +151,7 @@ class ResourceOwnershipTests(unittest.TestCase):
                 "--runtime-evidence", str(RUNTIME),
                 "--firmware-evidence", str(FIRMWARE),
                 "--live-runtime-evidence", str(LIVE_RUNTIME),
+                "--firmware-identity-evidence", str(FIRMWARE_IDENTITY),
             ]
             result = subprocess.run(
                 command, cwd=REPO, text=True,
@@ -164,6 +181,7 @@ class ResourceOwnershipTests(unittest.TestCase):
                     "--runtime-evidence", str(changed),
                     "--firmware-evidence", str(FIRMWARE),
                     "--live-runtime-evidence", str(LIVE_RUNTIME),
+                    "--firmware-identity-evidence", str(FIRMWARE_IDENTITY),
                 ],
                 cwd=REPO, text=True,
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30,

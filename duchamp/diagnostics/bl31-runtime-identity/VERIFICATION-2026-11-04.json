@@ -1,0 +1,50 @@
+{
+  "capture": {
+    "atf_bytes": 953976,
+    "atf_sha256": "716222a632e4a0623a2e467e17f1d36f38a37f79a1c026447fe724e75e90e07e",
+    "identity_string_offsets": {
+      "built": 340454,
+      "platform": 399476,
+      "release": 340484,
+      "software": 399463,
+      "software_build_host_time": 399553,
+      "software_built": 399542
+    },
+    "tee_a_bytes": 5242880,
+    "tee_a_sha256": "37d7d5acbe02289465af9702cbcafb1986394332a3462badda398556d32e587d"
+  },
+  "identity": {
+    "built": "07:19:18, Dec 18 2024",
+    "release": "lts-v2.8.6(release):2fbca47",
+    "software_build": "Jun 8 2022(Jul 25 20:00:00 UTC 2023)",
+    "software_version": "common_2.6.1(6897-1.2)"
+  },
+  "passed": true,
+  "proofs": {
+    "all_identity_fields_match": true,
+    "captured_bl31_identity_extracted": true,
+    "installed_binary_byte_equivalence_proven": false,
+    "installed_firmware_identity_proven": true,
+    "physical_resource_ownership_proven": false,
+    "running_bl31_identity_observed": true,
+    "runtime_smc_effect_contract_proven": false
+  },
+  "report_version": 1,
+  "runtime": {
+    "atf_log_bytes": 1246,
+    "atf_log_sha256": "120954e0698210350ad81c6151311ae4adcf805e1054818352e5908f4c60bd66",
+    "capture_report_sha256": "764ab81f5f831ebf993a0263cc7702cda79426326247b3c4e8c84278713fa895",
+    "device_serial_sha256": "025462cee38fe76042325965ae3a69a21a66fa63a78d160482e040f30a080bd6"
+  },
+  "safety": {
+    "firmware_executed_by_this_tool": false,
+    "mmio_access": false,
+    "offline_inputs_only": true,
+    "partition_access": false,
+    "phone_access_by_this_tool": false,
+    "physical_ufs_backend_enabled": false,
+    "smc_execution": false
+  },
+  "scope": "exact runtime BL31 identity strings matched the captured tee_a ATF entry; not byte equivalence, SMC effects, firewall state, resource ownership or physical UFS authorization",
+  "verdict": "installed-bl31-runtime-identity-matched"
+}

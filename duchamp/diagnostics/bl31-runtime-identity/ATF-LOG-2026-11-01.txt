@@ -1,0 +1,18 @@
+NOTICE:  (0)[0.176231]BL31: lts-v2.8.6(release):2fbca47
+NOTICE:  (0)[0.176241]BL31: Built : 07:19:18, Dec 18 2024
+NOTICE:  (0)[0.546227]mmap mrdump_cblock: 0x48082000
+NOTICE:  (0)[0.546239]mmap ram_console: 0x48081000
+NOTICE:  (0)[0.546342]gpueb: INIT: end
+NOTICE:  (0)[0.546351]gpueb: MFG0_PWR_CON = 0xc200224d
+NOTICE:  (0)[0.546359]gpueb: GPUEBPLL_PLL1U_PLL1_CON1(0x13fa080c) = 0x30f6276
+NOTICE:  (0)[0.546368]gpueb: MFG_RPC_AO_CLK_CFG(0x13f91034) = 0x41
+NOTICE:  (0)[0.546473][PTP3][NOTICE][ptp3_init():65]RELEASE_TIME 2022081709
+NOTICE:  (0)[0.546483][PTP3][NOTICE][ptp3_init():66]RELEASE_HASH cd7844b036
+ERROR:   (0)[0.576299][MPU_HAL][mpu_svc]origin=0x2 invalid zone size=0x0
+NOTICE:  (0)[2.369150]Software version: common_2.6.1(6897-1.2)
+NOTICE:  (0)[2.369160]Change ID: 6077162(7738048)
+NOTICE:  (0)[2.369167]Build time: Jun 8 2022(Jul 25 20:00:00 UTC 2023)
+ERROR:   (4)[4.962064][cmdq] cmdq_mminfra_cmd: cmdq_mminfra_cmd: unknown type:3
+ERROR:   (5)[8.366772][AUDIO]: audio_smc_handler, Wrong request_ops, request_ops = 7, init_done = 0
+ERROR:   (5)[8.366779][AUDIO]: audio_smc_handler, Wrong request_ops, request_ops = 3, init_done = 0
+ERROR:   (4)[8.374004][AUDIO]: audio_smc_handler, Wrong request_ops, request_ops = 4, init_done = 0
