@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Build a fail-closed MT6897 UFS DMA-map candidate from saved evidence.
+"""Build a fail-closed MT6897 UFS DMA-map receipt from pinned evidence.
 
 This tool reads only the pinned Duchamp DTB and the pinned runtime/PRDT JSON
-reports.  It models Linux's ``bus_dma_region`` affine translation, but it does
-not promote a Device Tree declaration into a live PA-to-DMA proof.  In
-particular, a present SWIOTLB pool and a no-bounce read sample leave the global
-bounce disposition UNKNOWN.
+reports. It models Linux's ``bus_dma_region`` affine translation and validates
+the separately approved v3 observation of the live range, raw DMA addresses
+and SWIOTLB state.
 
-The report is therefore suitable for offline review and boundary tests only.
-It cannot issue an XNU DMA-route receipt and performs no phone, MMIO, SMC, DMA,
-UFS or partition access.
+The resulting direct-route receipt is evidence for address translation only.
+It never enables the physical backend and does not claim firmware/firewall,
+resource or cache-maintenance ownership. This tool itself performs no phone,
+MMIO, SMC, DMA, UFS or partition access.
 """
 
 import argparse
@@ -26,6 +26,7 @@ U64_MAX = (1 << 64) - 1
 FDT_SHA256 = "9c49589f70044127be8941a9ea5537977f440ccd5ac15cfd24e120c8a1181d29"
 RUNTIME_SHA256 = "71236c08c0354ff0733d44a64e505d117dfd4594e370bedd81fad3ec93d1bf4d"
 PRDT_SHA256 = "1e4c735d316004c83f9db71538186357112c7567daecd12be52ba24e74ea4018"
+PRDT_V3_SHA256 = "0fc223d4474535f269766c268b74cab05b2028501ee234f3bab5eb1782053bc9"
 
 
 def require(condition, message):
@@ -133,11 +134,25 @@ def load_fdt(repo, raw):
     return module.Fdt(raw), parser
 
 
-def build_report(repo, fdt_path, runtime_path, prdt_path):
+def load_live_prdt_v3(repo, path):
+    interpreter = repo / "tools/interpret-duchamp-prdt-v3-observation.py"
+    spec = importlib.util.spec_from_file_location("duchamp_prdt_v3", interpreter)
+    require(spec is not None and spec.loader is not None,
+            "cannot load PRDT v3 interpreter")
+    module = importlib.util.module_from_spec(spec)
+    sys.dont_write_bytecode = True
+    spec.loader.exec_module(module)
+    return module.validate(path), interpreter
+
+
+def build_report(repo, fdt_path, runtime_path, prdt_path, prdt_v3_path):
     fdt_raw = fdt_path.read_bytes()
     require(sha256(fdt_raw) == FDT_SHA256, "DTB hash differs")
     runtime = load_json(runtime_path, RUNTIME_SHA256, "runtime evidence")
     prdt = load_json(prdt_path, PRDT_SHA256, "PRDT interpretation")
+    require(sha256(prdt_v3_path.read_bytes()) == PRDT_V3_SHA256,
+            "PRDT v3 evidence hash differs")
+    prdt_v3, prdt_v3_interpreter = load_live_prdt_v3(repo, prdt_v3_path)
     require(runtime.get("report_version") == 2 and
             runtime.get("audit_passed") is True,
             "runtime evidence did not pass")
@@ -146,6 +161,8 @@ def build_report(repo, fdt_path, runtime_path, prdt_path):
     require(prdt.get("report_version") == 1 and
             prdt.get("verdict") == "validated-limited-prdt-evidence",
             "PRDT interpretation did not pass")
+    require(prdt_v3.get("verdict") == "validated-live-direct-dma-evidence",
+            "PRDT v3 live evidence did not pass")
 
     tree, parser_path = load_fdt(repo, fdt_raw)
     root = tree.nodes.get("/")
@@ -169,6 +186,22 @@ def build_report(repo, fdt_path, runtime_path, prdt_path):
             "saved PRDT sample did not prove no observed SWIOTLB segments")
     require(not_proven.get("raw_dma_address_equals_cpu_physical") is False,
             "PRDT report unexpectedly claims raw PA-to-DMA identity")
+    live = prdt_v3.get("proven", {})
+    require(live.get("live_dma_range_entries_captured") is True and
+            live.get("live_dma_range_is_identity") is True and
+            live.get("raw_dma_equals_cpu_pa_for_all_observed_segments") is True and
+            live.get(
+                "forward_and_inverse_translation_for_all_observed_segments"
+            ) is True,
+            "live direct-DMA evidence is incomplete")
+    require(live.get("dma_range_cpu_start") == windows[0]["cpu_start"] and
+            live.get("dma_range_dma_start") == windows[0]["dma_start"] and
+            live.get("dma_range_bytes") == windows[0]["bytes"],
+            "live DMA range differs from the saved DT model")
+    require(live.get("swiotlb_pool_inactive") is True and
+            live.get("swiotlb_force_bounce_false") is True and
+            live.get("no_swiotlb_segments_observed") is True,
+            "live SWIOTLB disposition differs")
 
     boundary_vectors = []
     window = windows[0]
@@ -205,28 +238,39 @@ def build_report(repo, fdt_path, runtime_path, prdt_path):
             } for item in windows],
             "boundary_vectors": boundary_vectors,
             "static_dt_translation_model_proven": True,
-            "runtime_dma_range_entries_proven": False,
-            "raw_dma_equals_cpu_pa_proven": False,
-            "direct_route_receipt_issuable": False,
+            "runtime_dma_range_entries_proven": True,
+            "raw_dma_equals_cpu_pa_proven": True,
+            "forward_and_inverse_translation_proven": True,
+            "direct_route_receipt_issuable": True,
+            "receipt_scope": "observed Linux UFS address route",
         },
         "bounce": {
-            "disposition": "unknown",
+            "disposition": "inactive-not-forced-no-bounce-observed",
             "swiotlb_pool_present": True,
+            "swiotlb_pool_active": False,
+            "swiotlb_force_bounce": False,
             "sample_no_swiotlb": True,
-            "sample_segments": prdt["observation"]["segments_delta"],
+            "sample_segments": live["observed_segments_total"],
+            "bounded_window_segments": live[
+                "observed_segments_in_bounded_window"
+            ],
+            "observed_direct_route_proven": True,
             "global_bounce_disposition_proven": False,
             "bounce_route_receipt_issuable": False,
         },
         "blockers": [
-            "live dma_range_map entries are not captured",
-            "raw DMA addresses were not paired with CPU physical addresses",
-            "SWIOTLB force state and global bounce disposition are unknown",
             "physical firewall/firmware ownership is not proven",
+            "XNU cache-maintenance ownership is not proven",
+            "clock/reset/PHY/regulator ownership is not proven",
         ],
         "inputs": {
             "fdt": {"sha256": FDT_SHA256, "bytes": len(fdt_raw)},
             "runtime_evidence": {"sha256": RUNTIME_SHA256},
             "prdt_interpretation": {"sha256": PRDT_SHA256},
+            "prdt_v3_live": {"sha256": PRDT_V3_SHA256},
+            "prdt_v3_interpreter": str(
+                prdt_v3_interpreter.relative_to(repo)
+            ).replace("\\", "/"),
             "bounded_parser": str(parser_path.relative_to(repo)).replace("\\", "/"),
         },
         "safety": {
@@ -238,7 +282,10 @@ def build_report(repo, fdt_path, runtime_path, prdt_path):
             "partition_access": False,
             "physical_backend_enabled": False,
         },
-        "scope": "offline candidate only; not a live PA-to-DMA or bounce proof",
+        "scope": (
+            "validated live Linux UFS address route; physical backend remains "
+            "disabled pending cache and firmware/resource ownership"
+        ),
     }
 
 
@@ -248,6 +295,7 @@ def main():
     parser.add_argument("--fdt", type=Path, required=True)
     parser.add_argument("--runtime-evidence", type=Path, required=True)
     parser.add_argument("--prdt-evidence", type=Path, required=True)
+    parser.add_argument("--prdt-v3-evidence", type=Path, required=True)
     args = parser.parse_args()
 
     repo = Path(__file__).resolve().parent.parent
@@ -259,6 +307,7 @@ def main():
         args.fdt.resolve(strict=True),
         args.runtime_evidence.resolve(strict=True),
         args.prdt_evidence.resolve(strict=True),
+        args.prdt_v3_evidence.resolve(strict=True),
     )
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     descriptor = os.open(output, flags, 0o600)
@@ -268,6 +317,9 @@ def main():
     print(json.dumps({
         "passed": True,
         "output": str(output),
+        "direct_route_receipt_issuable": report["candidate"][
+            "direct_route_receipt_issuable"
+        ],
         "bounce_disposition": report["bounce"]["disposition"],
         "physical_backend_enabled": False,
     }, sort_keys=True))

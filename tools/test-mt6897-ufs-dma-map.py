@@ -15,6 +15,10 @@ TOOL = REPO / "tools/assess-mt6897-ufs-dma-map.py"
 FDT = REPO.parent / "phone-fdt.bin"
 RUNTIME = REPO / "research/mt6897-dma-ownership/live-20261101-v2/result.json"
 PRDT = REPO / "research/mt6897-dma-ownership/prdt-interpretation-20261101-v1/interpretation.json"
+PRDT_V3 = (
+    REPO
+    / "duchamp/diagnostics/ufs-prdt-observer-v3/PHONE-RESULT-2026-11-04.json"
+)
 
 SPEC = importlib.util.spec_from_file_location("mt6897_dma_map_candidate", TOOL)
 if SPEC is None or SPEC.loader is None:
@@ -89,6 +93,7 @@ class DmaMapModelTests(unittest.TestCase):
                     "--fdt", str(FDT),
                     "--runtime-evidence", str(RUNTIME),
                     "--prdt-evidence", str(PRDT),
+                    "--prdt-v3-evidence", str(PRDT_V3),
                 ],
                 cwd=REPO,
                 text=True,
@@ -100,15 +105,22 @@ class DmaMapModelTests(unittest.TestCase):
             report = json.loads(output.read_text(encoding="utf-8"))
             self.assertTrue(report["passed"])
             self.assertTrue(report["candidate"]["static_dt_translation_model_proven"])
-            self.assertFalse(report["candidate"]["runtime_dma_range_entries_proven"])
-            self.assertFalse(report["candidate"]["raw_dma_equals_cpu_pa_proven"])
-            self.assertFalse(report["candidate"]["direct_route_receipt_issuable"])
-            self.assertEqual(report["bounce"]["disposition"], "unknown")
+            self.assertTrue(report["candidate"]["runtime_dma_range_entries_proven"])
+            self.assertTrue(report["candidate"]["raw_dma_equals_cpu_pa_proven"])
+            self.assertTrue(report["candidate"]["direct_route_receipt_issuable"])
+            self.assertEqual(
+                report["bounce"]["disposition"],
+                "inactive-not-forced-no-bounce-observed",
+            )
             self.assertTrue(report["bounce"]["sample_no_swiotlb"])
+            self.assertFalse(report["bounce"]["swiotlb_pool_active"])
+            self.assertFalse(report["bounce"]["swiotlb_force_bounce"])
+            self.assertTrue(report["bounce"]["observed_direct_route_proven"])
             self.assertFalse(report["bounce"]["global_bounce_disposition_proven"])
             self.assertFalse(report["bounce"]["bounce_route_receipt_issuable"])
             self.assertFalse(report["safety"]["physical_backend_enabled"])
-            self.assertEqual(report["bounce"]["sample_segments"], 17437)
+            self.assertEqual(report["bounce"]["sample_segments"], 34162)
+            self.assertEqual(report["bounce"]["bounded_window_segments"], 29452)
             self.assertEqual(report["candidate"]["windows"], [{
                 "bytes": "0x1000000000",
                 "cpu_start": "0x0",
@@ -122,6 +134,7 @@ class DmaMapModelTests(unittest.TestCase):
                     "--fdt", str(FDT),
                     "--runtime-evidence", str(RUNTIME),
                     "--prdt-evidence", str(PRDT),
+                    "--prdt-v3-evidence", str(PRDT_V3),
                 ],
                 cwd=REPO,
                 text=True,

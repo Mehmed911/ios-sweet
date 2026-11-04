@@ -44,3 +44,7 @@ This local result does not contain runtime values and does not prove firmware
 or resource ownership, cache-maintenance correctness, or safe physical UFS
 access from XNU. Loading the module on the phone remains a separate operation
 that requires fresh explicit approval for this exact artifact hash.
+
+That separate approved operation later passed. Its immutable result and scope
+are documented in `PHONE-TEST-2026-11-04.md` and
+`PHONE-RESULT-2026-11-04.json`; the local build result above remains unchanged.

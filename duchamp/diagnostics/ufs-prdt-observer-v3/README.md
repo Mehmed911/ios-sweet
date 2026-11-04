@@ -31,3 +31,10 @@ with SHA-256
 Its static-verification receipt is under
 `work/duchamp-ufs-prdt-observer-v3-local-only/verification-v3/verification.json`.
 See `BUILD-RESULT-2026-11-04.md` for the exact local test result and limits.
+
+The separately approved live run also passed. It captured one stable 64-GiB
+identity DMA range, raw DMA equal to original physical addresses for all
+34,162 observed segments, an inactive/non-forced SWIOTLB pool and zero bounced
+segments. Cleanup was complete. See `PHONE-TEST-2026-11-04.md` and the pinned
+`PHONE-RESULT-2026-11-04.json`. This closes the observed Linux PA-to-DMA route;
+it does not close firmware/resource ownership or XNU cache maintenance.

@@ -40,6 +40,9 @@ def tracked_inputs(repo):
         repo / "tools/inspect-duchamp-hardware.py",
         repo / "tools/assess-mt6897-ufs-dma-map.py",
         repo / "tools/test-mt6897-ufs-dma-map.py",
+        repo / "tools/interpret-duchamp-prdt-v3-observation.py",
+        repo / "tools/test-interpret-duchamp-prdt-v3-observation.py",
+        repo / "duchamp/diagnostics/ufs-prdt-observer-v3/PHONE-RESULT-2026-11-04.json",
         repo / "tools/assess-mt6897-ufs-resource-ownership.py",
         repo / "tools/test-mt6897-ufs-resource-ownership.py",
         repo / "tools/report-duchamp-mt6897-ownership.py",
@@ -122,6 +125,7 @@ def main():
     parser.add_argument("--runtime-evidence", type=Path, required=True)
     parser.add_argument("--firmware-evidence", type=Path, required=True)
     parser.add_argument("--prdt-evidence", type=Path, required=True)
+    parser.add_argument("--prdt-v3-evidence", type=Path, required=True)
     parser.add_argument("--jobs", type=int, default=7)
     parser.add_argument("--timeout-seconds", type=int, default=120)
     args = parser.parse_args()
@@ -143,6 +147,7 @@ def main():
     runtime_evidence = args.runtime_evidence.resolve()
     firmware_evidence = args.firmware_evidence.resolve()
     prdt_evidence = args.prdt_evidence.resolve()
+    prdt_v3_evidence = args.prdt_v3_evidence.resolve()
     if sha256(fdt) != FDT_SHA256:
         parser.error("saved Duchamp DTB provenance differs")
 
@@ -154,6 +159,7 @@ def main():
         "runtime_evidence": sha256(runtime_evidence),
         "firmware_evidence": sha256(firmware_evidence),
         "prdt_evidence": sha256(prdt_evidence),
+        "prdt_v3_evidence": sha256(prdt_v3_evidence),
     }
     started = time.monotonic()
     output.mkdir(parents=True)
@@ -288,6 +294,7 @@ def main():
             "--fdt", str(fdt),
             "--runtime-evidence", str(runtime_evidence),
             "--prdt-evidence", str(prdt_evidence),
+            "--prdt-v3-evidence", str(prdt_v3_evidence),
         ],
         "ufs_resource_ownership_tests": [
             sys.executable,
@@ -487,18 +494,30 @@ def main():
         if (dma_map_translation.get(
                 "static_dt_translation_model_proven") is not True or
                 dma_map_translation.get(
-                    "runtime_dma_range_entries_proven") is not False or
+                    "runtime_dma_range_entries_proven") is not True or
                 dma_map_translation.get(
-                    "raw_dma_equals_cpu_pa_proven") is not False or
+                    "raw_dma_equals_cpu_pa_proven") is not True or
                 dma_map_translation.get(
-                    "direct_route_receipt_issuable") is not False or
-                dma_map_bounce.get("disposition") != "unknown" or
+                    "forward_and_inverse_translation_proven") is not True or
+                dma_map_translation.get(
+                    "direct_route_receipt_issuable") is not True or
+                dma_map_translation.get("receipt_scope") !=
+                    "observed Linux UFS address route" or
+                dma_map_bounce.get("disposition") !=
+                    "inactive-not-forced-no-bounce-observed" or
+                dma_map_bounce.get("swiotlb_pool_present") is not True or
+                dma_map_bounce.get("swiotlb_pool_active") is not False or
+                dma_map_bounce.get("swiotlb_force_bounce") is not False or
                 dma_map_bounce.get("sample_no_swiotlb") is not True or
+                dma_map_bounce.get("sample_segments") != 34162 or
+                dma_map_bounce.get("bounded_window_segments") != 29452 or
+                dma_map_bounce.get(
+                    "observed_direct_route_proven") is not True or
                 dma_map_bounce.get(
                     "global_bounce_disposition_proven") is not False or
                 dma_map_bounce.get(
                     "bounce_route_receipt_issuable") is not False):
-            raise ValueError("UFS DMA-map candidate promoted saved evidence")
+            raise ValueError("UFS DMA-map live evidence differs")
         for key in ("phone_access", "mmio_access", "smc_execution",
                     "dma_or_ufs_commands", "partition_access",
                     "physical_backend_enabled"):
@@ -831,10 +850,36 @@ def main():
                 "raw_dma_equals_cpu_pa_proven": dma_map_translation[
                     "raw_dma_equals_cpu_pa_proven"
                 ],
+                "forward_and_inverse_translation_proven":
+                    dma_map_translation[
+                        "forward_and_inverse_translation_proven"
+                    ],
+                "direct_route_receipt_issuable": dma_map_translation[
+                    "direct_route_receipt_issuable"
+                ],
+                "receipt_scope": dma_map_translation["receipt_scope"],
+                "swiotlb_pool_present": dma_map_bounce[
+                    "swiotlb_pool_present"
+                ],
+                "swiotlb_pool_active": dma_map_bounce[
+                    "swiotlb_pool_active"
+                ],
+                "swiotlb_force_bounce": dma_map_bounce[
+                    "swiotlb_force_bounce"
+                ],
                 "sample_no_swiotlb": dma_map_bounce[
                     "sample_no_swiotlb"
                 ],
                 "sample_segments": dma_map_bounce["sample_segments"],
+                "bounded_window_segments": dma_map_bounce[
+                    "bounded_window_segments"
+                ],
+                "observed_direct_route_proven": dma_map_bounce[
+                    "observed_direct_route_proven"
+                ],
+                "global_bounce_disposition_proven": dma_map_bounce[
+                    "global_bounce_disposition_proven"
+                ],
                 "bounce_disposition": dma_map_bounce["disposition"],
                 "physical_backend": "disabled",
             },
@@ -889,6 +934,7 @@ def main():
         "runtime_evidence": sha256(runtime_evidence),
         "firmware_evidence": sha256(firmware_evidence),
         "prdt_evidence": sha256(prdt_evidence),
+        "prdt_v3_evidence": sha256(prdt_v3_evidence),
     }
     passed = failure is None and inputs_unchanged
     if not inputs_unchanged and failure is None:
@@ -909,11 +955,15 @@ def main():
                 "implemented fail-closed; exact MMIO/clock/reset/IRQ/PHY/"
                 "regulator manifest passes, but runtime ownership receipt is denied"
             ),
-            "ufs_dma_or_iommu_route": "unverified",
+            "ufs_dma_or_iommu_route": (
+                "validated for the observed Linux UFS workload: live 64-GiB "
+                "identity map, raw DMA equals PA, forward/inverse translation, "
+                "and no SWIOTLB segment observed"
+            ),
             "ufs_dma_route_contract": (
-                "implemented fail-closed; saved DT translation candidate "
-                "passes, but live PA-to-DMA and global bounce disposition "
-                "remain unverified"
+                "direct-route receipt is evidence-backed for the observed "
+                "Linux workload; global future bounce behavior, XNU cache "
+                "ownership and firmware/resource ownership remain unverified"
             ),
             "ufs_activation_lease_provider": (
                 "implemented fail-closed; no physical lease available"
@@ -936,7 +986,10 @@ def main():
             "flash_or_partition_write": False,
             "phone_execution_authorized": False,
         },
-        "scope": "saved-DTB parsing, host sanitizers and local ARM64/QEMU models only",
+        "scope": (
+            "pinned DT/runtime/live-PRDT evidence, host sanitizers and local "
+            "ARM64/QEMU models only"
+        ),
     }
     if failure is not None:
         report["failure"] = failure
