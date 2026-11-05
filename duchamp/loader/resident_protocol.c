@@ -31,13 +31,15 @@ copy_bytes(void *destination_pointer, const void *source_pointer, size_t size)
 	}
 }
 
-/* Mutation receipt, not an authentication primitive. */
-static uint64_t
-receipt(const void *pointer, size_t size)
+uint64_t
+duchamp_resident_receipt(const void *pointer, size_t size)
 {
 	const unsigned char *bytes = pointer;
 	uint64_t value = UINT64_C(1469598103934665603);
 	size_t index;
+	if (pointer == NULL && size != 0) {
+		return 0;
+	}
 	for (index = 0; index < size; index++) {
 		value ^= bytes[index];
 		value *= UINT64_C(1099511628211);
@@ -178,7 +180,7 @@ duchamp_resident_receive(struct duchamp_resident_loader *loader,
 	copy_bytes(loader->staging + loader->received_size, data, size);
 	loader->received_size += size;
 	if (loader->received_size == loader->expected_size) {
-		loader->payload_receipt = receipt(loader->staging,
+		loader->payload_receipt = duchamp_resident_receipt(loader->staging,
 		    loader->expected_size);
 		loader->state = DUCHAMP_RESIDENT_READY;
 	}
@@ -206,7 +208,7 @@ duchamp_resident_run(struct duchamp_resident_loader *loader,
 	    context == NULL) {
 		return fail(loader, DUCHAMP_RESIDENT_ARGUMENT);
 	}
-	if (receipt(loader->staging, loader->expected_size) !=
+	if (duchamp_resident_receipt(loader->staging, loader->expected_size) !=
 	    loader->payload_receipt) {
 		return fail(loader, DUCHAMP_RESIDENT_RECEIPT);
 	}
@@ -249,7 +251,8 @@ duchamp_resident_complete(struct duchamp_resident_loader *loader,
 	}
 	loader->result_size = result_size;
 	loader->result_code = code;
-	loader->result_receipt = receipt(loader->result, result_size);
+	loader->result_receipt = duchamp_resident_receipt(loader->result,
+	    result_size);
 	loader->last_error = DUCHAMP_RESIDENT_OK;
 	loader->state = DUCHAMP_RESIDENT_RETURNED;
 	return DUCHAMP_RESIDENT_OK;

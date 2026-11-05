@@ -46,3 +46,8 @@ This milestone does not provide a phone transport.  HakiOS's Qualcomm UEFI USB
 backend is not reusable on MT6897.  A future MT6897 provider must be based on a
 documented LK/firmware or MTU3 gadget contract and remain separate from this
 core.
+
+The first such provider is the inherited-RAM path documented in
+`MT6897-LK-TRANSPORT.md`.  It consumes an immutable capsule that LK has already
+loaded with a temporary boot image.  It deliberately does not claim or call a
+resident LK USB ABI.

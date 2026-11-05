@@ -85,6 +85,9 @@ struct duchamp_resident_result_view {
 	size_t size;
 };
 
+/* Mutation receipt used by the staging protocol; it is not authentication. */
+uint64_t duchamp_resident_receipt(const void *data, size_t size);
+
 unsigned duchamp_resident_init(struct duchamp_resident_loader *loader,
 	void *staging, size_t staging_capacity,
 	void *result, size_t result_capacity, uint64_t generation);
