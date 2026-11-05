@@ -71,6 +71,14 @@ The comparison above was made against these saved source snapshots:
 Those revisions are reference evidence only.  None supplies an MT6897 LK or
 UEFI callback contract that satisfies the conditions below.
 
+The current UniXNU core and two real MediaTek ports were also inspected.  The
+generic BootShim/UEFI/DarwinBoot chain still requires the stock bootloader to
+enter BootShim.  Ruby/MT6877 flashes `boot_a`, while Merlinx/MT6768 flashes its
+p33/boot partition because its bootloader also rejects `fastboot boot`.
+Neither is a no-write provider for Duchamp.  The pinned source comparison,
+device-address matrix and offline audit are recorded in
+[UNIXNU-MEDIATEK-REUSE.md](../UNIXNU-MEDIATEK-REUSE.md).
+
 ## Conditions for opening the gate
 
 A future provider is eligible only when all of these are backed by a saved,
