@@ -162,6 +162,12 @@ main(void)
 	callbacks.loader = &loader;
 	CHECK(duchamp_mt6897_lk_source_init(&source, capsule,
 	    sizeof(capsule)) == DUCHAMP_TRANSPORT_OK);
+	{
+		struct duchamp_resident_source_description description;
+		CHECK(duchamp_mt6897_lk_source_describe(&source, &description) == 0 &&
+		    description.generation == 7 &&
+		    description.payload_size == sizeof(payload));
+	}
 	CHECK(duchamp_resident_transport_init(&transport, &loader, &run_ops,
 	    &callbacks, &duchamp_mt6897_lk_source_ops, &source, scratch,
 	    sizeof(scratch)) == DUCHAMP_TRANSPORT_OK);

@@ -135,7 +135,14 @@ main(int argc, char **argv)
 	context.xnu.framebuffer.height = 2712;
 	context.xnu.framebuffer.depth = 32;
 	context.xnu.window = window;
+	context.xnu.window_physical = UINT64_C(0x1c0000000);
 	context.xnu.window_size = WINDOW_SIZE;
+	memcpy(staging, source, payload_size);
+	context.xnu.window_physical++;
+	CHECK(duchamp_resident_xnu_prepare(&context.xnu, staging,
+	    payload_size, &(struct duchamp_resident_target){0}) ==
+	    DUCHAMP_GUARD_PLATFORM);
+	context.xnu.window_physical--;
 	CHECK(duchamp_resident_init(&loader, staging, payload_size, result_buffer,
 	    sizeof(result_buffer), 0x20261105) == 0);
 	CHECK(duchamp_resident_begin(&loader, payload_size) == 0);
@@ -183,6 +190,7 @@ main(int argc, char **argv)
 	context.xnu.framebuffer.height = 2712;
 	context.xnu.framebuffer.depth = 32;
 	context.xnu.window = window;
+	context.xnu.window_physical = UINT64_C(0x1c0000000);
 	context.xnu.window_size = WINDOW_SIZE;
 	CHECK(duchamp_resident_init(&loader, staging, payload_size, result_buffer,
 	    sizeof(result_buffer), 0x20261106) == 0 &&

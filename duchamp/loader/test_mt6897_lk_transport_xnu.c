@@ -134,6 +134,7 @@ main(int argc, char **argv)
 	context.xnu.framebuffer.height = 2712;
 	context.xnu.framebuffer.depth = 32;
 	context.xnu.window = window;
+	context.xnu.window_physical = UINT64_C(0x1c0000000);
 	context.xnu.window_size = WINDOW_SIZE;
 	CHECK(duchamp_resident_init(&loader, staging, payload_size,
 	    result_buffer, sizeof(result_buffer), generation) == 0);

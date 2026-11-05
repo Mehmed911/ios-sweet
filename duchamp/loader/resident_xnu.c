@@ -1,5 +1,16 @@
 #include "resident_xnu.h"
 
+static uint64_t
+read_le64(const unsigned char *bytes)
+{
+	uint64_t value = 0;
+	unsigned index;
+	for (index = 0; index < 8; index++) {
+		value |= (uint64_t)bytes[index] << (index * 8);
+	}
+	return value;
+}
+
 static int
 add_ok(uint64_t first, uint64_t second, uint64_t *sum)
 {
@@ -51,7 +62,8 @@ duchamp_resident_xnu_prepare(void *context_pointer, const void *payload,
 	    payload_size == 0 || payload_size > context->staging_capacity ||
 	    context->staging_physical == 0 ||
 	    (context->staging_physical & UINT64_C(0x3fff)) != 0 ||
-	    context->window == NULL || context->window_size == 0 ||
+	    context->window == NULL || context->window_physical == 0 ||
+	    context->window_size == 0 ||
 	    context->occupied_count > DUCHAMP_RESIDENT_MAX_OCCUPIED - 2 ||
 	    (context->occupied_count != 0 && context->occupied == NULL) ||
 	    !add_ok(context->fdt_physical, context->fdt_size, &end) ||
@@ -59,6 +71,14 @@ duchamp_resident_xnu_prepare(void *context_pointer, const void *payload,
 	    overlaps(context->fdt_physical, context->fdt_size,
 	    context->staging_physical, payload_size)) {
 		return DUCHAMP_GUARD_ARGUMENT;
+	}
+	if (payload_size < 0x48 ||
+	    read_le64((const unsigned char *)payload + 0x38) !=
+	    context->window_physical ||
+	    read_le64((const unsigned char *)payload + 0x40) !=
+	    context->window_size) {
+		context->prepare_result = DUCHAMP_GUARD_PLATFORM;
+		return DUCHAMP_GUARD_PLATFORM;
 	}
 	for (index = 0; index < context->occupied_count; index++) {
 		uint64_t occupied_end;

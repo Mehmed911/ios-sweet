@@ -51,18 +51,18 @@ duchamp_mt6897_lk_source_init(struct duchamp_mt6897_lk_source *source,
 	return DUCHAMP_TRANSPORT_OK;
 }
 
-static unsigned
-describe(void *context_pointer,
+unsigned
+duchamp_mt6897_lk_source_describe(
+	struct duchamp_mt6897_lk_source *source,
 	struct duchamp_resident_source_description *description)
 {
-	struct duchamp_mt6897_lk_source *source = context_pointer;
 	const unsigned char *header;
 	uint64_t total_size, generation, payload_offset, payload_size;
 	uint64_t payload_receipt, flags;
 
 	if (source == NULL || description == NULL || source->capsule == NULL ||
 	    source->capsule_size < DUCHAMP_MT6897_LK_CAPSULE_HEADER_SIZE ||
-	    source->described != 0) {
+	    source->read_offset != 0 || source->read_calls != 0) {
 		return DUCHAMP_TRANSPORT_ARGUMENT;
 	}
 	header = source->capsule;
@@ -101,6 +101,13 @@ describe(void *context_pointer,
 	description->backing = source->capsule;
 	description->backing_size = source->capsule_size;
 	return DUCHAMP_TRANSPORT_OK;
+}
+
+static unsigned
+describe(void *context_pointer,
+	struct duchamp_resident_source_description *description)
+{
+	return duchamp_mt6897_lk_source_describe(context_pointer, description);
 }
 
 static unsigned

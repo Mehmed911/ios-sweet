@@ -23,6 +23,9 @@ struct duchamp_mt6897_lk_source {
 unsigned duchamp_mt6897_lk_source_init(
 	struct duchamp_mt6897_lk_source *source,
 	const void *capsule, size_t capsule_size);
+unsigned duchamp_mt6897_lk_source_describe(
+	struct duchamp_mt6897_lk_source *source,
+	struct duchamp_resident_source_description *description);
 
 extern const struct duchamp_resident_source_ops
     duchamp_mt6897_lk_source_ops;

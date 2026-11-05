@@ -17,6 +17,7 @@ struct duchamp_resident_xnu_context {
 	unsigned occupied_count;
 	struct duchamp_framebuffer framebuffer;
 	void *window;
+	uint64_t window_physical;
 	size_t window_size;
 	struct duchamp_dry_run_plan completed_plan;
 	unsigned prepare_result;
