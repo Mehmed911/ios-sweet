@@ -60,6 +60,11 @@ scratch memory, so a provider cannot overwrite its own input while copying.
 Any failure terminally closes that transport instance; using it again requires
 a fresh RAM boot.
 
+This provider starts only after another component has already entered the
+loader and supplied the capsule in inherited RAM.  It is not a phone-side
+entry mechanism.  The exact LK Fastboot registry and the current fail-closed
+entry decision are documented in [MT6897-RAM-LAUNCH.md](MT6897-RAM-LAUNCH.md).
+
 ## Local verification
 
 From WSL, with a new output directory:
