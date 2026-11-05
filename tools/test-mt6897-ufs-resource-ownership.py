@@ -25,6 +25,11 @@ FIRMWARE_IDENTITY = (
     / "duchamp/diagnostics/bl31-runtime-identity/"
       "VERIFICATION-2026-11-04.json"
 )
+FIRMWARE_SIP_ABI = (
+    REPO
+    / "duchamp/diagnostics/ufs-sip-abi/"
+      "VERIFICATION-2026-11-05.json"
+)
 
 SPEC = importlib.util.spec_from_file_location("mt6897_ufs_resource_ownership", TOOL)
 if SPEC is None or SPEC.loader is None:
@@ -38,7 +43,8 @@ class ResourceOwnershipTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.report = MODULE.build_report(
-            REPO, FDT, RUNTIME, FIRMWARE, LIVE_RUNTIME, FIRMWARE_IDENTITY
+            REPO, FDT, RUNTIME, FIRMWARE, LIVE_RUNTIME, FIRMWARE_IDENTITY,
+            FIRMWARE_SIP_ABI
         )
 
     def test_exact_mmio_manifest_is_declaration_only(self):
@@ -91,12 +97,15 @@ class ResourceOwnershipTests(unittest.TestCase):
         self.assertFalse(self.report["runtime_proofs"]["ufs_interrupt_ownership"])
 
     def test_runtime_identity_does_not_promote_effects_or_ownership(self):
+        self.assertEqual(self.report["report_version"], 2)
         firmware = self.report["firmware_contract"]
         self.assertTrue(firmware["captured_bl31_artifact_pinned"])
         self.assertTrue(firmware["static_service_dispatch_proven"])
         self.assertEqual(firmware["service_id"], "0xc2000276")
         self.assertEqual(firmware["selectors"], MODULE.UFS_SELECTORS)
         self.assertTrue(firmware["installed_firmware_identity_proven"])
+        self.assertTrue(firmware["installed_client_binary_identity_proven"])
+        self.assertTrue(firmware["static_end_to_end_sip_abi_proven"])
         self.assertEqual(
             firmware["identity_match_strength"], "runtime identity strings"
         )
@@ -106,6 +115,18 @@ class ResourceOwnershipTests(unittest.TestCase):
         self.assertFalse(firmware["runtime_effect_contract_proven"])
         self.assertFalse(firmware["exclusive_owner_proven"])
         self.assertFalse(firmware["direct_xnu_secure_power_mmio_authorized"])
+
+    def test_tampered_sip_abi_evidence_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            changed = Path(temporary) / "sip-abi-changed.json"
+            changed.write_bytes(FIRMWARE_SIP_ABI.read_bytes() + b"\n")
+            with self.assertRaisesRegex(
+                ValueError, "firmware SiP ABI evidence hash differs"
+            ):
+                MODULE.build_report(
+                    REPO, FDT, RUNTIME, FIRMWARE, LIVE_RUNTIME,
+                    FIRMWARE_IDENTITY, changed
+                )
 
     def test_current_evidence_denies_every_physical_callback(self):
         receipt = self.report["ownership_receipt"]
@@ -152,6 +173,7 @@ class ResourceOwnershipTests(unittest.TestCase):
                 "--firmware-evidence", str(FIRMWARE),
                 "--live-runtime-evidence", str(LIVE_RUNTIME),
                 "--firmware-identity-evidence", str(FIRMWARE_IDENTITY),
+                "--firmware-sip-abi-evidence", str(FIRMWARE_SIP_ABI),
             ]
             result = subprocess.run(
                 command, cwd=REPO, text=True,
@@ -182,6 +204,7 @@ class ResourceOwnershipTests(unittest.TestCase):
                     "--firmware-evidence", str(FIRMWARE),
                     "--live-runtime-evidence", str(LIVE_RUNTIME),
                     "--firmware-identity-evidence", str(FIRMWARE_IDENTITY),
+                    "--firmware-sip-abi-evidence", str(FIRMWARE_SIP_ABI),
                 ],
                 cwd=REPO, text=True,
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30,

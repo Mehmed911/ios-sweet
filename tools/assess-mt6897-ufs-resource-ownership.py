@@ -20,13 +20,16 @@ from pathlib import Path
 import sys
 
 
-REPORT_VERSION = 1
+REPORT_VERSION = 2
 FDT_SHA256 = "9c49589f70044127be8941a9ea5537977f440ccd5ac15cfd24e120c8a1181d29"
 RUNTIME_SHA256 = "71236c08c0354ff0733d44a64e505d117dfd4594e370bedd81fad3ec93d1bf4d"
 FIRMWARE_SHA256 = "65e4a5cdd2085c2e2bb48ad9829109f8e39b7a260669074ab59427419b5d110c"
 LIVE_RUNTIME_SHA256 = "fb1fa60b1b6df4f50f7794520be959ba7997f9433cea0f23dc818df9b5681660"
 FIRMWARE_IDENTITY_SHA256 = (
     "1a9060eec770e72f70d1e51b2d0e8b86ab5be45b0ccd6ca73ca6b345171dcba2"
+)
+FIRMWARE_SIP_ABI_SHA256 = (
+    "54c963ea6895717b937c1793685f2ebd70c48f9969ff168b2e63d6621accf103"
 )
 
 UFS_SERVICE_ID = "0xc2000276"
@@ -204,7 +207,8 @@ def evaluate_receipt(proofs):
 
 
 def build_report(repo, fdt_path, runtime_path, firmware_path,
-                 live_runtime_path, firmware_identity_path):
+                 live_runtime_path, firmware_identity_path,
+                 firmware_sip_abi_path):
     fdt_raw = fdt_path.read_bytes()
     require(sha256(fdt_raw) == FDT_SHA256, "DTB hash differs")
     runtime, runtime_bytes = load_json(
@@ -219,6 +223,10 @@ def build_report(repo, fdt_path, runtime_path, firmware_path,
     firmware_identity, firmware_identity_bytes = load_json(
         firmware_identity_path, FIRMWARE_IDENTITY_SHA256,
         "firmware identity evidence"
+    )
+    firmware_sip_abi, firmware_sip_abi_bytes = load_json(
+        firmware_sip_abi_path, FIRMWARE_SIP_ABI_SHA256,
+        "firmware SiP ABI evidence"
     )
     require(runtime.get("report_version") == 2 and
             runtime.get("audit_passed") is True,
@@ -254,6 +262,58 @@ def build_report(repo, fdt_path, runtime_path, firmware_path,
             identity_safety.get("partition_access") is False and
             identity_safety.get("physical_ufs_backend_enabled") is False,
             "firmware identity evidence safety differs")
+    sip_proofs = firmware_sip_abi.get("proofs", {})
+    sip_safety = firmware_sip_abi.get("safety", {})
+    sip_client = firmware_sip_abi.get("client", {})
+    sip_client_abi = sip_client.get("abi", {})
+    sip_firmware = firmware_sip_abi.get("firmware", {})
+    require(firmware_sip_abi.get("report_version") == 1 and
+            firmware_sip_abi.get("passed") is True and
+            firmware_sip_abi.get("verdict") ==
+                "running-client-build-id-to-captured-bl31-static-sip-abi-matched" and
+            sip_proofs.get("running_client_build_id_match_proven")
+                is True and
+            sip_proofs.get("running_client_byte_equivalence_proven")
+                is False and
+            sip_proofs.get("saved_client_smc_call_relocations_proven")
+                is True and
+            sip_proofs.get("saved_client_function_id_and_selectors_proven")
+                is True and
+            sip_proofs.get("captured_bl31_service_dispatch_proven")
+                is True and
+            sip_proofs.get("installed_bl31_runtime_identity_matched")
+                is True and
+            sip_proofs.get("static_end_to_end_sip_abi_proven") is True,
+            "firmware SiP ABI evidence did not pass")
+    require(sip_client.get("saved_module_sha256") ==
+                "7043e1109b4c356a914fdc92ffbe463c0c43cb27342f6ccce1517a2086b02493" and
+            sip_client.get("running_gnu_build_id") ==
+                "df7eecc22450fb6e6eceaaef4b3fe8ceb46b2a84" and
+            sip_client.get("running_to_saved_build_id_note_byte_match")
+                is True and
+            sip_client_abi.get("function_id") == UFS_SERVICE_ID and
+            sip_client_abi.get("selectors") == UFS_SELECTORS and
+            sip_firmware.get("fast64_function_id") == UFS_SERVICE_ID and
+            sip_firmware.get("selectors") == UFS_SELECTORS and
+            sip_firmware.get("running_bl31_identity") ==
+                firmware_identity.get("identity"),
+            "firmware SiP ABI payload differs")
+    require(sip_proofs.get(
+                "installed_binary_byte_equivalence_proven") is False and
+            sip_proofs.get(
+                "runtime_smc_effect_contract_proven") is False and
+            sip_proofs.get("firewall_state_proven") is False and
+            sip_proofs.get("xnu_firmware_abi_authorized") is False and
+            sip_proofs.get("physical_resource_ownership_proven") is False,
+            "firmware SiP ABI evidence overclaims its scope")
+    require(sip_safety.get("offline_inputs_only") is True and
+            sip_safety.get("phone_access_by_this_tool") is False and
+            sip_safety.get("smc_execution") is False and
+            sip_safety.get("mmio_access") is False and
+            sip_safety.get("firewall_probe") is False and
+            sip_safety.get("partition_access") is False and
+            sip_safety.get("physical_ufs_backend_enabled") is False,
+            "firmware SiP ABI evidence safety differs")
     live_safety = live_runtime.get("safety", {})
     require(live_safety.get("offline_analysis_only") is True and
             live_safety.get("read_only_inputs") is True and
@@ -433,6 +493,12 @@ def build_report(repo, fdt_path, runtime_path, firmware_path,
         "firmware_contract": {
             "captured_bl31_artifact_pinned": True,
             "static_service_dispatch_proven": True,
+            "installed_client_binary_identity_proven": True,
+            "static_end_to_end_sip_abi_proven": True,
+            "static_abi_scope": (
+                "installed UFS client build ID and raw SMC call sites matched "
+                "to captured BL31 dispatch with runtime identity strings"
+            ),
             "service_id": UFS_SERVICE_ID,
             "selectors": UFS_SELECTORS,
             "rtff_mtcmos_capability_observed": True,
@@ -484,6 +550,10 @@ def build_report(repo, fdt_path, runtime_path, firmware_path,
                 "sha256": FIRMWARE_IDENTITY_SHA256,
                 "bytes": firmware_identity_bytes,
             },
+            "firmware_sip_abi_evidence": {
+                "sha256": FIRMWARE_SIP_ABI_SHA256,
+                "bytes": firmware_sip_abi_bytes,
+            },
             "bounded_parser": str(parser_path.relative_to(repo)).replace("\\", "/"),
         },
         "safety": {
@@ -499,8 +569,9 @@ def build_report(repo, fdt_path, runtime_path, firmware_path,
             "physical_backend_enabled": False,
         },
         "scope": (
-            "offline declaration/static-firmware inventory only; a denied receipt is "
-            "the expected safe result until independent runtime ownership proofs exist"
+            "offline declaration and static installed-client-to-BL31 ABI "
+            "inventory only; a denied receipt is the expected safe result "
+            "until independent runtime effect and ownership proofs exist"
         ),
     }
 
@@ -513,6 +584,8 @@ def main():
     parser.add_argument("--firmware-evidence", type=Path, required=True)
     parser.add_argument("--live-runtime-evidence", type=Path, required=True)
     parser.add_argument("--firmware-identity-evidence", type=Path,
+                        required=True)
+    parser.add_argument("--firmware-sip-abi-evidence", type=Path,
                         required=True)
     args = parser.parse_args()
 
@@ -527,6 +600,7 @@ def main():
         args.firmware_evidence.resolve(strict=True),
         args.live_runtime_evidence.resolve(strict=True),
         args.firmware_identity_evidence.resolve(strict=True),
+        args.firmware_sip_abi_evidence.resolve(strict=True),
     )
     descriptor = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(descriptor, "w", encoding="utf-8") as stream:

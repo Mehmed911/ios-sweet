@@ -43,6 +43,15 @@ def tracked_inputs(repo):
             "ATF-LOG-2026-11-01.txt",
         repo / "duchamp/diagnostics/bl31-runtime-identity/"
             "VERIFICATION-2026-11-04.json",
+        repo / "tools/verify-duchamp-ufs-sip-abi.py",
+        repo / "tools/test-verify-duchamp-ufs-sip-abi.py",
+        repo / "duchamp/diagnostics/ufs-sip-abi/"
+            "VERIFICATION-2026-11-05.json",
+        repo / "research/mt6897-contract/audit-v3/result.json",
+        repo / "research/mt6897-contract/audit-v3/ufs-mediatek-mod.ko",
+        repo / "research/mt6897-live-evidence/14480520-210535/"
+            "ufs-module-build-id.note",
+        repo / "research/mt6897-firmware-live/20261101-v1/atf.bin",
         repo / "research/mt6897-firmware-live/20261101-v1/tee_a.bin",
         repo / "research/mt6897-shell-runtime/"
             "read-only-20261101-maxspeed-v1/"
@@ -175,6 +184,25 @@ def main():
         / "duchamp/diagnostics/bl31-runtime-identity/"
           "VERIFICATION-2026-11-04.json"
     ).resolve()
+    firmware_sip_abi_evidence = (
+        repo
+        / "duchamp/diagnostics/ufs-sip-abi/"
+          "VERIFICATION-2026-11-05.json"
+    ).resolve()
+    saved_ufs_audit = (
+        repo / "research/mt6897-contract/audit-v3/result.json"
+    ).resolve()
+    saved_ufs_module = (
+        repo / "research/mt6897-contract/audit-v3/ufs-mediatek-mod.ko"
+    ).resolve()
+    runtime_ufs_build_id_note = (
+        repo
+        / "research/mt6897-live-evidence/14480520-210535/"
+          "ufs-module-build-id.note"
+    ).resolve()
+    bl31_atf = (
+        repo / "research/mt6897-firmware-live/20261101-v1/atf.bin"
+    ).resolve()
     bl31_tee = (
         repo / "research/mt6897-firmware-live/20261101-v1/tee_a.bin"
     ).resolve()
@@ -203,6 +231,11 @@ def main():
         "prdt_v3_evidence": sha256(prdt_v3_evidence),
         "resource_live_runtime": sha256(resource_live_runtime),
         "firmware_identity_evidence": sha256(firmware_identity_evidence),
+        "firmware_sip_abi_evidence": sha256(firmware_sip_abi_evidence),
+        "saved_ufs_audit": sha256(saved_ufs_audit),
+        "saved_ufs_module": sha256(saved_ufs_module),
+        "runtime_ufs_build_id_note": sha256(runtime_ufs_build_id_note),
+        "bl31_atf": sha256(bl31_atf),
         "bl31_tee": sha256(bl31_tee),
         "bl31_runtime_log": sha256(bl31_runtime_log),
         "bl31_runtime_report": sha256(bl31_runtime_report),
@@ -347,6 +380,22 @@ def main():
             str(bl31_runtime_report),
             str(output / "bl31-identity/result.json"),
         ],
+        "ufs_sip_abi_tests": [
+            sys.executable,
+            str(repo / "tools/test-verify-duchamp-ufs-sip-abi.py"),
+        ],
+        "ufs_sip_abi": [
+            sys.executable,
+            str(repo / "tools/verify-duchamp-ufs-sip-abi.py"),
+            str(saved_ufs_audit),
+            str(resource_live_runtime),
+            str(firmware_evidence),
+            str(firmware_identity_evidence),
+            str(saved_ufs_module),
+            str(runtime_ufs_build_id_note),
+            str(bl31_atf),
+            str(output / "ufs-sip-abi/result.json"),
+        ],
         "ufs_dma_route_contract": [
             sys.executable,
             str(repo / "tools/test-mt6897-ufs-dma-route.py"),
@@ -379,6 +428,8 @@ def main():
             "--live-runtime-evidence", str(resource_live_runtime),
             "--firmware-identity-evidence",
             str(firmware_identity_evidence),
+            "--firmware-sip-abi-evidence",
+            str(firmware_sip_abi_evidence),
         ],
         "ownership": [
             sys.executable,
@@ -424,6 +475,12 @@ def main():
         cache_backend = load_pass(output / "ufs-cache-backend/result.json")
         cache_xnu_qemu = load_pass(output / "ufs-cache-xnu-qemu/result.json")
         bl31_identity = load_pass(output / "bl31-identity/result.json")
+        ufs_sip_abi = load_pass(output / "ufs-sip-abi/result.json")
+        pinned_ufs_sip_abi = json.loads(
+            firmware_sip_abi_evidence.read_text(encoding="utf-8")
+        )
+        if ufs_sip_abi != pinned_ufs_sip_abi:
+            raise ValueError("generated and pinned UFS SiP ABI reports differ")
         dma_route_contract = load_pass(
             output / "ufs-dma-route-contract/result.json"
         )
@@ -594,6 +651,42 @@ def main():
                 bl31_safety.get(
                     "physical_ufs_backend_enabled") is not False):
             raise ValueError("unsafe BL31 runtime identity evidence")
+        sip_proofs = ufs_sip_abi.get("proofs", {})
+        sip_safety = ufs_sip_abi.get("safety", {})
+        if (ufs_sip_abi.get("verdict") !=
+                "running-client-build-id-to-captured-bl31-static-sip-abi-matched" or
+                sip_proofs.get(
+                    "running_client_build_id_match_proven") is not True or
+                sip_proofs.get(
+                    "running_client_byte_equivalence_proven") is not False or
+                sip_proofs.get(
+                    "saved_client_smc_call_relocations_proven") is not True or
+                sip_proofs.get(
+                    "saved_client_function_id_and_selectors_proven") is not True or
+                sip_proofs.get(
+                    "captured_bl31_service_dispatch_proven") is not True or
+                sip_proofs.get(
+                    "installed_bl31_runtime_identity_matched") is not True or
+                sip_proofs.get(
+                    "static_end_to_end_sip_abi_proven") is not True or
+                sip_proofs.get(
+                    "installed_binary_byte_equivalence_proven") is not False or
+                sip_proofs.get(
+                    "runtime_smc_effect_contract_proven") is not False or
+                sip_proofs.get("firewall_state_proven") is not False or
+                sip_proofs.get("xnu_firmware_abi_authorized") is not False or
+                sip_proofs.get(
+                    "physical_resource_ownership_proven") is not False):
+            raise ValueError("UFS SiP ABI evidence differs")
+        if (sip_safety.get("offline_inputs_only") is not True or
+                sip_safety.get("phone_access_by_this_tool") is not False or
+                sip_safety.get("smc_execution") is not False or
+                sip_safety.get("mmio_access") is not False or
+                sip_safety.get("firewall_probe") is not False or
+                sip_safety.get("partition_access") is not False or
+                sip_safety.get(
+                    "physical_ufs_backend_enabled") is not False):
+            raise ValueError("unsafe UFS SiP ABI evidence")
         dma_route_native = dma_route_contract.get("native", {})
         dma_route_arm64 = dma_route_contract.get("arm64_qemu_model", {})
         dma_route_concurrency = dma_route_contract.get("concurrency", {})
@@ -696,6 +789,10 @@ def main():
                 resource_declarations.get("iommu_binding_present") is not False):
             raise ValueError("UFS resource declaration manifest differs")
         if (resource_firmware.get("static_service_dispatch_proven") is not True or
+                resource_firmware.get(
+                    "installed_client_binary_identity_proven") is not True or
+                resource_firmware.get(
+                    "static_end_to_end_sip_abi_proven") is not True or
                 resource_firmware.get("service_id") != "0xc2000276" or
                 resource_firmware.get(
                     "installed_firmware_identity_proven") is not True or
@@ -887,6 +984,28 @@ def main():
                 ],
                 "physical_resource_ownership": bl31_proofs[
                     "physical_resource_ownership_proven"
+                ],
+            },
+            "ufs_sip_abi": {
+                "tests_passed": components["ufs_sip_abi_tests"]["passed"],
+                "verdict": ufs_sip_abi["verdict"],
+                "running_client_build_id_matches_saved_module": sip_proofs[
+                    "running_client_build_id_match_proven"
+                ],
+                "running_client_byte_equivalence": sip_proofs[
+                    "running_client_byte_equivalence_proven"
+                ],
+                "static_end_to_end_abi": sip_proofs[
+                    "static_end_to_end_sip_abi_proven"
+                ],
+                "runtime_smc_effect_contract": sip_proofs[
+                    "runtime_smc_effect_contract_proven"
+                ],
+                "firewall_state_proven": sip_proofs[
+                    "firewall_state_proven"
+                ],
+                "xnu_firmware_abi_authorized": sip_proofs[
+                    "xnu_firmware_abi_authorized"
                 ],
             },
             "ufs_clocks": {
@@ -1081,6 +1200,12 @@ def main():
                 "captured_bl31_static_dispatch": resource_firmware[
                     "static_service_dispatch_proven"
                 ],
+                "installed_client_binary_identity": resource_firmware[
+                    "installed_client_binary_identity_proven"
+                ],
+                "static_end_to_end_sip_abi": resource_firmware[
+                    "static_end_to_end_sip_abi_proven"
+                ],
                 "installed_bl31_runtime_identity": resource_firmware[
                     "installed_firmware_identity_proven"
                 ],
@@ -1139,6 +1264,11 @@ def main():
         "prdt_v3_evidence": sha256(prdt_v3_evidence),
         "resource_live_runtime": sha256(resource_live_runtime),
         "firmware_identity_evidence": sha256(firmware_identity_evidence),
+        "firmware_sip_abi_evidence": sha256(firmware_sip_abi_evidence),
+        "saved_ufs_audit": sha256(saved_ufs_audit),
+        "saved_ufs_module": sha256(saved_ufs_module),
+        "runtime_ufs_build_id_note": sha256(runtime_ufs_build_id_note),
+        "bl31_atf": sha256(bl31_atf),
         "bl31_tee": sha256(bl31_tee),
         "bl31_runtime_log": sha256(bl31_runtime_log),
         "bl31_runtime_report": sha256(bl31_runtime_report),
@@ -1158,8 +1288,9 @@ def main():
             "runtime_timer_and_interrupt_delivery": "unverified",
             "gic_and_firmware_resource_ownership": "unverified",
             "installed_firmware_contract": (
-                "runtime BL31 identity strings match the analyzed tee_a "
-                "sample; byte equivalence and SMC effect contract remain "
+                "the running UFS client is bound to the saved vendor module "
+                "and its static SiP ABI matches the captured BL31 service; "
+                "byte equivalence, SMC effects and firewall state remain "
                 "unverified"
             ),
             "ufs_resource_ownership_receipt": (

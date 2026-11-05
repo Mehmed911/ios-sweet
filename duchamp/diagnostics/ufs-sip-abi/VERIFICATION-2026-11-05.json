@@ -1,0 +1,158 @@
+{
+  "report_version": 1,
+  "passed": true,
+  "target": {
+    "device": "duchamp",
+    "soc": "mt6897",
+    "engine": "ufs"
+  },
+  "client": {
+    "running_module": "ufs_mediatek_mod",
+    "running_gnu_build_id": "df7eecc22450fb6e6eceaaef4b3fe8ceb46b2a84",
+    "saved_module_sha256": "7043e1109b4c356a914fdc92ffbe463c0c43cb27342f6ccce1517a2086b02493",
+    "saved_module_bytes": 14657944,
+    "running_to_saved_build_id_note_byte_match": true,
+    "smccc_call_relocation": "__arm_smccc_smc",
+    "abi": {
+      "function_id": "0xc2000276",
+      "function_id_construction": "mov w0,#0x276; movk w0,#0xc200,lsl#16",
+      "selectors": {
+        "refclk": 8,
+        "mtcmos": 512,
+        "mcq": 1024
+      },
+      "argument_roles": {
+        "mtcmos": "x1=512, x2=off/on, remaining unused arguments zero",
+        "refclk": "x1=8, x2=state, x3=pre/post",
+        "mcq": "x1=1024, x2..x7 zero, result returned through result+8"
+      }
+    },
+    "mcq_fragment_sha256": "9fa2c04bc9124348dde1bb17b7bba48d317af41c42b7f04ced457a852b10644d",
+    "smc_fragment_receipts": [
+      {
+        "name": "mtcmos0",
+        "section": ".text",
+        "begin": "0x23c8",
+        "call": "0x23f4",
+        "sha256": "a0448d891d1a4bc302bbb351e83a597730b3975295aee7a12675686b10666f86",
+        "bytes": 44,
+        "selector": 512,
+        "on": 0,
+        "stage": 0
+      },
+      {
+        "name": "mtcmos1",
+        "section": ".text",
+        "begin": "0x23f8",
+        "call": "0x2420",
+        "sha256": "75e79cb3b92488f084f2f2a4bb7a693ad8d2b5136c291446714a6917607c5dbc",
+        "bytes": 40,
+        "selector": 512,
+        "on": 1,
+        "stage": 0
+      },
+      {
+        "name": "refpre",
+        "section": ".text",
+        "begin": "0x4b54",
+        "call": "0x4b80",
+        "sha256": "7705cbd12240750470316decc5e29f585658f5693d144bcecfd9ef4301d42585",
+        "bytes": 44,
+        "selector": 8,
+        "on": null,
+        "stage": 0
+      },
+      {
+        "name": "refpost",
+        "section": ".text",
+        "begin": "0x4c48",
+        "call": "0x4c74",
+        "sha256": "23db2fc1566ecd9859e0911689b86aadaa750047c8554e3c81e7877cffc858a6",
+        "bytes": 44,
+        "selector": 8,
+        "on": null,
+        "stage": 1
+      }
+    ]
+  },
+  "firmware": {
+    "service_name": "MTK_SIP_KERNEL_UFS_CONTROL",
+    "fast64_function_id": "0xc2000276",
+    "selectors": {
+      "refclk": 8,
+      "mtcmos": 512,
+      "mcq": 1024
+    },
+    "captured_bl31_dispatch_proven": true,
+    "running_bl31_identity": {
+      "built": "07:19:18, Dec 18 2024",
+      "release": "lts-v2.8.6(release):2fbca47",
+      "software_build": "Jun 8 2022(Jul 25 20:00:00 UTC 2023)",
+      "software_version": "common_2.6.1(6897-1.2)"
+    },
+    "running_identity_matches_captured_sample": true
+  },
+  "proofs": {
+    "running_client_build_id_match_proven": true,
+    "running_client_byte_equivalence_proven": false,
+    "saved_client_smc_call_relocations_proven": true,
+    "saved_client_function_id_and_selectors_proven": true,
+    "captured_bl31_service_dispatch_proven": true,
+    "installed_bl31_runtime_identity_matched": true,
+    "static_end_to_end_sip_abi_proven": true,
+    "installed_binary_byte_equivalence_proven": false,
+    "runtime_smc_effect_contract_proven": false,
+    "firewall_state_proven": false,
+    "xnu_firmware_abi_authorized": false,
+    "physical_resource_ownership_proven": false
+  },
+  "inputs": {
+    "saved_ufs_audit": {
+      "sha256": "cb4e209b9b7df2f8a1f3b443e963d3e1fce2a3ea45d23599975454fee7456fa9",
+      "bytes": 10538
+    },
+    "live_runtime_evidence": {
+      "sha256": "fb1fa60b1b6df4f50f7794520be959ba7997f9433cea0f23dc818df9b5681660",
+      "bytes": 11405
+    },
+    "bl31_ufs_audit": {
+      "sha256": "65e4a5cdd2085c2e2bb48ad9829109f8e39b7a260669074ab59427419b5d110c",
+      "bytes": 5137
+    },
+    "bl31_runtime_identity": {
+      "sha256": "1a9060eec770e72f70d1e51b2d0e8b86ab5be45b0ccd6ca73ca6b345171dcba2",
+      "bytes": 1904
+    },
+    "saved_ufs_module": {
+      "sha256": "7043e1109b4c356a914fdc92ffbe463c0c43cb27342f6ccce1517a2086b02493",
+      "bytes": 14657944,
+      "gnu_build_id": "df7eecc22450fb6e6eceaaef4b3fe8ceb46b2a84"
+    },
+    "runtime_ufs_build_id_note": {
+      "sha256": "43e40b73715e22b8816df5c5d4979bbda7453d4dd30fedc7f38a99f278d14eb3",
+      "bytes": 36,
+      "gnu_build_id": "df7eecc22450fb6e6eceaaef4b3fe8ceb46b2a84"
+    },
+    "captured_atf_payload": {
+      "sha256": "716222a632e4a0623a2e467e17f1d36f38a37f79a1c026447fe724e75e90e07e",
+      "bytes": 953976
+    }
+  },
+  "safety": {
+    "offline_inputs_only": true,
+    "phone_access_by_this_tool": false,
+    "smc_execution": false,
+    "mmio_access": false,
+    "firewall_probe": false,
+    "partition_access": false,
+    "physical_ufs_backend_enabled": false
+  },
+  "not_proven": [
+    "installed secure firmware byte-for-byte equivalence",
+    "SMC return or physical effect contract",
+    "firewall state or XNU authorization",
+    "clock, reset, PHY, regulator, IRQ or cache ownership"
+  ],
+  "scope": "static installed-client to captured-BL31 SiP ABI evidence chain; no SMC effect, firewall state, XNU delegation, resource ownership or physical UFS authorization",
+  "verdict": "running-client-build-id-to-captured-bl31-static-sip-abi-matched"
+}

@@ -9,3 +9,4 @@ tools/test-sweet-launchctl.sh text eol=lf
 duchamp/diagnostics/ufs-cache-xnu-qemu/RAW-VERIFICATION-2026-11-04.json -text
 duchamp/diagnostics/bl31-runtime-identity/ATF-LOG-2026-11-01.txt -text
 duchamp/diagnostics/bl31-runtime-identity/VERIFICATION-2026-11-04.json -text
+duchamp/diagnostics/ufs-sip-abi/VERIFICATION-2026-11-05.json -text
