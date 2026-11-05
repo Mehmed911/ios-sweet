@@ -1,6 +1,9 @@
 #if defined(DUCHAMP_PHONE_LAYOUT_ONLY) && defined(DUCHAMP_QEMU_ONLY)
 #error "phone-layout and QEMU-only guards are mutually exclusive"
 #endif
+#if defined(DUCHAMP_PHONE_CAPTURE) && (defined(DUCHAMP_PHONE_LAYOUT_ONLY) || defined(DUCHAMP_QEMU_ONLY))
+#error "phone capture is separate from fixed-layout and QEMU-only guards"
+#endif
 
 	.section .text.head, "ax"
 	.globl _head
@@ -78,6 +81,13 @@ entry_common:
 	stp	x19, x20, [x0, #16]
 	stp	x21, x22, [x0, #32]
 	str	x23, [x0, #48]
+#if defined(DUCHAMP_PHONE_CAPTURE)
+	.globl duchamp_phone_capture_store_entry_pc
+duchamp_phone_capture_store_entry_pc:
+	adr	x1, _head
+	adr	x2, duchamp_bootshim_runtime_head
+	str	x1, [x2]
+#endif
 	bl	duchamp_bootshim_main
 halt:
 	wfe

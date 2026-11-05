@@ -24,9 +24,27 @@ objcopy=${OBJCOPY:-llvm-objcopy}
 cflags="--target=aarch64-none-elf -O2 -ffreestanding -nostdlib -fno-pic -mgeneral-regs-only -mstrict-align -fno-stack-protector -Wall -Wextra -Werror ${EXTRA_CFLAGS:-}"
 lk_ram=${LK_RAM_TRANSPORT:-}
 phone_layout=${PHONE_LAYOUT:-}
+phone_capture=${PHONE_CAPTURE:-}
 ldflags=
 
-if [ -n "$phone_layout" ]; then
+if [ -n "$phone_capture" ]; then
+	if [ "$phone_capture" != 1 ]; then
+		echo "PHONE_CAPTURE must be exactly 1" >&2
+		exit 2
+	fi
+	if [ -n "${PHONE_LAYOUT:-}${QEMU_ONLY:-}${LK_RAM_TRANSPORT:-}${PAYLOAD:-}${MATERIALIZE:-}${READY:-}${JUMP:-}${RETURN:-}${TEST_XNU_RETURN:-}" ]; then
+		echo "PHONE_CAPTURE is a separate RAM-only, no-payload path" >&2
+		exit 2
+	fi
+	if [ -z "${PHONE_CONTRACT:-}" ]; then
+		echo "PHONE_CAPTURE requires PHONE_CONTRACT" >&2
+		exit 2
+	fi
+	python3 ../../tools/verify-duchamp-phone-capture.py \
+		--contract "$phone_contract"
+	cflags="$cflags -DDUCHAMP_PHONE_CAPTURE=1"
+	ldflags="-Wl,--defsym,DUCHAMP_IMAGE_BASE=0"
+elif [ -n "$phone_layout" ]; then
 	if [ -n "${QEMU_ONLY:-}${LK_RAM_TRANSPORT:-}${PAYLOAD:-}${MATERIALIZE:-}${READY:-}${JUMP:-}${RETURN:-}${TEST_XNU_RETURN:-}" ]; then
 		echo "PHONE_LAYOUT is a separate no-payload, no-execution path" >&2
 		exit 2
@@ -91,9 +109,15 @@ fi
 
 mkdir -p "$out"
 $cc $cflags -c start.S -o "$out/start.o"
-$cc $cflags -c shim.c -o "$out/shim.o"
 $cc $cflags -c ../loader/mt6897_entry.c -o "$out/mt6897_entry.o"
-objects="$out/start.o $out/shim.o $out/mt6897_entry.o"
+if [ -n "$phone_capture" ]; then
+	$cc $cflags -c phone_capture.c -o "$out/phone_capture.o"
+	$cc $cflags -c phone_capture_entry.c -o "$out/phone_capture_entry.o"
+	objects="$out/start.o $out/phone_capture.o $out/phone_capture_entry.o $out/mt6897_entry.o"
+else
+	$cc $cflags -c shim.c -o "$out/shim.o"
+	objects="$out/start.o $out/shim.o $out/mt6897_entry.o"
+fi
 
 if [ -n "$lk_ram" ]; then
 	capsule="$out/payload.lkram"
@@ -165,6 +189,11 @@ truncate -s "$((end - head))" "$out/Image"
 llvm-readelf -r "$out/duchamp-diagnostic.elf"
 if [ -n "$phone_layout" ]; then
 	python3 ../../tools/verify-duchamp-phone-layout.py \
+		--contract "$phone_contract" \
+		--elf "$out/duchamp-diagnostic.elf" --image "$out/Image"
+fi
+if [ -n "$phone_capture" ]; then
+	python3 ../../tools/verify-duchamp-phone-capture.py \
 		--contract "$phone_contract" \
 		--elf "$out/duchamp-diagnostic.elf" --image "$out/Image"
 fi

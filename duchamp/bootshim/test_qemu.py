@@ -37,6 +37,9 @@ EARLY_RETURN_EXPECTED = [
 LK_RAM_EXPECTED = [0xFF00FF00] * 11 + [0xFF00FFFF]
 LK_REPORT_FORMAT = "<Q8I7Q"
 LK_REPORT_SIZE = struct.calcsize(LK_REPORT_FORMAT)
+PHONE_CAPTURE_FORMAT = "<QII4QIIQ"
+PHONE_CAPTURE_SIZE = struct.calcsize(PHONE_CAPTURE_FORMAT)
+PHONE_CAPTURE_MAGIC = 0x3130435048435544
 
 
 def mutation_receipt(data, value=1469598103934665603):
@@ -84,6 +87,18 @@ def lk_report_is_final(data):
             (state == 2 or result != 0 or error != 0))
 
 
+def phone_capture_is_final(data):
+    if len(data) != PHONE_CAPTURE_SIZE:
+        return False
+    fields = struct.unpack(PHONE_CAPTURE_FORMAT, data)
+    magic, version, size = fields[:3]
+    render_state = fields[-2]
+    checksum = fields[-1]
+    return (magic == PHONE_CAPTURE_MAGIC and version == 1 and
+            size == PHONE_CAPTURE_SIZE and render_state == 2 and
+            checksum == mutation_receipt(data[:-8]))
+
+
 def qmp_call(stream, execute, **arguments):
     request = {"execute": execute}
     if arguments:
@@ -104,7 +119,7 @@ def main():
     parser.add_argument("--pattern",
                         choices=("normal", "exception", "return",
                                  "slot-missing", "slot-ready",
-                                 "early-return", "lk-ram", "xnu"),
+                                 "early-return", "lk-ram", "pc-x0", "xnu"),
                         default="normal")
     parser.add_argument("--dtb", type=Path)
     parser.add_argument("--memory", default="4G")
@@ -127,6 +142,12 @@ def main():
     parser.add_argument("--exception-record-pa",
                         type=lambda value: int(value, 0))
     parser.add_argument("--expect-no-exception", action="store_true")
+    parser.add_argument("--capture-record-pa",
+                        type=lambda value: int(value, 0))
+    parser.add_argument("--expect-capture-pc",
+                        type=lambda value: int(value, 0))
+    parser.add_argument("--expect-capture-x0",
+                        type=lambda value: int(value, 0))
     args = parser.parse_args()
     if args.expect_no_return and args.return_record_pa is None:
         parser.error("--expect-no-return requires --return-record-pa")
@@ -138,6 +159,10 @@ def main():
         parser.error("--expect-no-exception requires --exception-record-pa")
     if args.lk_payload is not None and args.lk_report_pa is None:
         parser.error("--lk-payload requires --lk-report-pa")
+    if ((args.expect_capture_pc is not None or
+         args.expect_capture_x0 is not None) and
+            args.capture_record_pa is None):
+        parser.error("capture expectations require --capture-record-pa")
     lk_expected = (lk_payload_expectations(args.lk_payload.resolve())
                    if args.lk_payload is not None else None)
     qemu = shutil.which("qemu-system-aarch64")
@@ -158,6 +183,7 @@ def main():
         return_raw = Path(temp) / "return-record.raw"
         return_log_raw = Path(temp) / "return-log.raw"
         lk_report_raw = Path(temp) / "lk-ram-report.raw"
+        capture_record_raw = Path(temp) / "phone-capture-record.raw"
         exception_raw = Path(temp) / "exception-record.raw"
         qemu_stderr = Path(temp) / "qemu.stderr"
         command = [
@@ -202,6 +228,19 @@ def main():
                         if time.time() >= deadline:
                             break
                         time.sleep(0.05)
+                elif args.capture_record_pa is not None:
+                    deadline = time.time() + args.wait
+                    while True:
+                        qmp_call(stream, "pmemsave",
+                                 val=args.capture_record_pa,
+                                 size=PHONE_CAPTURE_SIZE,
+                                 filename=str(capture_record_raw))
+                        if phone_capture_is_final(
+                                capture_record_raw.read_bytes()):
+                            break
+                        if time.time() >= deadline:
+                            break
+                        time.sleep(0.05)
                 else:
                     time.sleep(args.wait)
                 qmp_call(stream, "stop")
@@ -219,6 +258,10 @@ def main():
                 if args.lk_report_pa is not None:
                     qmp_call(stream, "pmemsave", val=args.lk_report_pa,
                              size=96, filename=str(lk_report_raw))
+                if args.capture_record_pa is not None:
+                    qmp_call(stream, "pmemsave", val=args.capture_record_pa,
+                             size=PHONE_CAPTURE_SIZE,
+                             filename=str(capture_record_raw))
                 if args.exception_record_pa is not None:
                     qmp_call(stream, "pmemsave", val=args.exception_record_pa,
                              size=40, filename=str(exception_raw))
@@ -366,12 +409,71 @@ def main():
                   f"bytes={bytes_read} reads={source_reads} "
                   f"entry={entry:#x} boot_args={boot_args:#x} "
                   f"segments={segment_count}")
+        if args.capture_record_pa is not None:
+            capture_data = capture_record_raw.read_bytes()
+            fields = struct.unpack(PHONE_CAPTURE_FORMAT, capture_data)
+            (magic, version, size, entry_pc, entry_x0, current_el, sctlr,
+             entry_result, render_state, checksum) = fields
+            expected_checksum = mutation_receipt(capture_data[:-8])
+            if (magic != PHONE_CAPTURE_MAGIC or version != 1 or
+                    size != PHONE_CAPTURE_SIZE or current_el != 4 or
+                    sctlr & ((1 << 0) | (1 << 2) | (1 << 12)) or
+                    entry_result != 0 or render_state != 2 or
+                    checksum != expected_checksum):
+                raise SystemExit(
+                    "invalid phone capture record: "
+                    f"magic={magic:#x} version={version} size={size} "
+                    f"pc={entry_pc:#x} x0={entry_x0:#x} el={current_el:#x} "
+                    f"sctlr={sctlr:#x} entry_result={entry_result} "
+                    f"render_state={render_state} checksum={checksum:#x} "
+                    f"expected={expected_checksum:#x}")
+            if (args.expect_capture_pc is not None and
+                    entry_pc != args.expect_capture_pc):
+                raise SystemExit(
+                    f"captured PC={entry_pc:#x} "
+                    f"expected={args.expect_capture_pc:#x}")
+            if (args.expect_capture_x0 is not None and
+                    entry_x0 != args.expect_capture_x0):
+                raise SystemExit(
+                    f"captured x0={entry_x0:#x} "
+                    f"expected={args.expect_capture_x0:#x}")
+            print("bootshim-phone-pc-x0-record: PASS "
+                  f"pa={args.capture_record_pa:#x} pc={entry_pc:#x} "
+                  f"x0={entry_x0:#x} el={current_el:#x}")
         if args.pattern == "xnu":
             words = struct.unpack(f"<{len(data) // 4}I", data)
             white = sum(value == 0xFFFFFFFF for value in words)
             if white < 512:
                 raise SystemExit(f"XNU stage-0 marker missing: white_pixels={white}")
             print(f"bootshim-qemu-xnu-entry: PASS white_pixels={white}")
+            return
+        if args.pattern == "pc-x0":
+            line_width = (21 * 6 - 1) * 8
+            start_x = (FB_WIDTH - line_width) // 2
+            first_y = FB_HEIGHT // 4
+            second_y = first_y + 7 * 8 + 4 * 8
+
+            def framebuffer_pixel(x, y):
+                return struct.unpack_from(
+                    "<I", data, y * FB_STRIDE + x * 4)[0]
+
+            samples = {
+                "background": (0, 0, 0xFF000000),
+                "pc-glyph": (start_x, first_y, 0xFFFFFFFF),
+                "x0-glyph": (start_x, second_y, 0xFFFFFFFF),
+                "pc-glyph-gap": (start_x + 4 * 8, first_y, 0xFF000000),
+            }
+            for name, (x, y, expected) in samples.items():
+                actual = framebuffer_pixel(x, y)
+                if actual != expected:
+                    raise SystemExit(
+                        f"{name} pixel={actual:#010x} "
+                        f"expected={expected:#010x} at {x},{y}")
+            padding = struct.unpack_from("<I", data, FB_WIDTH * 4)[0]
+            if padding != 0:
+                raise SystemExit(
+                    f"phone-capture stride padding changed: {padding:#010x}")
+            print("bootshim-phone-pc-x0-framebuffer: PASS")
             return
         if args.pattern == "normal":
             expected_rows = EXPECTED

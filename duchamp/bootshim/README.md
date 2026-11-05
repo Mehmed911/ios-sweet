@@ -191,3 +191,44 @@ This mode does not prove the runtime kernel PC or FDT register. LK computes both
 targets dynamically and hands them to secure firmware through SMC
 `0xc2000115`; those runtime values have not been numerically captured. See
 `duchamp/MT6897-LK-HANDOFF-CONTRACT.md` for the exact evidence and command.
+
+## Isolated runtime PC/x0 capture
+
+`PHONE_CAPTURE=1 PHONE_CONTRACT=...` builds a separate position-independent
+ARM64 Image for measuring the two missing runtime values. It is mutually
+exclusive with the fixed phone-layout guard, QEMU-only transport, embedded
+payload, materializer, ready gate, XNU jump and return channel. The build links
+`phone_capture_entry.c` instead of the normal diagnostic `shim.c`, so the
+result contains no FDT dereference, watchdog access, storage operation, payload
+transport or branch to XNU.
+
+Immediately after preserving the entry registers and clearing its own BSS, the
+assembly uses `adr` to record the runtime address of `_head`. The isolated C
+entry records that value and inherited `x0` in a checksummed 64-byte RAM record.
+Only an EL1 or EL2 entry with translation and both caches disabled may write the
+already measured framebuffer. It clears the visible surface and renders two
+white hexadecimal lines on black: `PC=0X...` and `X0=0X...`. It never
+dereferences `x0`, so an unexpected value is still observable rather than used
+as a pointer.
+
+Run the complete local proof with a new output directory:
+
+```sh
+sh duchamp/bootshim/test_phone_capture_qemu.sh \
+  work/lk-handoff-audit-v1/report.json \
+  work/phone-capture-qemu-v1
+```
+
+The suite checks negative build combinations, verifies the linked opcodes,
+requires zero relocations and undefined symbols, boots the actual image in
+QEMU, reads the RAM record through QMP, and checks representative glyph pixels.
+QEMU's measured result is expected to be `_head=0x40200000` and
+`x0=0x48000000`; that is an emulator result, not evidence of Duchamp's runtime
+handoff.
+
+This image is not a workaround for the phone's deployment boundary. The saved
+Duchamp fastboot probe already established that its bootloader rejects the
+standard RAM-only `fastboot boot` command as unknown, and the installed Android
+kernel has no kexec support. Do not flash this capture image merely to obtain
+the values. A separately documented RAM-only launch mechanism is still needed
+before the physical capture can be run without changing a boot partition.

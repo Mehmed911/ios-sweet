@@ -31,6 +31,11 @@ mkdir -p "$out"
 "$out/test_xnu_return"
 
 "$cc" -std=c11 -O2 -Wall -Wextra -Werror \
+	-DDUCHAMP_TEST_NO_ARCH_BARRIER=1 \
+	test_phone_capture.c phone_capture.c -o "$out/test_phone_capture"
+"$out/test_phone_capture"
+
+"$cc" -std=c11 -O2 -Wall -Wextra -Werror \
 	test_payload_preflight.c payload_preflight.c ../loader/guard.c \
 	-o "$out/test_payload_preflight"
 
