@@ -3,8 +3,6 @@
 #include "../loader/mt6897_lk_transport.h"
 #include "../loader/resident_xnu.h"
 
-#define XNU_WINDOW_BASE UINT64_C(0x1c0000000)
-#define XNU_WINDOW_SIZE UINT64_C(0x20000000)
 #define FRAMEBUFFER_BASE UINT64_C(0xfcc2f000)
 
 extern const unsigned char _head[];
@@ -130,9 +128,10 @@ duchamp_lk_ram_boot_run(const void *fdt, size_t fdt_size,
 	context.xnu.framebuffer.width = 1220;
 	context.xnu.framebuffer.height = 2712;
 	context.xnu.framebuffer.depth = 32;
-	context.xnu.window = (void *)(uintptr_t)XNU_WINDOW_BASE;
-	context.xnu.window_physical = XNU_WINDOW_BASE;
-	context.xnu.window_size = XNU_WINDOW_SIZE;
+	context.xnu.window = (void *)(uintptr_t)
+	    DUCHAMP_LK_RAM_BOOT_XNU_WINDOW_BASE;
+	context.xnu.window_physical = DUCHAMP_LK_RAM_BOOT_XNU_WINDOW_BASE;
+	context.xnu.window_size = DUCHAMP_LK_RAM_BOOT_XNU_WINDOW_SIZE;
 	result = duchamp_resident_transport_init(&resident_transport,
 	    &resident_loader, &run_ops, &context,
 	    &duchamp_mt6897_lk_source_ops, &lk_source, transfer_scratch,

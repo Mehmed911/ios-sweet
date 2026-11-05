@@ -17,6 +17,16 @@ if [ -e "$out" ]; then
 fi
 mkdir -p "$out/negative"
 
+host_cc=${HOST_CC:-clang}
+"$host_cc" -std=c11 -O1 -g -Wall -Wextra -Werror \
+	-fsanitize=address,undefined -fno-omit-frame-pointer \
+	../loader/test_mt6897_ram_provider.c \
+	../loader/mt6897_ram_provider.c ../loader/mt6897_entry.c \
+	-o "$out/test_mt6897_ram_provider"
+ASAN_OPTIONS=detect_leaks=1 "$out/test_mt6897_ram_provider" \
+	> "$out/ram-provider-host.log" 2>&1
+cat "$out/ram-provider-host.log"
+
 if SHIM_OUT="$out/negative/no-qemu" PAYLOAD="$payload" \
 	LK_RAM_TRANSPORT=1 sh build.sh > "$out/negative/no-qemu.log" 2>&1; then
 	echo "LK RAM build unexpectedly worked without QEMU_ONLY=1" >&2
@@ -49,6 +59,12 @@ if [ -z "$exception_offset" ]; then
 	echo "bootshim exception record symbol is missing" >&2
 	exit 1
 fi
+provider_offset=$(llvm-nm "$out/build/duchamp-diagnostic.elf" | \
+	awk '$3 == "duchamp_bootshim_ram_provider_report" { print "0x" $1 }')
+if [ -z "$provider_offset" ]; then
+	echo "RAM provider report symbol is missing" >&2
+	exit 1
+fi
 image_head=$(llvm-nm "$out/build/duchamp-diagnostic.elf" | \
 	awk '$3 == "_head" { print "0x" $1 }')
 if [ -z "$image_head" ]; then
@@ -57,10 +73,12 @@ if [ -z "$image_head" ]; then
 fi
 report_pa=$((0x40200000 + report_offset - image_head))
 exception_pa=$((0x40200000 + exception_offset - image_head))
+provider_pa=$((0x40200000 + provider_offset - image_head))
 if ! python3 test_qemu.py --image "$out/build/Image" --pattern lk-ram \
 	--dtb "$fdt" --memory 8G --wait 15 \
 	--lk-report-pa "$report_pa" --expect-lk-generation 0x20261105 \
 	--lk-payload "$payload" \
+	--ram-provider-report-pa "$provider_pa" \
 	--exception-record-pa "$exception_pa" --expect-no-exception \
 	--capture "$out/framebuffer.raw" > "$out/qemu.log" 2>&1; then
 	cat "$out/qemu.log" >&2

@@ -24,6 +24,7 @@
 #error "LK RAM transport cannot be combined with the legacy payload or jump"
 #endif
 #include "lk_ram_boot.h"
+#include "../loader/mt6897_ram_provider.h"
 #include "../loader/resident_transport.h"
 #endif
 
@@ -77,6 +78,10 @@ __attribute__((noreturn)) void duchamp_enter_xnu(uint64_t entry,
 #if defined(DUCHAMP_LK_RAM_TRANSPORT)
 extern const unsigned char duchamp_lk_ram_capsule_start[];
 extern const unsigned char duchamp_lk_ram_capsule_end[];
+extern const unsigned char _head[];
+extern const unsigned char _end[];
+struct duchamp_mt6897_ram_provider_report
+    duchamp_bootshim_ram_provider_report;
 #endif
 
 struct duchamp_exception_record {
@@ -345,17 +350,60 @@ duchamp_bootshim_main(void)
 #endif
 #if defined(DUCHAMP_LK_RAM_TRANSPORT)
 	{
-		unsigned transport_result = duchamp_lk_ram_boot_run(
-		    (const void *)(uintptr_t)
-		    duchamp_bootshim_entry_state.entry_x0,
-		    diagnostic->fdt_size, duchamp_lk_ram_capsule_start,
-		    (size_t)(duchamp_lk_ram_capsule_end -
-		    duchamp_lk_ram_capsule_start));
+		struct duchamp_mt6897_ram_provider_contract contract = {
+			.magic = DUCHAMP_MT6897_RAM_PROVIDER_MAGIC,
+			.version = DUCHAMP_MT6897_RAM_PROVIDER_VERSION,
+			.size = sizeof(contract),
+			.kind = DUCHAMP_MT6897_RAM_PROVIDER_QEMU_REHEARSAL,
+			.flags = DUCHAMP_MT6897_RAM_PROVIDER_REQUIRED_FLAGS |
+			    DUCHAMP_MT6897_RAM_PROVIDER_CAPSULE_IN_IMAGE,
+			.current_el = duchamp_bootshim_entry_state.current_el,
+			.sctlr_el1 = duchamp_bootshim_entry_state.sctlr_el1,
+			.entry_pc = (uint64_t)(uintptr_t)_head,
+			.entry_x0 = duchamp_bootshim_entry_state.entry_x0,
+			.image = {
+				(uint64_t)(uintptr_t)_head,
+				(uint64_t)((uintptr_t)_end - (uintptr_t)_head)
+			},
+			.fdt = {
+				duchamp_bootshim_entry_state.entry_x0,
+				diagnostic->fdt_size
+			},
+			.capsule = {
+				(uint64_t)(uintptr_t)duchamp_lk_ram_capsule_start,
+				(uint64_t)(duchamp_lk_ram_capsule_end -
+				    duchamp_lk_ram_capsule_start)
+			},
+			.staging = {
+				DUCHAMP_LK_RAM_BOOT_STAGING_BASE,
+				DUCHAMP_LK_RAM_BOOT_STAGING_CAPACITY
+			},
+			.xnu = {
+				DUCHAMP_LK_RAM_BOOT_XNU_WINDOW_BASE,
+				DUCHAMP_LK_RAM_BOOT_XNU_WINDOW_SIZE
+			},
+			.expected_fdt_receipt = 0,
+		};
+		const void *fdt = (const void *)(uintptr_t)
+		    duchamp_bootshim_entry_state.entry_x0;
+		unsigned provider_result = duchamp_mt6897_ram_provider_validate(
+		    &contract, fdt, diagnostic->fdt_size, 1,
+		    &duchamp_bootshim_ram_provider_report);
+		unsigned transport_result = provider_result;
+		if (provider_result == DUCHAMP_MT6897_RAM_PROVIDER_OK) {
+			transport_result = duchamp_lk_ram_boot_run(fdt,
+			    diagnostic->fdt_size, duchamp_lk_ram_capsule_start,
+			    (size_t)(duchamp_lk_ram_capsule_end -
+			    duchamp_lk_ram_capsule_start));
+		}
 		const struct duchamp_lk_ram_boot_report *report =
 		    &duchamp_lk_ram_boot_report;
-		draw_row(8, transport_result == DUCHAMP_TRANSPORT_OK ?
+		draw_row(8, provider_result == DUCHAMP_MT6897_RAM_PROVIDER_OK &&
+		    duchamp_bootshim_ram_provider_report.transport_allowed == 1 &&
+		    duchamp_bootshim_ram_provider_report.xnu_jump_allowed == 0 ?
 		    COLOR_PASS : COLOR_FAIL);
-		draw_row(9, report->transport_state ==
+		draw_row(9, transport_result == DUCHAMP_TRANSPORT_OK &&
+		    report->transport_state ==
 		    DUCHAMP_TRANSPORT_COMPLETE && report->transport_error == 0 ?
 		    COLOR_PASS : COLOR_FAIL);
 		draw_row(10, report->prepare_result == 0 && report->entry != 0 &&

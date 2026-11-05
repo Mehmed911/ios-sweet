@@ -140,11 +140,13 @@ EOF
 		-o "$out/resident_transport.o"
 	$cc $cflags -c ../loader/mt6897_lk_transport.c \
 		-o "$out/mt6897_lk_transport.o"
+	$cc $cflags -c ../loader/mt6897_ram_provider.c \
+		-o "$out/mt6897_ram_provider.o"
 	$cc $cflags -c ../loader/resident_xnu.c -o "$out/resident_xnu.o"
 	$cc $cflags -c ../loader/guard.c -o "$out/guard.o"
 	$cc $cflags -c ../loader/plan.c -o "$out/plan.o"
 	$cc $cflags -c ../loader/materialize.c -o "$out/materialize.o"
-	objects="$objects $out/lkram.o $out/lk_ram_boot.o $out/resident_protocol.o $out/resident_transport.o $out/mt6897_lk_transport.o $out/resident_xnu.o $out/guard.o $out/plan.o $out/materialize.o"
+	objects="$objects $out/lkram.o $out/lk_ram_boot.o $out/resident_protocol.o $out/resident_transport.o $out/mt6897_lk_transport.o $out/mt6897_ram_provider.o $out/resident_xnu.o $out/guard.o $out/plan.o $out/materialize.o"
 fi
 
 if [ -n "${RETURN:-}" ]; then

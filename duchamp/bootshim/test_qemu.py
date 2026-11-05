@@ -37,6 +37,8 @@ EARLY_RETURN_EXPECTED = [
 LK_RAM_EXPECTED = [0xFF00FF00] * 11 + [0xFF00FFFF]
 LK_REPORT_FORMAT = "<Q8I7Q"
 LK_REPORT_SIZE = struct.calcsize(LK_REPORT_FORMAT)
+RAM_PROVIDER_FORMAT = "<Q8I14Q"
+RAM_PROVIDER_SIZE = struct.calcsize(RAM_PROVIDER_FORMAT)
 PHONE_CAPTURE_FORMAT = "<QII4QIIQ"
 PHONE_CAPTURE_SIZE = struct.calcsize(PHONE_CAPTURE_FORMAT)
 PHONE_CAPTURE_MAGIC = 0x3130435048435544
@@ -136,6 +138,8 @@ def main():
     parser.add_argument("--expect-no-return", action="store_true",
                         help="require the XNU return record to remain zero")
     parser.add_argument("--lk-report-pa", type=lambda value: int(value, 0))
+    parser.add_argument("--ram-provider-report-pa",
+                        type=lambda value: int(value, 0))
     parser.add_argument("--expect-lk-generation",
                         type=lambda value: int(value, 0))
     parser.add_argument("--lk-payload", type=Path)
@@ -183,6 +187,7 @@ def main():
         return_raw = Path(temp) / "return-record.raw"
         return_log_raw = Path(temp) / "return-log.raw"
         lk_report_raw = Path(temp) / "lk-ram-report.raw"
+        ram_provider_raw = Path(temp) / "ram-provider-report.raw"
         capture_record_raw = Path(temp) / "phone-capture-record.raw"
         exception_raw = Path(temp) / "exception-record.raw"
         qemu_stderr = Path(temp) / "qemu.stderr"
@@ -258,6 +263,11 @@ def main():
                 if args.lk_report_pa is not None:
                     qmp_call(stream, "pmemsave", val=args.lk_report_pa,
                              size=96, filename=str(lk_report_raw))
+                if args.ram_provider_report_pa is not None:
+                    qmp_call(stream, "pmemsave",
+                             val=args.ram_provider_report_pa,
+                             size=RAM_PROVIDER_SIZE,
+                             filename=str(ram_provider_raw))
                 if args.capture_record_pa is not None:
                     qmp_call(stream, "pmemsave", val=args.capture_record_pa,
                              size=PHONE_CAPTURE_SIZE,
@@ -409,6 +419,44 @@ def main():
                   f"bytes={bytes_read} reads={source_reads} "
                   f"entry={entry:#x} boot_args={boot_args:#x} "
                   f"segments={segment_count}")
+        if args.ram_provider_report_pa is not None:
+            provider_data = ram_provider_raw.read_bytes()
+            fields = struct.unpack(RAM_PROVIDER_FORMAT, provider_data)
+            (magic, version, size, result, detail, kind, flags,
+             transport_allowed, xnu_jump_allowed, entry_pc, entry_x0,
+             fdt_pa, fdt_size, fdt_receipt, image_base, image_size,
+             capsule_base, capsule_size, staging_base, staging_size,
+             xnu_base, xnu_size, checksum) = fields
+            expected_checksum = mutation_receipt(provider_data[:-8])
+            capsule_end = capsule_base + capsule_size
+            image_end = image_base + image_size
+            if (magic != 0x3152504C48435544 or version != 1 or
+                    size != RAM_PROVIDER_SIZE or result != 0 or detail != 0 or
+                    kind != 3 or flags != 0x7F or transport_allowed != 1 or
+                    xnu_jump_allowed != 0 or entry_pc != image_base or
+                    entry_x0 != fdt_pa or fdt_size < 40 or fdt_receipt == 0 or
+                    image_size == 0 or capsule_size == 0 or
+                    not image_base <= capsule_base < capsule_end <= image_end or
+                    staging_base == 0 or staging_size == 0 or
+                    xnu_base == 0 or xnu_size == 0 or
+                    checksum != expected_checksum):
+                raise SystemExit(
+                    "invalid MT6897 RAM provider report: "
+                    f"magic={magic:#x} version={version} size={size} "
+                    f"result={result} detail={detail} kind={kind} "
+                    f"flags={flags:#x} transport={transport_allowed} "
+                    f"jump={xnu_jump_allowed} pc={entry_pc:#x} "
+                    f"x0={entry_x0:#x} fdt={fdt_pa:#x}+{fdt_size:#x} "
+                    f"receipt={fdt_receipt:#x} "
+                    f"image={image_base:#x}+{image_size:#x} "
+                    f"capsule={capsule_base:#x}+{capsule_size:#x} "
+                    f"staging={staging_base:#x}+{staging_size:#x} "
+                    f"xnu={xnu_base:#x}+{xnu_size:#x} "
+                    f"checksum={checksum:#x} expected={expected_checksum:#x}")
+            print("bootshim-mt6897-ram-provider: PASS "
+                  f"pa={args.ram_provider_report_pa:#x} pc={entry_pc:#x} "
+                  f"x0={entry_x0:#x} fdt_receipt={fdt_receipt:#x} "
+                  "transport=allowed xnu-jump=blocked")
         if args.capture_record_pa is not None:
             capture_data = capture_record_raw.read_bytes()
             fields = struct.unpack(PHONE_CAPTURE_FORMAT, capture_data)
