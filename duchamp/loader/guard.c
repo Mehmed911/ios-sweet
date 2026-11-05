@@ -186,7 +186,7 @@ duchamp_fdt_window_check(const void *fdt_pointer, size_t fdt_size,
 {
 	const unsigned char *fdt = fdt_pointer;
 	uint32_t total, structure_offset, strings_offset, reserve_offset, strings_size, structure_size;
-	uint32_t position, structure_end, token, depth = 0;
+	uint32_t position, structure_end, token = 0, depth = 0;
 	int root_board = 0, root_model = 0, root_cells = 0, reserved_cells = 0, reserved_ranges_identity = 1;
 	int window_in_memory = 0, in_memory = 0, in_reserved = 0, in_reserved_child = 0;
 	int child_reg = 0, child_size = 0, child_alloc_ranges = 0, child_alloc_overlap = 0;
@@ -205,9 +205,13 @@ duchamp_fdt_window_check(const void *fdt_pointer, size_t fdt_size,
 	reserve_offset = be32(fdt + 16);
 	strings_size = be32(fdt + 32);
 	structure_size = be32(fdt + 36);
-	if (total < 40 || total > fdt_size || total > 2 * 1024 * 1024 || structure_offset < 40 ||
-	    (structure_offset & 3) != 0 || structure_offset + structure_size > total ||
-	    strings_offset < 40 || strings_offset + strings_size > total || reserve_offset < 40 ||
+	if (total < 40 || total > fdt_size || total > 2 * 1024 * 1024 ||
+	    structure_offset < 40 || structure_offset > total ||
+	    (structure_offset & 3) != 0 || structure_size < 4 ||
+	    structure_size > total - structure_offset ||
+	    strings_offset < 40 || strings_offset > total ||
+	    strings_size > total - strings_offset || reserve_offset < 40 ||
+	    reserve_offset > total || total - reserve_offset < 16 ||
 	    (reserve_offset & 7) != 0) {
 		return DUCHAMP_GUARD_FDT_HEADER;
 	}
@@ -271,14 +275,16 @@ duchamp_fdt_window_check(const void *fdt_pointer, size_t fdt_size,
 		} else if (token == FDT_PROP) {
 			uint32_t size, name_offset, name_end, value_offset;
 			const unsigned char *name, *value;
-			if (depth == 0 || position + 8 > structure_end) {
+			if (depth == 0 || position > structure_end ||
+			    structure_end - position < 8) {
 				return DUCHAMP_GUARD_FDT_STRUCTURE;
 			}
 			size = be32(fdt + position);
 			name_offset = be32(fdt + position + 4);
 			position += 8;
 			value_offset = position;
-			if (position + size > structure_end || name_offset >= strings_size) {
+			if (position > structure_end ||
+			    size > structure_end - position || name_offset >= strings_size) {
 				return DUCHAMP_GUARD_FDT_STRUCTURE;
 			}
 			name_end = strings_offset + name_offset;
