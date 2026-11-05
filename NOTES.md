@@ -17,6 +17,12 @@ boot_a (1.771 seconds) and accepted reboot. This image records runtime PC/x0
 and writes only the measured framebuffer after entry; it has no XNU payload,
 FDT dereference, storage command or watchdog access.
 
+Photo observation: two bright text rows are visible, consistent with the
+capture renderer, but the hexadecimal digits are overexposed/blurred. Numeric
+hardware PC/x0 remain unverified. Private photo SHA256 is
+1f3931fd8ea8db9ca585d5698b146452d869fc3f50cc72a5694374dc12323667,
+saved as work/phone-pc-x0-flash-trial-v1/phone-pc-x0-observation-01.jpg.
+
 IMPORTANT CURRENT STATE: diagnostic boot_a is installed. The user must
 photograph PC/X0 and return to Fastboot with Power + Volume Down. The guarded
 restore helper in work/phone-pc-x0-flash-trial-v1/restore.ps1 is already

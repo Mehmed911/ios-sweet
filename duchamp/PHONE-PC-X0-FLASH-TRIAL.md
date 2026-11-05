@@ -49,11 +49,16 @@ Fastboot confirmed `product=duchamp`, `current-slot=a`, `unlocked=yes`,
 image both returned OKAY; total flash time was 1.771 seconds. Fastboot also
 accepted the diagnostic reboot.
 
-The physical display result and numeric PC/x0 are still awaiting observation.
-The recovery helper is waiting for the user to photograph the screen and
-return the phone to Fastboot with Power + Volume Down. Stock restoration and
-Android recovery must not be claimed until their command and live-hash checks
-complete.
+The user supplied a photograph showing two bright text rows on a dark display,
+consistent with the capture renderer. Exposure and blur obscure the individual
+hexadecimal digits. Neither PC nor x0 can be transcribed reliably from this
+photo, so their numeric hardware values remain unverified. The private evidence
+copy is `phone-pc-x0-observation-01.jpg`, SHA-256
+`1f3931fd8ea8db9ca585d5698b146452d869fc3f50cc72a5694374dc12323667`.
+
+The recovery helper remains running, awaiting the user's return to Fastboot
+with Power + Volume Down. Stock restoration and Android recovery must not be
+claimed until their command and live-hash checks complete.
 
 Private build, backup and transcript files are under the ignored directory
 `work/phone-pc-x0-flash-trial-v1`. The 64 MiB QEMU-only LK transport layout
