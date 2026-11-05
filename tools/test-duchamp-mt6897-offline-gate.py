@@ -47,6 +47,12 @@ def tracked_inputs(repo):
         repo / "tools/test-verify-duchamp-ufs-sip-abi.py",
         repo / "duchamp/diagnostics/ufs-sip-abi/"
             "VERIFICATION-2026-11-05.json",
+        repo / "tools/capture-duchamp-ufs-resource-bindings.py",
+        repo / "tools/verify-duchamp-ufs-resource-bindings.py",
+        repo / "tools/test-capture-duchamp-ufs-resource-bindings.py",
+        repo / "tools/test-verify-duchamp-ufs-resource-bindings.py",
+        repo / "duchamp/diagnostics/ufs-resource-bindings/"
+            "PHONE-RESULT-2026-11-05.json",
         repo / "research/mt6897-contract/audit-v3/result.json",
         repo / "research/mt6897-contract/audit-v3/ufs-mediatek-mod.ko",
         repo / "research/mt6897-live-evidence/14480520-210535/"
@@ -189,6 +195,11 @@ def main():
         / "duchamp/diagnostics/ufs-sip-abi/"
           "VERIFICATION-2026-11-05.json"
     ).resolve()
+    resource_binding_evidence = (
+        repo
+        / "duchamp/diagnostics/ufs-resource-bindings/"
+          "PHONE-RESULT-2026-11-05.json"
+    ).resolve()
     saved_ufs_audit = (
         repo / "research/mt6897-contract/audit-v3/result.json"
     ).resolve()
@@ -232,6 +243,7 @@ def main():
         "resource_live_runtime": sha256(resource_live_runtime),
         "firmware_identity_evidence": sha256(firmware_identity_evidence),
         "firmware_sip_abi_evidence": sha256(firmware_sip_abi_evidence),
+        "resource_binding_evidence": sha256(resource_binding_evidence),
         "saved_ufs_audit": sha256(saved_ufs_audit),
         "saved_ufs_module": sha256(saved_ufs_module),
         "runtime_ufs_build_id_note": sha256(runtime_ufs_build_id_note),
@@ -418,6 +430,20 @@ def main():
             sys.executable,
             str(repo / "tools/test-mt6897-ufs-resource-ownership.py"),
         ],
+        "ufs_resource_binding_capture_tests": [
+            sys.executable,
+            str(repo / "tools/test-capture-duchamp-ufs-resource-bindings.py"),
+        ],
+        "ufs_resource_binding_verifier_tests": [
+            sys.executable,
+            str(repo / "tools/test-verify-duchamp-ufs-resource-bindings.py"),
+        ],
+        "ufs_resource_binding_verification": [
+            sys.executable,
+            str(repo / "tools/verify-duchamp-ufs-resource-bindings.py"),
+            str(resource_binding_evidence),
+            "--compact",
+        ],
         "ufs_resource_ownership": [
             sys.executable,
             str(repo / "tools/assess-mt6897-ufs-resource-ownership.py"),
@@ -430,6 +456,8 @@ def main():
             str(firmware_identity_evidence),
             "--firmware-sip-abi-evidence",
             str(firmware_sip_abi_evidence),
+            "--resource-binding-evidence",
+            str(resource_binding_evidence),
         ],
         "ownership": [
             sys.executable,
@@ -490,6 +518,14 @@ def main():
         resource_ownership = load_pass(
             output / "ufs-resource-ownership/result.json"
         )
+        resource_binding_verification = json.loads(
+            Path(components["ufs_resource_binding_verification"]["log"])
+            .read_text(encoding="utf-8")
+        )
+        if (resource_binding_verification.get("passed") is not True or
+                resource_binding_verification.get("verdict") !=
+                "linux-resource-bindings-observed-xnu-delegation-denied"):
+            raise ValueError("UFS resource-binding verification differs")
         ownership = json.loads(
             Path(components["ownership"]["log"]).read_text(encoding="utf-8")
         )
@@ -818,6 +854,25 @@ def main():
                 resource_runtime.get(
                     "ufs_interrupt_ownership_proven") is not False):
             raise ValueError("UFS runtime IRQ evidence differs")
+        if (resource_runtime.get(
+                "linux_resource_provider_bindings_proven") is not True or
+                resource_runtime.get(
+                "linux_ufs_regulator_state_observed") is not True or
+                resource_runtime.get(
+                "linux_ufs_irq_handler_binding_proven") is not True or
+                resource_runtime.get(
+                "linux_slb_scmi_coordination_modules_loaded") is not True or
+                resource_runtime.get(
+                "linux_firewall_protection_modules_loaded") is not True or
+                resource_runtime.get(
+                "system_cache_exclusive_owner_proven") is not False or
+                resource_runtime.get(
+                "ufs_cache_maintenance_reachability_proven") is not False or
+                resource_runtime.get(
+                "firewall_state_or_ufs_grant_proven") is not False or
+                resource_runtime.get(
+                "xnu_resource_delegation_proven") is not False):
+            raise ValueError("UFS live resource-binding boundary differs")
         if resource_authorization != {
                 "physical_backend_enabled": False,
                 "mmio_callbacks": 0,
@@ -1227,6 +1282,33 @@ def main():
                 "xnu_irq_delegation_proven": resource_runtime[
                     "xnu_ufs_irq_delegation_proven"
                 ],
+                "linux_resource_provider_bindings_proven": resource_runtime[
+                    "linux_resource_provider_bindings_proven"
+                ],
+                "linux_regulator_state_observed": resource_runtime[
+                    "linux_ufs_regulator_state_observed"
+                ],
+                "linux_slb_scmi_modules_loaded": resource_runtime[
+                    "linux_slb_scmi_coordination_modules_loaded"
+                ],
+                "linux_firewall_modules_loaded": resource_runtime[
+                    "linux_firewall_protection_modules_loaded"
+                ],
+                "system_cache_owner_proven": resource_runtime[
+                    "system_cache_exclusive_owner_proven"
+                ],
+                "cache_reachability_proven": resource_runtime[
+                    "ufs_cache_maintenance_reachability_proven"
+                ],
+                "firewall_grant_proven": resource_runtime[
+                    "firewall_state_or_ufs_grant_proven"
+                ],
+                "xnu_resource_delegation_proven": resource_runtime[
+                    "xnu_resource_delegation_proven"
+                ],
+                "live_binding_verdict": resource_binding_verification[
+                    "verdict"
+                ],
                 "receipt_issuable": resource_receipt[
                     "receipt_issuable"
                 ],
@@ -1265,6 +1347,7 @@ def main():
         "resource_live_runtime": sha256(resource_live_runtime),
         "firmware_identity_evidence": sha256(firmware_identity_evidence),
         "firmware_sip_abi_evidence": sha256(firmware_sip_abi_evidence),
+        "resource_binding_evidence": sha256(resource_binding_evidence),
         "saved_ufs_audit": sha256(saved_ufs_audit),
         "saved_ufs_module": sha256(saved_ufs_module),
         "runtime_ufs_build_id_note": sha256(runtime_ufs_build_id_note),

@@ -20,7 +20,7 @@ from pathlib import Path
 import sys
 
 
-REPORT_VERSION = 2
+REPORT_VERSION = 3
 FDT_SHA256 = "9c49589f70044127be8941a9ea5537977f440ccd5ac15cfd24e120c8a1181d29"
 RUNTIME_SHA256 = "71236c08c0354ff0733d44a64e505d117dfd4594e370bedd81fad3ec93d1bf4d"
 FIRMWARE_SHA256 = "65e4a5cdd2085c2e2bb48ad9829109f8e39b7a260669074ab59427419b5d110c"
@@ -30,6 +30,9 @@ FIRMWARE_IDENTITY_SHA256 = (
 )
 FIRMWARE_SIP_ABI_SHA256 = (
     "54c963ea6895717b937c1793685f2ebd70c48f9969ff168b2e63d6621accf103"
+)
+RESOURCE_BINDINGS_SHA256 = (
+    "aaecd9757df5291eeab90ade83cba46d4be73cf57d710ac0bb5e60f6977119f7"
 )
 
 UFS_SERVICE_ID = "0xc2000276"
@@ -208,7 +211,7 @@ def evaluate_receipt(proofs):
 
 def build_report(repo, fdt_path, runtime_path, firmware_path,
                  live_runtime_path, firmware_identity_path,
-                 firmware_sip_abi_path):
+                 firmware_sip_abi_path, resource_bindings_path):
     fdt_raw = fdt_path.read_bytes()
     require(sha256(fdt_raw) == FDT_SHA256, "DTB hash differs")
     runtime, runtime_bytes = load_json(
@@ -227,6 +230,10 @@ def build_report(repo, fdt_path, runtime_path, firmware_path,
     firmware_sip_abi, firmware_sip_abi_bytes = load_json(
         firmware_sip_abi_path, FIRMWARE_SIP_ABI_SHA256,
         "firmware SiP ABI evidence"
+    )
+    resource_bindings, resource_bindings_bytes = load_json(
+        resource_bindings_path, RESOURCE_BINDINGS_SHA256,
+        "resource-binding evidence"
     )
     require(runtime.get("report_version") == 2 and
             runtime.get("audit_passed") is True,
@@ -314,6 +321,61 @@ def build_report(repo, fdt_path, runtime_path, firmware_path,
             sip_safety.get("partition_access") is False and
             sip_safety.get("physical_ufs_backend_enabled") is False,
             "firmware SiP ABI evidence safety differs")
+    binding_target = resource_bindings.get("target", {})
+    binding_runtime = resource_bindings.get("linux_runtime", {})
+    binding_boundary = resource_bindings.get("proof_boundary", {})
+    binding_authorization = resource_bindings.get("authorization", {})
+    binding_safety = resource_bindings.get("safety", {})
+    require(resource_bindings.get("report_version") == 1 and
+            resource_bindings.get("passed") is True and
+            binding_target.get("device") == "duchamp" and
+            binding_target.get("soc") == "mt6897" and
+            binding_target.get("active_slot") == "_a",
+            "resource-binding evidence did not pass")
+    require(binding_runtime.get("provider_bindings_proven") is True and
+            binding_runtime.get("ufs_irq_handler_binding_proven") is True and
+            len(binding_runtime.get("bindings", {})) == 8 and
+            len(binding_runtime.get("regulators", {})) == 3 and
+            len(binding_runtime.get("ufs_interrupts", [])) == 9,
+            "resource-binding runtime attribution differs")
+    for key in (
+        "linux_current_provider_bindings_proven",
+        "linux_ufs_regulator_state_observed",
+        "linux_ufs_irq_handler_binding_proven",
+        "slb_and_scmi_coordination_modules_loaded",
+        "firewall_and_protection_modules_loaded",
+    ):
+        require(binding_boundary.get(key) is True,
+                "resource-binding proof missing: " + key)
+    for key in (
+        "system_cache_exclusive_owner_proven",
+        "ufs_cache_maintenance_reachability_proven",
+        "runtime_smc_effect_proven",
+        "firewall_state_or_ufs_grant_proven",
+        "xnu_mmio_clock_reset_phy_regulator_irq_delegation_proven",
+        "installed_firmware_byte_equivalence_proven",
+    ):
+        require(binding_boundary.get(key) is False,
+                "resource-binding evidence overclaims: " + key)
+    require(binding_authorization == {
+                "physical_backend_enabled": False,
+                "mmio_callbacks": 0,
+                "smc_callbacks": 0,
+                "dma_callbacks": 0,
+                "ufs_commands": 0,
+                "interrupt_reconfiguration_callbacks": 0,
+            }, "resource-binding evidence authorized a physical callback")
+    require(binding_safety.get("phone_read") is True and
+            binding_safety.get("phone_write") is False and
+            binding_safety.get("selinux_policy_change") is False and
+            binding_safety.get("module_load") is False and
+            binding_safety.get("mmio_access") is False and
+            binding_safety.get("smc_execution") is False and
+            binding_safety.get("firewall_probe") is False and
+            binding_safety.get("block_device_access") is False and
+            binding_safety.get("partition_write") is False and
+            binding_safety.get("physical_ufs_backend_enabled") is False,
+            "resource-binding evidence safety differs")
     live_safety = live_runtime.get("safety", {})
     require(live_safety.get("offline_analysis_only") is True and
             live_safety.get("read_only_inputs") is True and
@@ -524,6 +586,15 @@ def build_report(repo, fdt_path, runtime_path, firmware_path,
             "xnu_ufs_irq_delivery_observed": False,
             "xnu_ufs_irq_delegation_proven": False,
             "ufs_interrupt_ownership_proven": False,
+            "linux_resource_provider_bindings_proven": True,
+            "linux_ufs_regulator_state_observed": True,
+            "linux_ufs_irq_handler_binding_proven": True,
+            "linux_slb_scmi_coordination_modules_loaded": True,
+            "linux_firewall_protection_modules_loaded": True,
+            "system_cache_exclusive_owner_proven": False,
+            "ufs_cache_maintenance_reachability_proven": False,
+            "firewall_state_or_ufs_grant_proven": False,
+            "xnu_resource_delegation_proven": False,
         },
         "runtime_proofs": proofs,
         "ownership_receipt": receipt,
@@ -553,6 +624,10 @@ def build_report(repo, fdt_path, runtime_path, firmware_path,
             "firmware_sip_abi_evidence": {
                 "sha256": FIRMWARE_SIP_ABI_SHA256,
                 "bytes": firmware_sip_abi_bytes,
+            },
+            "resource_binding_evidence": {
+                "sha256": RESOURCE_BINDINGS_SHA256,
+                "bytes": resource_bindings_bytes,
             },
             "bounded_parser": str(parser_path.relative_to(repo)).replace("\\", "/"),
         },
@@ -587,6 +662,8 @@ def main():
                         required=True)
     parser.add_argument("--firmware-sip-abi-evidence", type=Path,
                         required=True)
+    parser.add_argument("--resource-binding-evidence", type=Path,
+                        required=True)
     args = parser.parse_args()
 
     repo = Path(__file__).resolve().parent.parent
@@ -601,6 +678,7 @@ def main():
         args.live_runtime_evidence.resolve(strict=True),
         args.firmware_identity_evidence.resolve(strict=True),
         args.firmware_sip_abi_evidence.resolve(strict=True),
+        args.resource_binding_evidence.resolve(strict=True),
     )
     descriptor = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(descriptor, "w", encoding="utf-8") as stream:

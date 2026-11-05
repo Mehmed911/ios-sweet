@@ -1,0 +1,259 @@
+{
+  "authorization": {
+    "dma_callbacks": 0,
+    "interrupt_reconfiguration_callbacks": 0,
+    "mmio_callbacks": 0,
+    "physical_backend_enabled": false,
+    "smc_callbacks": 0,
+    "ufs_commands": 0
+  },
+  "capture": {
+    "adb_root": true,
+    "captured_at_utc": "2026-11-05T17:58:01.565401+00:00",
+    "read_only_queries": true
+  },
+  "linux_runtime": {
+    "bindings": {
+      "dvfsrc": {
+        "driver": "/sys/bus/platform/drivers/mtk-dvfsrc",
+        "exclusive_owner_proven": false,
+        "linux_driver_binding_proven": true,
+        "path": "/sys/bus/platform/devices/1c00f000.dvfsrc",
+        "runtime_status": "unsupported",
+        "xnu_delegation_proven": false
+      },
+      "emi_slb_observer": {
+        "driver": "/sys/bus/platform/drivers/emislb_driver",
+        "exclusive_owner_proven": false,
+        "linux_driver_binding_proven": true,
+        "path": "/sys/bus/platform/devices/10342000.emislb",
+        "runtime_status": "unsupported",
+        "xnu_delegation_proven": false
+      },
+      "secure_power_controller": {
+        "driver": "/sys/bus/platform/drivers/mtk-scpsys-mt6897",
+        "exclusive_owner_proven": false,
+        "linux_driver_binding_proven": true,
+        "path": "/sys/bus/platform/devices/1c001000.power-controller",
+        "runtime_status": "unsupported",
+        "xnu_delegation_proven": false
+      },
+      "topckgen": {
+        "driver": "/sys/bus/platform/drivers/clk-mt6897",
+        "exclusive_owner_proven": false,
+        "linux_driver_binding_proven": true,
+        "path": "/sys/bus/platform/devices/10000000.syscon",
+        "runtime_status": "unsupported",
+        "xnu_delegation_proven": false
+      },
+      "ufs_clock_ao": {
+        "driver": "/sys/bus/platform/drivers/clk-mt6897-peri",
+        "exclusive_owner_proven": false,
+        "linux_driver_binding_proven": true,
+        "path": "/sys/bus/platform/devices/112b8000.syscon",
+        "runtime_status": "unsupported",
+        "xnu_delegation_proven": false
+      },
+      "ufs_clock_reset_pdn": {
+        "driver": "/sys/bus/platform/drivers/clk-mt6897-peri",
+        "exclusive_owner_proven": false,
+        "linux_driver_binding_proven": true,
+        "path": "/sys/bus/platform/devices/112bb000.syscon",
+        "runtime_status": "unsupported",
+        "xnu_delegation_proven": false
+      },
+      "ufs_hci": {
+        "driver": "/sys/bus/platform/drivers/ufshcd-mtk",
+        "exclusive_owner_proven": false,
+        "linux_driver_binding_proven": true,
+        "path": "/sys/bus/platform/devices/112b0000.ufshci",
+        "runtime_status": "active",
+        "xnu_delegation_proven": false
+      },
+      "ufs_phy": {
+        "driver": "/sys/bus/platform/drivers/ufs_mtk_phy",
+        "exclusive_owner_proven": false,
+        "linux_driver_binding_proven": true,
+        "path": "/sys/bus/platform/devices/112a0000.ufsphy",
+        "runtime_status": "active",
+        "xnu_delegation_proven": false
+      }
+    },
+    "hw_voter": {
+      "compatibles": [
+        "mediatek,mt6897-hwv",
+        "syscon"
+      ],
+      "driver": null,
+      "path": "/sys/bus/platform/devices/10320000.syscon",
+      "standalone_driver_binding_proven": false,
+      "syscon_declaration_observed": true,
+      "xnu_delegation_proven": false
+    },
+    "module_groups": {
+      "cache_and_slc": {
+        "all_loaded": true,
+        "required": [
+          "emi_slb",
+          "slbc_mt6897",
+          "slbc_ipi",
+          "mtk_slbc",
+          "tinysys_scmi"
+        ]
+      },
+      "firewall_and_protection": {
+        "all_loaded": true,
+        "required": [
+          "smpu",
+          "emi_mpu",
+          "device_apc_mt6897",
+          "device_apc_common"
+        ]
+      },
+      "ufs_and_resources": {
+        "all_loaded": true,
+        "required": [
+          "ufs_mediatek_mod",
+          "phy_mtk_ufs",
+          "clk_mt6897",
+          "clk_mt6897_peri",
+          "mtk_scpsys_mt6897",
+          "mtk_dvfsrc"
+        ]
+      }
+    },
+    "provider_bindings_proven": true,
+    "regulators": {
+      "8_vbuck3": {
+        "device": "/sys/devices/platform/soc/1cc04000.spmi/spmi-0/0-08/1cc04000.spmi:mt6319@8:mt6319-8-regulator",
+        "linux_runtime_state_observed": true,
+        "microvolts": 1193750,
+        "state": "enabled",
+        "sysfs_id": 9,
+        "xnu_delegation_proven": false
+      },
+      "dvfsrc-vcore": {
+        "device": "/sys/devices/platform/soc/1c00f000.dvfsrc",
+        "linux_runtime_state_observed": true,
+        "microvolts": 800000,
+        "state": null,
+        "sysfs_id": 74,
+        "xnu_delegation_proven": false
+      },
+      "mt6363_vemc": {
+        "device": "/sys/devices/platform/soc/1cc04000.spmi/spmi-0/0-04",
+        "linux_runtime_state_observed": true,
+        "microvolts": 2500000,
+        "state": "enabled",
+        "sysfs_id": 31,
+        "xnu_delegation_proven": false
+      }
+    },
+    "ufs_interrupts": [
+      {
+        "gic_hwirq": 200,
+        "handler": "ufshcd",
+        "linux_irq": 500,
+        "trigger": "Level"
+      },
+      {
+        "gic_hwirq": 209,
+        "handler": "ufshcd",
+        "linux_irq": 509,
+        "trigger": "Level"
+      },
+      {
+        "gic_hwirq": 210,
+        "handler": "ufshcd",
+        "linux_irq": 510,
+        "trigger": "Level"
+      },
+      {
+        "gic_hwirq": 211,
+        "handler": "ufshcd",
+        "linux_irq": 511,
+        "trigger": "Level"
+      },
+      {
+        "gic_hwirq": 212,
+        "handler": "ufshcd",
+        "linux_irq": 512,
+        "trigger": "Level"
+      },
+      {
+        "gic_hwirq": 213,
+        "handler": "ufshcd",
+        "linux_irq": 513,
+        "trigger": "Level"
+      },
+      {
+        "gic_hwirq": 214,
+        "handler": "ufshcd",
+        "linux_irq": 514,
+        "trigger": "Level"
+      },
+      {
+        "gic_hwirq": 215,
+        "handler": "ufshcd",
+        "linux_irq": 515,
+        "trigger": "Level"
+      },
+      {
+        "gic_hwirq": 216,
+        "handler": "ufshcd",
+        "linux_irq": 516,
+        "trigger": "Level"
+      }
+    ],
+    "ufs_irq_handler_binding_proven": true,
+    "ufs_supplier_links": [
+      "/sys/devices/platform/soc/112b0000.ufshci/supplier:phy:phy-112a0000.ufsphy.3",
+      "/sys/devices/platform/soc/112b0000.ufshci/supplier:platform:10000000.syscon",
+      "/sys/devices/platform/soc/112b0000.ufshci/supplier:platform:112a0000.ufsphy",
+      "/sys/devices/platform/soc/112b0000.ufshci/supplier:platform:112b8000.syscon",
+      "/sys/devices/platform/soc/112b0000.ufshci/supplier:platform:112b8000.syscon:reset-controller",
+      "/sys/devices/platform/soc/112b0000.ufshci/supplier:platform:112bb000.syscon",
+      "/sys/devices/platform/soc/112b0000.ufshci/supplier:platform:112bb000.syscon:reset-controller",
+      "/sys/devices/platform/soc/112b0000.ufshci/supplier:platform:1c00f000.dvfsrc",
+      "/sys/devices/platform/soc/112b0000.ufshci/supplier:platform:1cc04000.spmi",
+      "/sys/devices/platform/soc/112b0000.ufshci/supplier:platform:1cc04000.spmi:mt6319@8:mt6319-8-regulator",
+      "/sys/devices/platform/soc/112b0000.ufshci/supplier:regulator:regulator.31",
+      "/sys/devices/platform/soc/112b0000.ufshci/supplier:regulator:regulator.74",
+      "/sys/devices/platform/soc/112b0000.ufshci/supplier:regulator:regulator.9"
+    ]
+  },
+  "passed": true,
+  "proof_boundary": {
+    "firewall_and_protection_modules_loaded": true,
+    "firewall_state_or_ufs_grant_proven": false,
+    "installed_firmware_byte_equivalence_proven": false,
+    "linux_current_provider_bindings_proven": true,
+    "linux_ufs_irq_handler_binding_proven": true,
+    "linux_ufs_regulator_state_observed": true,
+    "runtime_smc_effect_proven": false,
+    "slb_and_scmi_coordination_modules_loaded": true,
+    "system_cache_exclusive_owner_proven": false,
+    "ufs_cache_maintenance_reachability_proven": false,
+    "xnu_mmio_clock_reset_phy_regulator_irq_delegation_proven": false
+  },
+  "report_version": 1,
+  "safety": {
+    "block_device_access": false,
+    "firewall_probe": false,
+    "mmio_access": false,
+    "module_load": false,
+    "partition_write": false,
+    "phone_read": true,
+    "phone_write": false,
+    "physical_ufs_backend_enabled": false,
+    "selinux_policy_change": false,
+    "smc_execution": false
+  },
+  "scope": "read-only Linux provider attribution; bindings and loaded modules do not delegate any resource or firmware ABI to XNU",
+  "target": {
+    "active_slot": "_a",
+    "device": "duchamp",
+    "serial_sha256": "025462cee38fe76042325965ae3a69a21a66fa63a78d160482e040f30a080bd6",
+    "soc": "mt6897"
+  }
+}

@@ -30,6 +30,11 @@ FIRMWARE_SIP_ABI = (
     / "duchamp/diagnostics/ufs-sip-abi/"
       "VERIFICATION-2026-11-05.json"
 )
+RESOURCE_BINDINGS = (
+    REPO
+    / "duchamp/diagnostics/ufs-resource-bindings/"
+      "PHONE-RESULT-2026-11-05.json"
+)
 
 SPEC = importlib.util.spec_from_file_location("mt6897_ufs_resource_ownership", TOOL)
 if SPEC is None or SPEC.loader is None:
@@ -44,7 +49,7 @@ class ResourceOwnershipTests(unittest.TestCase):
     def setUpClass(cls):
         cls.report = MODULE.build_report(
             REPO, FDT, RUNTIME, FIRMWARE, LIVE_RUNTIME, FIRMWARE_IDENTITY,
-            FIRMWARE_SIP_ABI
+            FIRMWARE_SIP_ABI, RESOURCE_BINDINGS
         )
 
     def test_exact_mmio_manifest_is_declaration_only(self):
@@ -97,7 +102,7 @@ class ResourceOwnershipTests(unittest.TestCase):
         self.assertFalse(self.report["runtime_proofs"]["ufs_interrupt_ownership"])
 
     def test_runtime_identity_does_not_promote_effects_or_ownership(self):
-        self.assertEqual(self.report["report_version"], 2)
+        self.assertEqual(self.report["report_version"], 3)
         firmware = self.report["firmware_contract"]
         self.assertTrue(firmware["captured_bl31_artifact_pinned"])
         self.assertTrue(firmware["static_service_dispatch_proven"])
@@ -125,8 +130,26 @@ class ResourceOwnershipTests(unittest.TestCase):
             ):
                 MODULE.build_report(
                     REPO, FDT, RUNTIME, FIRMWARE, LIVE_RUNTIME,
-                    FIRMWARE_IDENTITY, changed
+                    FIRMWARE_IDENTITY, changed, RESOURCE_BINDINGS
                 )
+
+    def test_linux_provider_bindings_do_not_promote_xnu_ownership(self):
+        observed = self.report["runtime_observations"]
+        self.assertTrue(observed["linux_resource_provider_bindings_proven"])
+        self.assertTrue(observed["linux_ufs_regulator_state_observed"])
+        self.assertTrue(observed["linux_ufs_irq_handler_binding_proven"])
+        self.assertTrue(observed[
+            "linux_slb_scmi_coordination_modules_loaded"
+        ])
+        self.assertTrue(observed[
+            "linux_firewall_protection_modules_loaded"
+        ])
+        self.assertFalse(observed["system_cache_exclusive_owner_proven"])
+        self.assertFalse(observed[
+            "ufs_cache_maintenance_reachability_proven"
+        ])
+        self.assertFalse(observed["firewall_state_or_ufs_grant_proven"])
+        self.assertFalse(observed["xnu_resource_delegation_proven"])
 
     def test_current_evidence_denies_every_physical_callback(self):
         receipt = self.report["ownership_receipt"]
@@ -174,6 +197,7 @@ class ResourceOwnershipTests(unittest.TestCase):
                 "--live-runtime-evidence", str(LIVE_RUNTIME),
                 "--firmware-identity-evidence", str(FIRMWARE_IDENTITY),
                 "--firmware-sip-abi-evidence", str(FIRMWARE_SIP_ABI),
+                "--resource-binding-evidence", str(RESOURCE_BINDINGS),
             ]
             result = subprocess.run(
                 command, cwd=REPO, text=True,
@@ -205,6 +229,7 @@ class ResourceOwnershipTests(unittest.TestCase):
                     "--live-runtime-evidence", str(LIVE_RUNTIME),
                     "--firmware-identity-evidence", str(FIRMWARE_IDENTITY),
                     "--firmware-sip-abi-evidence", str(FIRMWARE_SIP_ABI),
+                    "--resource-binding-evidence", str(RESOURCE_BINDINGS),
                 ],
                 cwd=REPO, text=True,
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30,
