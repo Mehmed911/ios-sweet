@@ -57,12 +57,15 @@ if [ -z "$image_head" ]; then
 fi
 report_pa=$((0x40200000 + report_offset - image_head))
 exception_pa=$((0x40200000 + exception_offset - image_head))
-python3 test_qemu.py --image "$out/build/Image" --pattern lk-ram \
+if ! python3 test_qemu.py --image "$out/build/Image" --pattern lk-ram \
 	--dtb "$fdt" --memory 8G --wait 15 \
 	--lk-report-pa "$report_pa" --expect-lk-generation 0x20261105 \
 	--lk-payload "$payload" \
 	--exception-record-pa "$exception_pa" --expect-no-exception \
-	--capture "$out/framebuffer.raw" > "$out/qemu.log" 2>&1
+	--capture "$out/framebuffer.raw" > "$out/qemu.log" 2>&1; then
+	cat "$out/qemu.log" >&2
+	exit 1
+fi
 cat "$out/qemu.log"
 
 python3 pack_boot.py --stock-boot "$stock" --kernel "$out/build/Image" \
