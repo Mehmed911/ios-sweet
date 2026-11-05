@@ -8,6 +8,13 @@ if [ -n "${PAYLOAD:-}" ]; then
 		exit 2
 	fi
 fi
+if [ -n "${PHONE_CONTRACT:-}" ]; then
+	phone_contract=$(readlink -f "$PHONE_CONTRACT")
+	if [ ! -f "$phone_contract" ]; then
+		echo "phone contract not found: $PHONE_CONTRACT" >&2
+		exit 2
+	fi
+fi
 
 cd "$(dirname "$0")"
 
@@ -16,9 +23,23 @@ cc=${CC:-clang}
 objcopy=${OBJCOPY:-llvm-objcopy}
 cflags="--target=aarch64-none-elf -O2 -ffreestanding -nostdlib -fno-pic -mgeneral-regs-only -mstrict-align -fno-stack-protector -Wall -Wextra -Werror ${EXTRA_CFLAGS:-}"
 lk_ram=${LK_RAM_TRANSPORT:-}
+phone_layout=${PHONE_LAYOUT:-}
 ldflags=
 
-if [ -n "$lk_ram" ]; then
+if [ -n "$phone_layout" ]; then
+	if [ -n "${QEMU_ONLY:-}${LK_RAM_TRANSPORT:-}${PAYLOAD:-}${MATERIALIZE:-}${READY:-}${JUMP:-}${RETURN:-}${TEST_XNU_RETURN:-}" ]; then
+		echo "PHONE_LAYOUT is a separate no-payload, no-execution path" >&2
+		exit 2
+	fi
+	if [ -z "${PHONE_CONTRACT:-}" ]; then
+		echo "PHONE_LAYOUT requires PHONE_CONTRACT" >&2
+		exit 2
+	fi
+	python3 ../../tools/verify-duchamp-phone-layout.py \
+		--contract "$phone_contract"
+	cflags="$cflags -DDUCHAMP_PHONE_LAYOUT_ONLY=1 -DDUCHAMP_TEST_NO_WATCHDOG=1"
+	ldflags="-Wl,--defsym,DUCHAMP_IMAGE_BASE=0x40000000"
+elif [ -n "$lk_ram" ]; then
 	if [ "${QEMU_ONLY:-}" != 1 ]; then
 		echo "LK_RAM_TRANSPORT requires QEMU_ONLY=1" >&2
 		exit 2
@@ -142,4 +163,9 @@ head=$(llvm-nm "$out/duchamp-diagnostic.elf" | awk '$3 == "_head" { print "0x" $
 end=$(llvm-nm "$out/duchamp-diagnostic.elf" | awk '$3 == "_end" { print "0x" $1 }')
 truncate -s "$((end - head))" "$out/Image"
 llvm-readelf -r "$out/duchamp-diagnostic.elf"
+if [ -n "$phone_layout" ]; then
+	python3 ../../tools/verify-duchamp-phone-layout.py \
+		--contract "$phone_contract" \
+		--elf "$out/duchamp-diagnostic.elf" --image "$out/Image"
+fi
 ls -l "$out/duchamp-diagnostic.elf" "$out/Image"

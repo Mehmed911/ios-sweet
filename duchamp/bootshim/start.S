@@ -1,3 +1,7 @@
+#if defined(DUCHAMP_PHONE_LAYOUT_ONLY) && defined(DUCHAMP_QEMU_ONLY)
+#error "phone-layout and QEMU-only guards are mutually exclusive"
+#endif
+
 	.section .text.head, "ax"
 	.globl _head
 _head:
@@ -19,6 +23,20 @@ _start:
 	mov	x21, x2
 	mov	x22, x3
 	mov	x23, sp
+#if defined(DUCHAMP_PHONE_LAYOUT_ONLY)
+	.globl duchamp_phone_layout_guard
+duchamp_phone_layout_guard:
+	adr	x11, _head
+	movz	x9, #0x4000, lsl #16
+	cmp	x11, x9
+	b.ne	halt
+	movz	x10, #0x47c8, lsl #16
+	cmp	x19, x10
+	b.ne	halt
+	.globl duchamp_phone_layout_stop
+duchamp_phone_layout_stop:
+	b	halt
+#endif
 #if defined(DUCHAMP_QEMU_ONLY)
 	adr	x11, _head
 	movz	x9, #0x4020, lsl #16

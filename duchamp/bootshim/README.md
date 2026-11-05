@@ -170,3 +170,24 @@ Consequently, a much larger payload (including the current roughly 151 MB
 candidate) is rejected for this complete LK-layout proof even though the
 streaming staging protocol itself has a larger capacity. This is a layout
 limit, not evidence of phone compatibility.
+
+## Fail-closed Duchamp phone-layout preflight
+
+`PHONE_LAYOUT=1 PHONE_CONTRACT=...` is a separate offline build mode. It accepts
+only the report produced by `tools/audit-duchamp-lk-handoff.py` for the pinned
+LK, boot, vendor-boot, final-FDT and runtime-iomem captures. It is mutually
+exclusive with `QEMU_ONLY`, `LK_RAM_TRANSPORT`, `PAYLOAD`, `MATERIALIZE`,
+`READY`, `JUMP`, `RETURN` and `TEST_XNU_RETURN`.
+
+The mode links at the captured vendor-boot Image contract `0x40000000`. Its
+assembly guard requires that runtime `_head` and inherited FDT `x0` equal the
+static/corroborated addresses, then always stops in `WFE` before BSS clearing or
+any C call. It contains no payload, transport or XNU branch. The post-link
+verifier requires zero relocations, no undefined symbols, an empty LK-capsule
+section, an Image end below `0x47c80000`, and continued execution authorization
+set to false.
+
+This mode does not prove the runtime kernel PC or FDT register. LK computes both
+targets dynamically and hands them to secure firmware through SMC
+`0xc2000115`; those runtime values have not been numerically captured. See
+`duchamp/MT6897-LK-HANDOFF-CONTRACT.md` for the exact evidence and command.
