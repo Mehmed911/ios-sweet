@@ -1,3 +1,40 @@
+Active handoff — approved PC/x0 phone flash trial (2026-11-06):
+The user explicitly accepted flashing. Read-only ADB preflight confirmed
+Duchamp/MT6897, unlocked bootloader, slot _a, completed Android boot, Magisk
+root and 81% charging battery. A fresh 64 MiB boot_a backup was copied to the
+host and verified against the live partition and original saved hash
+1b972f4f1c98428f2fca1e7c1c8cf463e0122a70a290e482be3230c7838e3e12.
+Live vendor_boot_a and lk_a also matched the pinned handoff evidence.
+
+The isolated PHONE_CAPTURE Image (40,912 bytes, SHA256
+2a7dff64f5e28afa5e7eef74e99ea2d3a273df367f341047891ba3a4ea6d20ea)
+passed the complete native/post-link/QEMU capture suite. Its 64 MiB
+boot-v4/LZ4/AVB-NONE wrapper SHA256 is
+d4d39727f226cd1551df1f5bc11775c1cd05654fa661b1f65ae6d308902e023c.
+The footer/hash and LZ4 byte roundtrip passed. Fastboot verified product,
+slot a, unlocked state and partition size, then successfully wrote only
+boot_a (1.771 seconds) and accepted reboot. This image records runtime PC/x0
+and writes only the measured framebuffer after entry; it has no XNU payload,
+FDT dereference, storage command or watchdog access.
+
+IMPORTANT CURRENT STATE: diagnostic boot_a is installed. The user must
+photograph PC/X0 and return to Fastboot with Power + Volume Down. The guarded
+restore helper in work/phone-pc-x0-flash-trial-v1/restore.ps1 is already
+waiting (Execute mode, 900-second limit); it will verify the device and fresh
+backup, restore only boot_a, reboot and require Android/live boot_a hash.
+Do not start a second restore while that helper is running. Its transcript
+is work/phone-pc-x0-flash-trial-v1/restore-transcript.txt. Physical PC/x0 and
+completed stock restoration are pending; neither is proven by QEMU or a
+successful flash. No other partition, slot selection or userdata was changed.
+See duchamp/PHONE-PC-X0-FLASH-TRIAL.md and the ignored trial directory.
+
+Immediately preceding offline commits: cdab54f audits pinned UniXNU/Ruby/
+Merlinx source reuse; 8bd7a53 adds the common LK/UEFI RAM contract validator
+and QEMU-only integration (16 native checks plus real capsule/QEMU proof).
+That contract does not supply a phone entry caller or authorize an XNU jump.
+Preserve all other pre-existing user changes.
+End of active handoff.
+
 MT6897 PA-to-DMA/bounce route contract/XNU replay — verified (2026-11-04):
 Commits 06c27a97a996cb6fbe2eb8a3540d28c33f99222c and
 2d65b02ffda3c442bcdf6c52a4c34490ee5b222c on duchamp-bootstrap add and
