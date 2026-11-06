@@ -9,7 +9,8 @@ combined launchctl/syslogd/notifyd fixture. The CLI is pinned Procursus FOSS
 launchctl; launchd, dyld, xpcproxy, syslogd and notifyd are unchanged Apple
 executables. Two diagnostic clients and an observer exercise the services.
 
-The new service batch is locally proved, not yet observed on the phone.
+The new service batch is locally proved and its physical-phone CONTROL PASS
+markers have now been photographed in the approved trial recorded below.
 Physical UFS/DMA/IOMMU/resource ownership remain closed. The candidate does not
 establish SpringBoard, Mali acceleration, touchscreen or a complete iOS system.
 It keeps `cpus=1`, `rd=md0` and the existing 512 MiB high-RAM XNU window.
@@ -100,8 +101,8 @@ reported ADB follow-up failed, then independent read-only checks established
 completed Android boot and the exact original live boot hash. Preserve that
 qualification rather than reporting a clean helper run.
 
-This new image requires a separate approved `boot_a` trial with original
-Android restoration under the repository's per-step destructive-action rule.
+The user separately approved this image's `boot_a` trial with original Android
+restoration under the repository's per-step destructive-action rule.
 Before writing, recheck device/slot/unlock/battery and live stock hashes, take
 a fresh binary-safe backup, and prepare recovery against that exact backup.
 The recovery helper must log the failing command and tolerate bounded read-only
@@ -110,3 +111,50 @@ automatically. Observe the two CONTROL PASS markers and the continuing
 heartbeat, then restore and independently verify original Android and boot_a.
 If the phone stops earlier, retain the last readable output and restore;
 QEMU success is not permission to enable physical UFS or undocumented MMIO.
+
+## Approved physical trial: photographed service PASS and Android restored
+
+The user's approval followed the exact image and test results above. Fresh
+read-only preflight established Duchamp/MT6897, slot `_a`, completed original
+Android boot, unlocked state, Magisk root, 85% charging battery and matching
+live boot_a/vendor_boot_a/lk_a hashes. A fresh binary-safe 64 MiB boot_a backup
+matched original SHA-256
+`1b972f4f1c98428f2fca1e7c1c8cf463e0122a70a290e482be3230c7838e3e12`.
+The copied candidate and report still matched their pinned hashes.
+
+Fastboot independently reconfirmed product/slot/unlock/partition size. Sending
+and writing only boot_a returned OKAY, total 1.766 seconds. Reboot was accepted.
+The user's clear physical-phone photo then showed both CONTROL PASS lines
+listed above, plus heartbeat 1, 2 and 3 with syslogd still running as PID 4 and
+the two probes stopped. notifyd was PID 7, clients were PID 5 and 6, and each
+client reported normal exit with three ASL messages. Notification probe and
+cancellation markers are visible. This establishes the combined RAM-root
+service checkpoint on Duchamp; it does not import all 74 saved-guest checks
+into the physical test or prove hardware UFS.
+
+The photograph is preserved privately as
+`work/phone-services-flash-trial-v1/phone-services-observation-01.jpg`, SHA-256
+`652315d665cae36a5e2b957d2c645f7be18bfa4bd3aa5c3188a2b06efb956dda`.
+Visible `vm_shared_region_start_address() failed` messages did not stop the
+photographed CLI commands from returning status zero or the service checks
+from passing. Their broader effect is not established by this trial.
+
+The private restore helper was prepared before flashing, syntax-checked and
+dry-run against the fresh backup. It logs command/arguments/exit/output on
+failure, permits bounded retries only for read-only post-reboot ADB checks,
+and makes exactly one stock flash attempt. After the phone re-entered Fastboot,
+it wrote original boot_a successfully (1.819 seconds), rebooted Android and
+finished with PASS/exit code zero. One transient ADB `sys.boot_completed` read
+failed with device-not-found during reboot; the improved observation loop
+logged the exact command and tolerated it without repeating the flash.
+
+An independent read-only follow-up reconfirmed boot_completed=1, Duchamp/MT6897,
+slot `_a`, the original V816.0.17.0.UNLMIXM fingerprint, Magisk root and live
+boot_a SHA-256 matching the fresh original backup. Its private JSON report is
+`work/phone-services-flash-trial-v1/android-recovery-followup.json`, SHA-256
+`4040e55a2f0a9a653750c92f69df67360015a1796f7f71bcf0919319115ccd54`.
+Restoration completed at 04:16:17 local time. Helper exec session 82953 ended;
+no restoration is pending. Evidence and scripts remain outside git under
+`work/phone-services-flash-trial-v1`. No additional phone trial is authorized
+by the completed combined-services test; continue independent local work and
+review any materially different hardware action separately.

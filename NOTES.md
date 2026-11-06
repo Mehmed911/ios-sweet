@@ -1,3 +1,40 @@
+LATEST HARDWARE RESULT — combined services PASS; Android restored (2026-11-06):
+The user approved combined launchctl/syslogd/notifyd boot_a image SHA256
+545112503a5e9052db709572cc840758619f2b7e27c9aa58c0af2a3924a8f6a8
+with original Android restoration. Fresh read-only preflight established
+Duchamp/MT6897, active _a, unlocked/rooted original Android and 85% charging
+battery. Original boot_a/vendor_boot_a/lk_a live hashes match. A fresh 64 MiB
+binary-safe boot_a backup is saved at
+work/phone-services-flash-trial-v1/boot_a-before-trial.img, SHA256
+1b972f4f1c98428f2fca1e7c1c8cf463e0122a70a290e482be3230c7838e3e12.
+Fastboot rechecked identity/slot/unlock/size, wrote only boot_a successfully
+(1.766s) and accepted reboot. Original Android has since been restored below.
+
+The user's physical-phone photo shows NOTIFYD CONTROL PASS server=7,
+syslogd=4 clients=5,6; SYSLOGD CONTROL PASS messages=6; heartbeats 1 through 3
+with server still running and probes stopped; both clients exit status 0.
+Photo: work/phone-services-flash-trial-v1/phone-services-observation-01.jpg,
+SHA256 652315d665cae36a5e2b957d2c645f7be18bfa4bd3aa5c3188a2b06efb956dda.
+Shared-region address warnings are visible but these observed CLI calls
+returned status zero. This is physical combined-services evidence, not a
+claim that all 74 saved-guest checks were extracted from the phone.
+
+CURRENT STATE: ORIGINAL ANDROID RESTORED. The private helper wrote original
+boot_a successfully (1.819s), rebooted, verified Android/root/live boot_a and
+exited zero at 04:16:17 local time. Exec session 82953 ended. A transient ADB
+device-not-found during the sys.boot_completed observation was logged and
+tolerated by the bounded read-only loop; no flash was repeated. Independent
+read-only follow-up reconfirmed boot_completed=1, Duchamp/MT6897, active _a,
+original V816.0.17.0.UNLMIXM fingerprint, Magisk uid=0 and original boot_a hash.
+Private android-recovery-followup.json SHA256
+4040e55a2f0a9a653750c92f69df67360015a1796f7f71bcf0919319115ccd54.
+No restoration remains pending. Logs/plan/private scripts are under
+work/phone-services-flash-trial-v1. Physical UFS remains closed; GUI/Mali/full
+iOS are not established. Next work is local dependency/provenance review for
+a larger RAM userland; any materially different hardware trial needs its own
+concrete review/approval. See duchamp/PHONE-SERVICES-BATCH.md.
+Preserve all pre-existing unrelated user edits.
+
 ACTIVE HANDOFF — combined services candidate locally PASS; phone trial pending (2026-11-06):
 The user requested the fastest useful next boot checkpoint. Reused the exact
 phone-proven kernel e465723a540844817a5b9cb36c14984d660f9a8e41f6638240527b469189182b
