@@ -1,4 +1,10 @@
-# Matching SystemOS acquired; cache dependencies available, standalone loading blocked
+# Matching SystemOS acquired; intact cache loading validated in QEMU
+
+Subsequent runtime work loaded the untouched cache through read-only virtual
+QEMU storage and validated ContainerManagerCommon/CacheDelete plus original
+Objective-C metadata. See [the actual runtime result](SHARED-CACHE-QEMU.md).
+The derived standalone exports described below remain blocked and were not
+used in that successful test.
 
 ## Concrete result, 2026-11-06
 
@@ -185,13 +191,14 @@ not a promise of a self-contained clean checkout.
 
 ## Next actual integration boundary
 
-Resolve a runnable library-loading route in QEMU: preserve/map the intact
-matching shared cache, or reconstruct and validate standalone binding and
-Objective-C references. The intact cache is 3.3 GB and does not fit the current
-512 MiB payload window; that route requires an explicit virtual storage/memory
-plan and loader validation. Do not insert it into the existing phone layout.
+The intact-cache route now has a successful QEMU runtime witness through the
+existing read-only virtual storage adapter. Its 43 runtime components occupy
+2,722,512,896 bytes; the 44-file acquisition total also includes local symbols.
+They are kept outside the unchanged 512 MiB kernel RAM window. See
+[SHARED-CACHE-QEMU.md](SHARED-CACHE-QEMU.md) for exact scope and replay.
+This does not make the files fit the existing phone payload layout.
 
-After loader validation, use the resolved original container/log policies in
-a separate QEMU fixture, then require a real lsd request/reply witness. Neither
+Next, use writable service state and the resolved original container/log policies
+in a separate QEMU fixture, then require a real lsd request/reply witness. Neither
 the source closure nor namespace lookup alone establishes that result. Phone
 UFS/DMA/IOMMU, Mali and a complete GUI remain separate unproven work.

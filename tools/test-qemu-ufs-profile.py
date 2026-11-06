@@ -5,6 +5,8 @@ from pathlib import Path
 import struct
 import tempfile
 import unittest
+from unittest.mock import patch
+import hashlib
 import adt
 import qemu_ufs as profile
 
@@ -87,6 +89,13 @@ class Tests(unittest.TestCase):
 
     def test_bad_image(self):
         self.image.write_bytes(b'no volume'); self.reject()
+
+    def test_image_hashing_does_not_read_whole_image(self):
+        expected=hashlib.sha256(self.image.read_bytes()).hexdigest()
+        with patch.object(Path,'read_bytes',side_effect=AssertionError('unbounded image read')):
+            _,meta=profile.runner_options(self.payload(),self.image,'cortex-a76','duchamp')
+        self.assertEqual(meta['sha256'],expected)
+        self.assertEqual(meta['image_bytes'],1024*1024)
 
     def test_payload_bounds(self):
         p=bytearray(self.payload()); struct.pack_into('<Q',p,0x20,len(p)+1)

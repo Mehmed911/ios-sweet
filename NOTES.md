@@ -1,3 +1,46 @@
+ACTIVE HANDOFF — intact shared cache executed in QEMU; 13/13 PASS (2026-11-06):
+Continued the user's approved next-stage plan locally. Original20F66 dyld
+loaded untouched runtimecache UUIDE5420DB3-30D0-33AA-8B7E-05B5038BB46D.
+Static diagnosticPID1 forks; dynamicchildPID2/ppid1 reports livecache range,
+dlopen(RTLD_NOW) success for original ContainerManagerCommon andCacheDelete,
+bothloadedheaders inrange withMH_DYLIB_IN_CACHE andobjcclass namesMCMError /
+CDRecentInfo. No derived standaloneexports wereused; theirgate remainsclosed.
+
+V4 FINALsource result work/shared-cache-qemu-v4/evidence/verification.json:
+13/13PASS,32.843hostseconds,SHA256
+1aa834e63097cb1a07d5640177da6d2500b2322afdc3cba231f04874fcc8fb54.
+V4root3e23c283d5847ccf9e556f2300df8050d30ad8487e759e92689dd2765a9f71bf;
+inputs1b7e4c71739f50029b8e485367663d1659802c66889afb4461173aebb44c3723.
+V3 alsoPASS13/13,49.343s,report3da48e77694343e15a0e4386d1e4d4199f3af7cc8ec3cfb127795843ac532969.
+V4corrects diagnosticparent busyrecvfrom to blockingwait4/select; rerunpassed.
+Timingsarelocaltrials,notcontrolledperformanceorhardwaretimingproof.
+
+43runtimecomponents/2722512896bytes (symbols omitted) installed into NEW3GiB
+HFSdisk; each sourcepin + HFSroundtripchecked. Strict read-onlyQEMU UFS serves
+cacheoutside unchanged512MiBkernelwindow. Payload16715616bytes,SHA
+5aba40f16dd814bc2c2a1126677bcfca222c87fa61c650eb7756364f8eb7a465.
+Kernel e465723a...9182b unchanged; baseQEMUADT a881410d...417d8 unchanged.
+Disk/base/sourcehashesunchanged afterrun. Originaldyldroundtripmatchesmatching
+source. NoRAMDisk fallback. Inheritedearly 'QEMU RAM ROOT MOUNTED' text is
+generic: thisfixtureusesqufs0,notmd0. Native3GiBimagesuseWSLdisknot/tmpfs;
+allprivateinputs/frozensources/results exported. NoVM/helper remainsactive.
+
+V1FAILED beforedyld: missing/dev onreadonlyroot,consoleopenfailed; manually
+stopped89.533s. V2FAILED180.250stimeout: directexecasPID1 lastshowedlibignition
+configuration; noCmain. Exactinternalwaitnotattributed. Independentchildisolates
+cacheloading; itdoesNOTsolveoriginalPID1diskrootstartup. V1-v4allpreserved.
+qemu_ufs.py nowstreamshash/headerchecksinsteadwhole3GiBreads;20profiletests
+PASSincludingwholefilereadguard. Newtools:test-duchamp-shared-cache.py,
+duchamp-shared-cache-init.S,sweet-shared-cache-probe.c. RuntimeAPIdeclsverified
+againstApple dyld1066.8headerandmatchinglocalexports.
+
+NEXT: writable service state separatelyfromcache disk; integrateoriginalMCM/
+logdpolicies and require realnativelsdrequest/reply. OriginalApplelaunchd with
+thisdiskfixture,GUI/backboardd/SpringBoard NOTtested. PhysicalMT6897UFS/DMA/
+IOMMU/Maliremainseparateunprovenwork. Nophoneaccess/flash/partitionwrite;
+Androidlastverifiedrestoredasbefore. See duchamp/SHARED-CACHE-QEMU.md.
+Preserve unrelateduseredits(including1960earlierunstagedNOTESlines).
+
 ACTIVE HANDOFF — complete SystemOS/cache acquired; strong paths resolved; loader blocked (2026-11-06):
 The user challenged progress toward a usable phone system. Continued actual
 local source work, without phone/partition access or a new kernel build.

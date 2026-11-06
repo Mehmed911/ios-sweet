@@ -77,10 +77,21 @@ def runner_options(payload,image,cpu,framebuffer):
     path=Path(image).resolve()
     if not stat.S_ISREG(path.stat().st_mode) or ',' in str(path):
         raise ValueError('UFS image must be a regular file with a comma-free path')
-    raw=path.read_bytes()
-    if len(raw)%4096 or len(raw)<1024*1024 or raw[1024:1026] not in (b'H+',b'HX'):
-        raise ValueError('UFS fixture must be an aligned HFS+ file')
-    metadata={'image':str(path),'image_bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),
+    before=path.stat()
+    digest=hashlib.sha256()
+    with path.open('rb') as source:
+        source.seek(1024)
+        signature=source.read(2)
+        if before.st_size%4096 or before.st_size<1024*1024 or signature not in (b'H+',b'HX'):
+            raise ValueError('UFS fixture must be an aligned HFS+ file')
+        source.seek(0)
+        for chunk in iter(lambda: source.read(4*1024*1024),b''):
+            digest.update(chunk)
+    after=path.stat()
+    identity=lambda s:(s.st_dev,s.st_ino,s.st_size,s.st_mtime_ns,s.st_ctime_ns)
+    if identity(before)!=identity(after):
+        raise ValueError('UFS fixture changed while hashing')
+    metadata={'image':str(path),'image_bytes':before.st_size,'sha256':digest.hexdigest(),
               'readonly':True,'bar':list(BAR),'ecam':list(ECAM),'bus':0,'slot':4,'function':0,
               'no_ramdisk':True,'scope':'QEMU-only virtual UFS; no physical device'}
     options=['-drive',f'file={path},format=raw,if=none,id=duchamp_lu0,readonly=on',
