@@ -1,3 +1,20 @@
+Next reviewable checkpoint — Apple launchd RAM root (2026-11-06):
+The user asked what to do after PC/x0 capture. The next useful phone checkpoint
+is the existing Apple-launchd + xpcproxy + one C service candidate, rather than
+repeating the already proven diagnostic PID 1 milestones. Fresh independent
+offline revalidation in work/phone-launchd-recheck-20261106-v1 PASSed 17/17,
+including payload reconstruction, ELF/embedded payload checks, native loader
+tests, actual bootshim->XNU QEMU entry, LZ4 and AVB-NONE. The pinned earlier
+15-check original-launchd service report was validated, not freshly rerun.
+Candidate SHA256 e36b7632ff402d39db162081c2c5bb401540651ba87a38d9fdd21afd6ca80686;
+report SHA256 e3e7faeb50977552385ee8c304bc54035f7ad6887492df1f844cd350f33287a6.
+Original candidate files were preserved. No phone operation occurred this turn.
+Android/root remain restored from the preceding capture trial. The last
+explicit reflash authorization applied to the isolated PC/x0 image; this
+different launchd trial awaits the user's hardware-test decision. Physical
+UFS/DMA/IOMMU/resource ownership remain closed. Concrete image, validation and
+recovery scope: duchamp/PHONE-LAUNCHD-TRIAL-PLAN.md. Preserve user edits.
+
 Active handoff — runtime Image PC/x0 CAPTURED; STOCK RESTORED (2026-11-06):
 The user explicitly requested repeating the isolated capture flash to read the
 numbers. Same verified boot-v4/LZ4/AVB-NONE image SHA256
