@@ -56,9 +56,17 @@ photo, so their numeric hardware values remain unverified. The private evidence
 copy is `phone-pc-x0-observation-01.jpg`, SHA-256
 `1f3931fd8ea8db9ca585d5698b146452d869fc3f50cc72a5694374dc12323667`.
 
-The recovery helper remains running, awaiting the user's return to Fastboot
-with Power + Volume Down. Stock restoration and Android recovery must not be
-claimed until their command and live-hash checks complete.
+The user returned the phone to Fastboot. The guarded recovery helper sent and
+wrote the original `boot_a` successfully (1.834 seconds), rebooted Android, and
+verified `sys.boot_completed=1`, Duchamp/MT6897, slot `_a`, and the live `boot_a`
+hash matching the original backup. Recovery completed at 02:57:20 local time.
+A separate ADB check reconfirmed the original Android build fingerprint and
+Magisk root (`uid=0`). The helper has exited successfully.
+
+The phone is back on its original Android boot image. The numeric PC/x0
+measurement remains incomplete because the photo is unreadable; it must not
+be filled from static LK metadata or QEMU values. A clearer capture is needed
+before promoting those runtime address claims.
 
 Private build, backup and transcript files are under the ignored directory
 `work/phone-pc-x0-flash-trial-v1`. The 64 MiB QEMU-only LK transport layout

@@ -23,15 +23,15 @@ hardware PC/x0 remain unverified. Private photo SHA256 is
 1f3931fd8ea8db9ca585d5698b146452d869fc3f50cc72a5694374dc12323667,
 saved as work/phone-pc-x0-flash-trial-v1/phone-pc-x0-observation-01.jpg.
 
-IMPORTANT CURRENT STATE: diagnostic boot_a is installed. The user must
-photograph PC/X0 and return to Fastboot with Power + Volume Down. The guarded
-restore helper in work/phone-pc-x0-flash-trial-v1/restore.ps1 is already
-waiting (Execute mode, 900-second limit); it will verify the device and fresh
-backup, restore only boot_a, reboot and require Android/live boot_a hash.
-Do not start a second restore while that helper is running. Its transcript
-is work/phone-pc-x0-flash-trial-v1/restore-transcript.txt. Physical PC/x0 and
-completed stock restoration are pending; neither is proven by QEMU or a
-successful flash. No other partition, slot selection or userdata was changed.
+CURRENT STATE: STOCK RESTORED. After the user's return to Fastboot, the
+guarded helper restored only the original boot_a (send/write OKAY, 1.834s),
+rebooted Android and verified boot_completed=1, Duchamp/MT6897, slot _a and
+the live boot_a hash against the backup. Recovery completed at 02:57:20 local
+time; the helper exited successfully. Separate ADB checks reconfirmed the
+original V816.0.17.0.UNLMIXM fingerprint and Magisk uid=0. The transcript is
+work/phone-pc-x0-flash-trial-v1/restore-transcript.txt. Numeric physical PC/x0
+remain unverified due to the unreadable photo. Do not substitute QEMU or static
+addresses. No other partition, slot selection or userdata was changed.
 See duchamp/PHONE-PC-X0-FLASH-TRIAL.md and the ignored trial directory.
 
 Immediately preceding offline commits: cdab54f audits pinned UniXNU/Ruby/
