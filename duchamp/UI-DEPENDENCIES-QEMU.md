@@ -141,9 +141,11 @@ v3's full saved-evidence PASS. All failed artifacts remain preserved.
 
 ## Next bounded checkpoint
 
-Test the original `lsd` in a separate QEMU fixture using its actual job,
-mobile identity and native endpoints. Record startup, any dynamically missing
-dependencies and a bounded client request before attempting higher UI jobs.
+The first separate original `lsd` runtime diagnostic has now been run; see
+[the actual failure and support-service audit](LSD-QEMU-DIAGNOSTICS.md).
+It executed then aborted; missing container/log services exposed four further
+framework gaps. Native identity/stability/endpoint and request checks have
+not passed. Resolve this support closure before a new service attempt.
 Strong closure alone does not establish successful daemon execution. Obtain
 and audit the matching missing GUI frameworks before attempting SpringBoard
 or backboardd. Phone UFS, firmware ownership and Mali remain independent work.

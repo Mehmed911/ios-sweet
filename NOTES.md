@@ -1,3 +1,45 @@
+ACTIVE LOCAL HANDOFF — lsd runtime blocked by support services/framework gaps (2026-11-06):
+The user asked the fastest next step; ran original lsd in QEMU on the unchanged
+e465723a...9182b kernel/a881410d...417d8 QEMU ADT. No phone/network access or
+kernel build. Original Android remains last verified restored below.
+tools/test-duchamp-lsd.py and sweet-lsd-probe.c create a fresh128MiB HFS root,
+preserve original lsd/mobile job/13MachServices and add proven notifyd/cfprefsd
+support. All106 installed files plus original launchd/xpcproxy hashes matched.
+
+ACTUAL RESULT: work/lsd-qemu-v1 failed,76.501 host seconds. Root controllerPID3
+kickstarted real lsdPID6; first CLI print showed running,execs=1,initialized=1
+in user/501. launchd then reported lsd self-SIGABRT. Last print not running,
+Abort trap6. Failed lookups for com.apple.logd and com.apple.containermanagerd
+were visible. Exact fatal branch is NOT attributed by temporal lookup logs.
+Native UID/GID/stability/endpoint checks did not pass; no native app RPC ran.
+QEMU report3ec19b4e1ad47d2c8efa4bc5535e8e7f284909c9c4477e485d6630a3a3b7ec1e;
+payload377256b9155a125688797e7cb39e5a0a3d01d69fec777022bd13938975bce494;
+root392a97d4f84f0c3399f2a4b7821dd4d71832b2d91350989196567fede0a8229c.
+
+Safe alternative follow-up extracted6 original container/log binary/job files
+into work/lsd-support-audit-v1. Source size/mtime match prior SHA-verified4.7GB
+image receipt; hash inherited,not recomputed. Both container daemons lack
+ContainerManagerCommon/System/User; logd lacks CacheDelete. These are exposed
+strong-path gaps,not a complete transitive count. Incomplete providers not run.
+Support audit4423b5df9d88942bfa9cce2371865bc07245c3fb30cf0f678b4e26bdbf537966.
+Original conditional modes/ownership/hostspecial25/crash policies are recorded.
+
+Static CoreServices inspection identified a native status query, but wrapper
+zero alone is not server-reply evidence and an internal helper symbol is not
+registered ObjC method metadata. No speculative native wire request was sent.
+The final observer uses verified bootstrap_look_up_per_user(...501...), since
+launchd relocates this job to user/501; native branch was never reached in v1.
+This correction and bounded CLI cleanup compile/link successfully under
+work/lsd-probe-final-build-v1; corrected endpoint branch remains unexecuted.
+Frozen v1 source/evidence preserved. See duchamp/LSD-QEMU-DIAGNOSTICS.md.
+
+NEXT CONCRETE WORK: acquire/audit matching four support frameworks and their
+imports from complete verified20F66 SystemOS/Cryptex, integrate real support
+providers with resolved policies/resources and run a native reply witness.
+Do not retry the unchanged incomplete fixture expecting success, substitute
+stub services, or claim full GUI/UFS/Mali. Prior IOSurface14/14 remains a CPU
+sharing result. Private Apple files/logs stay local; preserve unrelated edits.
+
 ACTIVE LOCAL HANDOFF — UI dependency audit and IOSurface QEMU PASS (2026-11-06):
 The user requested UI-service dependency inspection inside QEMU. No phone was
 accessed or flashed; original Android remains last verified restored below.
