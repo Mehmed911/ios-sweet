@@ -197,7 +197,9 @@ the liveness checks. The fixture can also see an initial logd SIGTRAP before
 the controlled kickstart; success describes the selected, verified processes
 and response interval, not a boot with zero process exits.
 
-The next boundary is completion/verification of the application registry,
-native display-service queries, and then an audited SpringBoard trial. Startup
-of backboardd does not prove display output or input delivery. Physical MT6897
-storage, resource ownership and graphics remain separate unproven work.
+The subsequent [native UI-readiness fixture](UI-READINESS-QEMU.md) verified
+completed LS session seeding, a registered original SpringBoard bundle and
+actual BackBoard display MIG replies. It also records guarded SpringBoard
+trials and their concrete failures. Process liveness and display-query replies
+do not prove rendered output or input delivery. Physical MT6897 storage,
+resource ownership and graphics remain separate unproven work.

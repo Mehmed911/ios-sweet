@@ -117,6 +117,34 @@ static int service(const char *label,const char *path,unsigned int uid,unsigned 
     ipc_note("PLATFORM SERVICE ALIVE label=%s pid=%d uid=%u gid=%u stable=3",label,pid,uid,gid);
     return pid;
 }
+#if SWEET_UI_READINESS
+static int readiness(const char *kind) {
+    char file[192],target[128],done[128],ok[128];
+    snprintf(file,sizeof(file),"/private/var/tmp/ui-%s.txt",kind);
+    snprintf(target,sizeof(target),"system/org.sweet.qemu.ui-%s",kind);
+    snprintf(done,sizeof(done),"READINESS DONE kind=%s status=",kind);
+    snprintf(ok,sizeof(ok),"READINESS DONE kind=%s status=0",kind);
+    int fd=open(file,0x601,0644);
+    if(fd<0)return 0;
+    fsync(fd);close(fd);
+    if(chown(file,501,501))return 0;
+    char *start[]={"launchctl","kickstart","-p",target,0};
+    if(command(kind,"/bin/launchctl",start,0))return 0;
+    for(int i=0;i<60;i++) {
+        fd=open(file,0);
+        if(fd>=0) {
+            ssize_t n=read(fd,output,sizeof(output)-1);close(fd);
+            if(n>0) {
+                output[n]=0;
+                if(strstr(output,done))return strstr(output,ok)!=0;
+            }
+        }
+        sleep(1);
+    }
+    ipc_note("PLATFORM READINESS TIMEOUT kind=%s",kind);
+    return 0;
+}
+#endif
 int main(void) {
     if(ipc_identity("platform-services")) return 1;
     unsigned char uuid[16]={0};
@@ -131,8 +159,23 @@ int main(void) {
     for(unsigned int i=0;i<sizeof(dirs)/sizeof(*dirs);i++) {
         if((mkdir(dirs[i],0755) && *__error()!=17) || chown(dirs[i],501,501)) return 2;
     }
+#if SWEET_UI_READINESS
+    const char *install_dirs[]={"/private/var/installd","/private/var/installd/Library",
+        "/private/var/installd/Library/Caches","/private/var/installd/Library/Logs",
+        "/private/var/installd/Library/Preferences"};
+    for(unsigned int i=0;i<sizeof(install_dirs)/sizeof(*install_dirs);i++) {
+        if((mkdir(install_dirs[i],0755) && *__error()!=17) || chown(install_dirs[i],33,33))return 2;
+    }
+    const char *scan_dirs[]={"/Applications","/System/Applications","/AppleInternal","/AppleInternal/Applications"};
+    for(unsigned int i=0;i<sizeof(scan_dirs)/sizeof(*scan_dirs);i++)
+        if(mkdir(scan_dirs[i],0755) && *__error()!=17)return 2;
+#endif
     int logd=service("com.apple.logd","/usr/libexec/logd",272,272,0);
     int mcm=service("com.apple.containermanagerd","/usr/libexec/containermanagerd",0,0,1);
+#if SWEET_UI_READINESS
+    int installd=service("com.apple.mobile.installd","/usr/libexec/installd",33,33,5);
+    ipc_note("PLATFORM INSTALLD ALIVE=%d",installd>1);
+#endif
     int lsd=service("com.apple.lsd","/usr/libexec/lsd",501,501,2);
     int native_reply=lsd>1?query():0;
     ipc_note("PLATFORM NATIVE REPLY verified=%d",native_reply);
@@ -144,6 +187,9 @@ int main(void) {
         identity(mcm,"/usr/libexec/containermanagerd",0,0) && identity(lsd,"/usr/libexec/lsd",501,501);
     ipc_note("PLATFORM FINAL PROVIDERS ALIVE=%d",final_alive);
     int pass=final_alive && native_reply;
+#if SWEET_UI_READINESS
+    pass=pass && installd>1;
+#endif
     ipc_note("PLATFORM SERVICES RESULT logd=%d mcm=%d lsd=%d native_reply=%d",logd,mcm,lsd,native_reply);
     ipc_note("PLATFORM CORE SERVICES PASS=%d",pass);
 #if SWEET_UI_PROBES
@@ -165,6 +211,32 @@ int main(void) {
         int repeated=identity(lsd,"/usr/libexec/lsd",501,501)?query():0;
         ipc_note("PLATFORM NATIVE REPLY AFTER UI verified=%d",repeated);
         pass=pass && repeated;
+#if SWEET_UI_READINESS
+        if(pass) {
+            int registry=readiness("registry");
+            int display=readiness("display");
+            ipc_note("PLATFORM READINESS registry=%d display=%d",registry,display);
+            pass=registry && display;
+#if SWEET_SPRINGBOARD_PROBE
+            if(pass) {
+                /* RunAtLoad=false alone did not prevent an EmbeddedHomeScreen
+                 * job from starting early. Keep the job outside LaunchDaemons
+                 * until all native readiness/record gates have passed.
+                 */
+                char *load[]={"launchctl","bootstrap","system","/private/var/tmp/SpringBoard-job.plist",0};
+                pass=command("springboard-bootstrap","/bin/launchctl",load,0)==0;
+                int springboard=pass?service("com.apple.SpringBoard","/System/Library/CoreServices/SpringBoard.app/SpringBoard",501,501,6):-1;
+                ipc_note("PLATFORM SPRINGBOARD START pid=%d",springboard);
+                pass=springboard>1;
+                for(int i=1;pass && i<=6;i++) {
+                    sleep(5);
+                    pass=identity(springboard,"/System/Library/CoreServices/SpringBoard.app/SpringBoard",501,501);
+                    ipc_note("PLATFORM SPRINGBOARD HEALTH check=%d stable=%d",i,pass);
+                }
+            }
+#endif
+        }
+#endif
     }
 #endif
     sync();

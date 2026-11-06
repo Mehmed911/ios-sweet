@@ -16,6 +16,7 @@ import subprocess
 import tempfile
 import traceback
 from duchamp_ls_status import parse as parse_ls_status
+from duchamp_ui_readiness import registry as parse_registry, display as parse_display
 
 REPO=Path(__file__).resolve().parents[1]
 
@@ -42,7 +43,11 @@ def main():
     ap.add_argument('--output',required=True,type=Path)
     ap.add_argument('--seconds',type=int,default=360)
     ap.add_argument('--ui-probes',action='store_true',help='after core transport, probe original runningboardd/backboardd')
+    ap.add_argument('--readiness',action='store_true',help='after UI health, request native registry rebuild and read display service')
+    ap.add_argument('--springboard',action='store_true',help='only after native readiness and bundle-record gates, try original SpringBoard')
     args=ap.parse_args()
+    require(not args.readiness or args.ui_probes,'readiness requires the UI providers')
+    require(not args.springboard or args.readiness,'SpringBoard requires native readiness')
     out=args.output.resolve();require(not out.exists(),'preserve existing output')
     parent=Path.home()/'.cache/duchamp-qemu-tests';parent.mkdir(parents=True,exist_ok=True)
     native=Path(tempfile.mkdtemp(prefix='platform-services-',dir=parent))
@@ -50,6 +55,8 @@ def main():
     report=dict(passed=False,native_directory=str(native),scope=dict(phone_access=False,partition_write=False,
             physical_ufs=False,gpu=False,gui_tested=False,mach_lookup_is_native_reply=False,
             ui_daemon_probes_requested=args.ui_probes))
+    report['scope']['readiness_requested']=args.readiness
+    report['scope']['springboard_requested']=args.springboard
     result_code=1
     try:
         logs=native/'logs';logs.mkdir()
@@ -69,6 +76,8 @@ def main():
         source_names=['qemu-service-ram.py','test-duchamp-platform-services.py','sweet-platform-services.c',
             'sweet-lsd-native-reply.m','sweet-ipc.h','sweet-foundation-api.h','qemu-sweet.py','mkpayload.py']
         source_names.append('duchamp_ls_status.py')
+        if args.readiness:source_names+=['sweet-ui-readiness.m','sweet-ui-readiness.entitlements.plist','duchamp_ui_readiness.py']
+        if args.springboard:source_names.append('read-systemos-zbm.cpp')
         sources=native/'test-sources';sources.mkdir()
         source_pins={}
         for name in source_names:
@@ -137,6 +146,51 @@ def main():
         lsd_job_path=REPO/'work/ui-daemon-scan-v1/apple-extracted/System/Library/LaunchDaemons/com.apple.lsd.plist'
         require(sha(lsd_job_path)=='9728a545bd4cdde11d2f264ef547c5a15717964d8029b37fa71ffa23010b3a78','lsd job changed')
         native_jobs['/usr/libexec/lsd']=plistlib.loads(lsd_job_path.read_bytes())
+        if args.readiness:
+            resources=REPO/'work/services-ui-boundary-resources-v1'
+            require(sha(resources/'receipt.json')=='3b5f048c8554ae7b0396af5c5075df5995f089cc7f07343f9dcbbe9ef14c7901','original UI/installation resource receipt changed')
+            resource_receipt=json.loads((resources/'receipt.json').read_text())
+            require(resource_receipt['all_requested_present'],'incomplete original bundle/installd extraction')
+            for guest,item in resource_receipt['files'].items():
+                path=resources/'apple-extracted'/guest.lstrip('/')
+                require(sha(path)==item['sha256'],'original UI/installation resource changed')
+                if guest.startswith('/System/Library/LaunchDaemons/'):
+                    job=plistlib.loads(path.read_bytes())
+                    native_jobs[job['ProgramArguments'][0]]=job
+                else:install[guest]=path;expected[guest]=item['sha256']
+            if args.springboard:
+                bundle=REPO/'work/springboard-bundle-v2'
+                require(sha(bundle/'receipt.json')=='f2de94690e2fe824b4cf9d42ff665fcaee0efcdac5c82f80576021cb45d04fac','original full SpringBoard bundle receipt changed')
+                bundle_files=json.loads((bundle/'receipt.json').read_text())['files']
+                for guest,item in bundle_files.items():
+                    require(guest.startswith('/System/Library/CoreServices/SpringBoard.app/') and '..' not in guest.split('/'),'unsafe bundle path')
+                    path=bundle/'apple-extracted'/guest.lstrip('/')
+                    require(not path.is_symlink() and sha(path)==item['sha256'],'original bundle file changed')
+                    require(guest not in expected or expected[guest]==item['sha256'],'conflicting bundle bytes')
+                    install[guest]=path;expected[guest]=item['sha256']
+                module=REPO/'work/ui-trampolines-v3'
+                require(sha(module/'receipt.json')=='c39473bd1118fc00d2ef4354dba477acbdef6e65ce155e2def5f2f87ac581c7f','original Objective-C trampoline receipt changed')
+                module_receipt=json.loads((module/'receipt.json').read_text())
+                guest='/usr/lib/libobjc-trampolines.dylib'
+                path=module/'apple-extracted'/guest.lstrip('/')
+                require(module_receipt['guest_path']==guest and module_receipt['bytes']==68080 and
+                    module_receipt['macho']['cpu']=='arm64' and module_receipt['macho']['code_signature'] and
+                    module_receipt['negative_checks']==3,'trampoline provenance/architecture checks incomplete')
+                require(sha(path)=='a5410b215468c275e1f861c7e605f58401e332f7f23765a6e1fbe7391d4f05df','original trampoline module changed')
+                require(sha(REPO/'tools/read-systemos-zbm.cpp')==module_receipt['helper_source_sha256'],'module decoder source differs from receipt')
+                install[guest]=path;expected[guest]=sha(path)
+                render=REPO/'work/springboard-render-resources-v1'
+                require(sha(render/'receipt.json')=='d4ffb35a6e3b476a42132b2c09132dcc2901349ac9ffc46571255881e3685b3c','original icon/font resource receipt changed')
+                render_receipt=json.loads((render/'receipt.json').read_text())
+                require(render_receipt['file_count']==115 and render_receipt['total_bytes']==9788380,'incomplete icon/font resources')
+                for guest,item in render_receipt['files'].items():
+                    require(guest in ('/System/Library/Fonts/Core/Helvetica.ttc','/System/Library/Fonts/CoreUI/SFUI.ttf') or
+                        guest.startswith(('/System/Library/PrivateFrameworks/IconServices.framework/',
+                            '/System/Library/PrivateFrameworks/MobileIcons.framework/')),'unexpected icon/font resource path')
+                    path=render/'apple-extracted'/guest.lstrip('/')
+                    require(not path.is_symlink() and sha(path)==item['sha256'],'original icon/font resource changed')
+                    require(guest not in expected or expected[guest]==item['sha256'],'conflicting icon/font resource bytes')
+                    install[guest]=path;expected[guest]=item['sha256']
         if args.ui_probes:
             scan=REPO/'work/ui-daemon-scan-v1'
             require(sha(scan/'extraction-receipt.json')=='2e51fe8085ebce51f8d40b177d127241b692a4d025fed4217740ce71b10b9898','UI source receipt changed')
@@ -148,6 +202,11 @@ def main():
                     require(sha(path)==item['sha256'],'original UI source changed')
                     if guest.endswith('.plist'):native_jobs[entry]=plistlib.loads(path.read_bytes())
                     else:install[guest]=path;expected[guest]=item['sha256']
+            if args.springboard:
+                guest='/System/Library/LaunchDaemons/com.apple.SpringBoard.plist'
+                path=scan/'apple-extracted'/guest.lstrip('/')
+                require(sha(path)==ui_files[guest]['sha256'],'original SpringBoard job changed')
+                native_jobs['/System/Library/CoreServices/SpringBoard.app/SpringBoard']=plistlib.loads(path.read_bytes())
             event_config='/System/Library/BackBoard/EventProcessorConfiguration.plist'
             path=REPO/'work/services-backboard-resources-v1/apple-extracted'/event_config.lstrip('/')
             pin='1360a59a33789cebea9db2f652ddaf42c6978158a98c2fce72cb43810ea9ed01'
@@ -165,7 +224,7 @@ def main():
                 # to user/501. Make root/System explicit; preserve arguments.
                 root_context=dict(UserName='root',GroupName='wheel',LimitLoadToSessionType='System')
                 job.update(root_context);changes.update(root_context)
-            if entry in ('/usr/libexec/runningboardd','/usr/libexec/backboardd'):
+            if entry in ('/usr/libexec/runningboardd','/usr/libexec/backboardd','/System/Library/CoreServices/SpringBoard.app/SpringBoard'):
                 job['RunAtLoad']=False;changes['RunAtLoad']=False
                 if entry.endswith('/runningboardd'):
                     job.update(UserName='root',GroupName='wheel',LimitLoadToSessionType='System')
@@ -194,11 +253,28 @@ def main():
             ProgramArguments=['/sbin/sweet-lsd-native-reply'],UserName='mobile',GroupName='mobile',
             RunAtLoad=False,KeepAlive=False,StandardOutPath='/private/var/tmp/platform-native-query.txt',
             StandardErrorPath='/private/var/tmp/platform-native-query.txt')
+        if args.readiness:
+            for kind in ('registry','display'):
+                label='org.sweet.qemu.ui-'+kind
+                jobs[label+'.plist']=dict(Label=label,ProgramArguments=['/sbin/sweet-ui-readiness',kind],
+                    UserName='mobile',GroupName='mobile',RunAtLoad=False,KeepAlive=False,
+                    StandardOutPath='/private/var/tmp/ui-'+kind+'.txt',
+                    StandardErrorPath='/private/var/tmp/ui-'+kind+'.txt')
         for name,job in jobs.items():
-            path=native/name;path.write_bytes(plistlib.dumps(job));install['/System/Library/LaunchDaemons/'+name]=path
+            path=native/name;path.write_bytes(plistlib.dumps(job))
+            destination='/private/var/tmp/SpringBoard-job.plist' if name=='com.apple.SpringBoard.plist' else '/System/Library/LaunchDaemons/'+name
+            install[destination]=path
+        if args.springboard:
+            absent=volume('ls','/System/Library/LaunchDaemons/com.apple.SpringBoard.plist',check=False)
+            require('No such file or directory' in absent.stdout,'base already exposes an automatic SpringBoard job')
         link_root=prefs/'runtime-root'
-        for name,filename,objc in [('controller','sweet-platform-services.c',False),('query','sweet-lsd-native-reply.m',True)]:
-            flags=['-fblocks','-fno-objc-arc','-fobjc-exceptions'] if objc else ['-DSWEET_UI_PROBES='+str(int(args.ui_probes))]
+        programs=[('controller','sweet-platform-services.c',False),('query','sweet-lsd-native-reply.m',True)]
+        if args.readiness:programs.append(('readiness','sweet-ui-readiness.m',True))
+        for name,filename,objc in programs:
+            flags=['-fblocks','-fno-objc-arc','-fobjc-exceptions'] if objc else [
+                '-DSWEET_UI_PROBES='+str(int(args.ui_probes)),'-DSWEET_UI_READINESS='+str(int(args.readiness)),
+                '-DSWEET_SPRINGBOARD_PROBE='+str(int(args.springboard))]
+            if name=='readiness':flags+=['-DSWEET_VERIFY_SPRINGBOARD_RECORD='+str(int(args.springboard))]
             run('compile-'+name,['clang','-target','arm64-apple-ios16.5','-O1','-Wall','-Wextra','-Werror',
                 '-fno-stack-protector','-fno-builtin',*flags,'-c',sources/filename,'-o',native/(name+'.o')])
             libs=['-lobjc.A','-framework','Foundation'] if objc else []
@@ -206,6 +282,17 @@ def main():
                 '-syslibroot',link_root,'-L'+str(link_root/'usr/lib'),'-F'+str(link_root/'System/Library/Frameworks'),
                 '-lSystem.B',*libs,'-e','_main','-o',native/name,native/(name+'.o')])
         install.update({'/sbin/sweet-platform-services':native/'controller','/sbin/sweet-lsd-native-reply':native/'query'})
+        if args.readiness:
+            signer=REPO/'research/host-ipsw-3.1.739/ipsw'
+            require(sha(signer)=='7f22f07821cd964c0333172ef9bac734b53df5035a5e7c8ce9ec1580891f6d4c','offline signing tool changed')
+            unsigned_pin=sha(native/'readiness')
+            run('sign-readiness',[signer,'macho','sign','--id','org.sweet.qemu.ui-readiness','--ad-hoc',
+                '--ent',sources/'sweet-ui-readiness.entitlements.plist','--output',native/'readiness-signed',native/'readiness'])
+            require(sha(native/'readiness')==unsigned_pin,'signer changed its input')
+            signed_info=run('signed-entitlements',[signer,'macho','info',native/'readiness-signed','--ent'])
+            entitlements=plistlib.loads(signed_info.stdout.encode())
+            require(entitlements=={'com.apple.lsapplicationworkspace.rebuildappdatabases':True},'unexpected client entitlement set')
+            install['/sbin/sweet-ui-readiness']=native/'readiness-signed'
         known=set();installed={}
         for guest,path in sorted(install.items()):
             for parent_dir in reversed(Path(guest).parents):
@@ -221,6 +308,7 @@ def main():
             installed[guest]=pin
         inputs=dict(base_sha256=sha(base),root_sha256=sha(root),installed=installed,source_pins=source_pins,
             native_jobs=native_jobs,diagnostic_overrides=overrides,
+            deferred_springboard_job='/private/var/tmp/SpringBoard-job.plist' if args.springboard else None,
             note='Original programs/arguments/MachServices; no-restart/output/crash-policy overrides. MCM root/System explicit to prevent observed user relocation; native query uses a mobile launchd job. Original logd hardware/variant gates retained.')
         (native/'inputs.json').write_text(json.dumps(inputs,indent=2)+'\n')
         spec=importlib.util.spec_from_file_location('platform_ram_runner',REPO/'tools/qemu-service-ram.py')
@@ -237,10 +325,15 @@ def main():
         extract('/private/var/tmp/ipc-platform-services.log',guest/'controller.log')
         extract('/private/var/tmp/platform-native-query.txt',guest/'native-query.txt')
         extract('/private/var/tmp/platform-native-query-first.txt',guest/'native-query-first.txt')
+        if args.readiness:
+            for kind in ('registry','display'):
+                extract('/private/var/tmp/ui-'+kind+'.txt',guest/('ui-'+kind+'.txt'))
+        if args.springboard:
+            extract('/private/var/tmp/platform-springboard-bootstrap.txt',guest/'springboard-bootstrap.txt')
         for label in ('com.apple.containermanagerd','com.apple.containermanagerd.system','com.apple.logd','com.apple.lsd',
-            'com.apple.runningboardd','com.apple.backboardd'):
+            'com.apple.runningboardd','com.apple.backboardd','com.apple.mobile.installd','com.apple.SpringBoard'):
             extract('/private/var/tmp/'+label+'-console.log',guest/(label+'.log'))
-        for index in range(5 if args.ui_probes else 3):
+        for index in range(7 if args.springboard else 6 if args.readiness else 5 if args.ui_probes else 3):
             extract('/private/var/tmp/platform-%d-start.txt'%index,guest/('%d-start.txt'%index))
             for attempt in range(5):extract('/private/var/tmp/platform-%d-print-%d.txt'%(index,attempt),guest/('%d-print-%d.txt'%(index,attempt)))
         matching=True
@@ -272,10 +365,28 @@ def main():
                 backboardd_native_identity=bool(re.search(r'PLATFORM SERVICE ALIVE label=com.apple.backboardd pid=\d+ uid=501 gid=501 stable=3',text)),
                 six_five_second_health_checks=re.findall(r'PLATFORM UI HEALTH check=(\d+) stable=1',text)==['1','2','3','4','5','6'],
                 native_reply_after_ui='PLATFORM NATIVE REPLY AFTER UI verified=1' in text)
+        readiness_checks={}
+        if args.readiness:
+            readiness_results={}
+            for kind,parse in [('registry',parse_registry),('display',parse_display)]:
+                path=guest/('ui-'+kind+'.txt')
+                response=path.read_text() if path.exists() else ''
+                readiness_results[kind]=parse(response,require_app=args.springboard) if kind=='registry' else parse(response)
+                readiness_checks[kind]=readiness_results[kind]['verified']
+            checks['native_readiness']=set(readiness_checks)=={'registry','display'} and all(readiness_checks.values())
+            checks['native_installd_identity']=bool(re.search(r'PLATFORM SERVICE ALIVE label=com.apple.mobile.installd pid=\d+ uid=33 gid=33 stable=3',text))
+        if args.springboard:
+            checks['springboard_native_identity']=bool(re.search(r'PLATFORM SERVICE ALIVE label=com.apple.SpringBoard pid=\d+ uid=501 gid=501 stable=3',text))
+            checks['springboard_health']=re.findall(r'PLATFORM SPRINGBOARD HEALTH check=(\d+) stable=1',text)==['1','2','3','4','5','6']
+            gate=text.find('PLATFORM READINESS registry=1 display=1')
+            loaded=text.find('PLATFORM COMMAND tag=springboard-bootstrap status=0x0 timeout=0')
+            started=text.find('PLATFORM SPRINGBOARD START pid=')
+            checks['springboard_started_after_gate']=0<=gate<loaded<started
         report.update(passed=batch_passed(checks,ui_checks,args.ui_probes),checks=checks,vm=vm,root_sha256=inputs['root_sha256'],
             installed_count=len(installed),provider_diagnostics_are_not_rpc_proof=True,
             core_services_passed=core_passed,ls_native_status=native_status,ui_checks=ui_checks,
-            full_gui_ready=False)
+            readiness_checks=readiness_checks,full_gui_ready=False)
+        if args.readiness:report['readiness_results']=readiness_results
         result_code=0 if report['passed'] else 1
     except Exception:
         report['error']=traceback.format_exc();print(report['error'],flush=True)

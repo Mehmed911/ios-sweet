@@ -5,6 +5,9 @@ see [platform services in QEMU](PLATFORM-SERVICES-QEMU.md). The first failed
 fixture below remains a historical diagnostic; its verdict has not changed.
 The later original LS response is `0x300`: transport succeeded, database
 seeding is incomplete. It does not establish a ready application registry.
+The further [native readiness test](UI-READINESS-QEMU.md) added the original
+installation service/resources and verified `0x100` seeding completion plus
+SpringBoard's own installed record. It does not prove the full stock inventory.
 
 ## Actual result, 2026-11-06
 

@@ -116,7 +116,9 @@ with a separate large writable QEMU md0, original launchd as PID 1, original
 container/log/LS providers and a witnessed native LS reply. Original
 runningboardd/backboardd also passed six five-second process health checks
 and a repeated LS request. This RAM fixture does not resolve the historical
-PID-1 direct disk-root wait. Application-registry completion, native display
-operations and SpringBoard remain untested. The current phone RAM payload
+PID-1 direct disk-root wait. A further [native readiness batch](UI-READINESS-QEMU.md)
+verified LS seeding completion, SpringBoard's registered bundle and actual
+display-service replies; its SpringBoard trials are recorded separately.
+The current phone RAM payload
 cannot hold these runtime cache files; QEMU success does not supply physical
 MT6897 UFS/DMA/IOMMU ownership or Mali support.
