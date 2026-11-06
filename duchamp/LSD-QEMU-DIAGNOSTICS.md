@@ -124,6 +124,8 @@ service test. The final source has a compile/link-only per-user lookup fix.
 Before a useful new runtime attempt, acquire/audit the matching four missing
 frameworks and their imports, integrate the real container/log providers with
 their resolved original policies/resources into a separate fixture, and add
-a real native request/reply witness. The available SystemOS/Cryptex copy is
-partial; completeness and matching build provenance must be established.
+a real native request/reply witness. The SystemOS/Cryptex copy was partial at
+this first diagnostic. The subsequent [complete acquisition and export audit](SYSTEMOS-CACHE-RECOVERY.md)
+resolves all strong source paths, but exposes missing standalone bind/rebase
+metadata and external cache references. Runtime loading remains unvalidated.
 Physical-phone state remains original Android restored, with no recovery due.

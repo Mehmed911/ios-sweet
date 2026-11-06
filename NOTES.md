@@ -1,3 +1,65 @@
+ACTIVE HANDOFF — complete SystemOS/cache acquired; strong paths resolved; loader blocked (2026-11-06):
+The user challenged progress toward a usable phone system. Continued actual
+local source work, without phone/partition access or a new kernel build.
+Official Apple20F66 SystemOS member096-04666-078.dmg was downloaded into NEW
+work/20F66-systemos-v1,2726297600 bytes, liveZIP tuple/manifest matched and
+finalsize/CRC passed. SHA256
+2279bf443856fcb6a3f00b1fa06a32ba02a66fdf6ab6b12019462c7498aafdd3.
+Priorpartialfiles preserved. Signature authentication is NOT claimed.
+
+7z could not decode3 ZBM-rsrc cache components. Built upstream read-only
+apfs-fuse library commit66b86bd525e8cb90f9012543be89b1f092b75cf3 withLZFSE
+e634ca58b4821d9f3d560cdc6df5dec02ffc93fd (WSLcmake/bz2/fuse3depsinstalled).
+New GPL2+ tools/read-systemos-zbm.cpp uses only read-only image APIs, no
+filesystem mount, strict path/inode/algorithm14/size and exclusive output.
+All3 decodes passed: .42linkedit333955072; .28linkedit19906560; symbols591855616.
+Unknowncomponent,existing-output and invalid-image rejection checks passed;
+existing bytes unchanged. See work/cache-zbm-recovery-v2/receipt.json and
+negative-checks.json. No upstream APFS tool was installed globally and no
+filesystem mount occurred; WSL build dependencies were installed as noted.
+
+Selected complete cache work/20F66-cache-v3 has44 primary components,
+3314368512 bytes, UUIDE5420DB3-30D0-33AA-8B7E-05B5038BB46D. Pinnedipsw
+parsed2710 indexedlibraryrecords. Source/partialcachev1/v2 artifacts preserved.
+Eight selected --slide exports matched original imageUUIDs. Complete strong
+source closures: MCM87 binaries/102555520bytes; systemMCM87/102555536;
+logd93/109247128; zero missing/invalid. Audit:
+work/20F66-framework-audit-v3/summary.json SHA256
+f7d67dd36cf0792b2de6d313b9903a0d21866750c194bc30e25d5eb0796cc150.
+
+CRITICAL SCOPE: these are derived analysis exports, not unchanged standalone
+dylibs. Common,CacheDelete,RBS,UserManagement retain sampled externalcache
+addresses without declared bind/rebase metadata. Four originalframeworks
+lack DYLD_INFO/CHAINED_FIXUPS/CODE_SIGNATURE commands and sectionrelocations.
+New audit keeps standalone_payload_allowed=false; six loader-gate unit tests
+passed. No derived export was executed in QEMU or placed into a phone image.
+Previous lsd failure verdict remains; no native RPC/GUI success is claimed.
+Review findings fixed: failed closure status is propagated; ordinary cache
+reuse requires source-bound per-file SHA validation before copying. Fresh41
+source extractions under work/20F66-cache-source-regular-v1 made the manifest;
+v4 assembly uses it plus strict3-component ZBM receipt. Negative tests reject
+same-size corruption and ensure failedclosure reports do not imply exitzero.
+V4 actual parserPASS,all44 hashes byte-identical tov3. Activev4receiptSHA256
+30eb89efbe8fb1c63b6599a9ecffad13b6b956f644e9ef91cf351b61b97f1fab;
+comparison6ff1fe70483fa480a70d972f76e9a52ae563ee0cf359f68f3e7f17a6f64f9c2b;
+manifest0ebc803c65cd8834b9fac4ff57e7b798bbc3bcec3ab79b06251180b1f8e1eeb0.
+This strengthensv3sourceprovenance without rewritingits historicalreceipt.
+
+Parallel original policy/account audit: work/container-policy-v1/results.json
+26a69fb2b2f133b79aff240e52242cfdb880935f1d7807317a9b965c682b05f3.
+user_system_split absent/defaultfalse is statically supported without overrides,
+not a liveflag proof. mobile501:501,_installd33:33,_logd272:272 preserved across
+original/restore/savedRAM accounts; no UID/GID fix indicated. Kernelupcall25,
+credentials,privilege/sandbox contracts remain unproven.
+
+NEXT: choose/validate runnable cache loading in QEMU (intactcache storage/map
+or reconstructed standalone binds/ObjC references). 3.3GBcache does NOT fit
+the existing512MiBphone payloadwindow; no blind insertion. Then integrate real
+MCM/logd policies and obtain native lsd reply evidence. Original Android is
+still lastverifiedrestored; physicalUFS/Mali/fullGUI unproven. See
+duchamp/SYSTEMOS-CACHE-RECOVERY.md for receipts/reproduction boundaries.
+Preserve unrelated user edits and keep Apple/private artifacts outside git.
+
 ACTIVE LOCAL HANDOFF — lsd runtime blocked by support services/framework gaps (2026-11-06):
 The user asked the fastest next step; ran original lsd in QEMU on the unchanged
 e465723a...9182b kernel/a881410d...417d8 QEMU ADT. No phone/network access or
