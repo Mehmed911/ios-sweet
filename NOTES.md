@@ -1,3 +1,49 @@
+ACTIVE HANDOFF — original platform services and UI daemon health PASS (2026-11-07):
+Implementation/docs commit: 7376d79677fbf5e2a4a1112f7dc04a6565e89925.
+Completed the authorized local batch; no phone/ADB, flash, partition write,
+physical UFS or GPU access. Original kernel e465723a...9182b unchanged. No CI.
+V9 work/platform-services-qemu-v9/evidence/verification.json: PASS 13 core
+plus 4 requested UI checks, 117.640 host seconds; report SHA256
+2fa5bf57b43f00258dd7dab6c9d31bd1b63457ec2b0a528305447e2210067ab2.
+Inputs 010c5ee20955ea026ff0dc366e9cc192a66490f1f57cf9198d7c63d0c458ba7b;
+root da5a0c9ef7d9a9002c642f01f731a5c4b8b37d4dc74a342104e4aa00a930dc6f.
+134 installed-file roundtrips matched; source root/base/test-source pins unchanged.
+
+Original launchd PID1, intact 20F66 shared cache; verified logd PID7 UID/GID272,
+containermanagerd PID5 root, lsd PID13 mobile, runningboardd PID19 root and
+backboardd PID22 mobile. All five retained identities across six five-second
+health samples. Separate native mobile clients PID16/PID25 received real
+LaunchServices completion callbacks before/after UI, error=0; original wrapper
+agreed. Status768/0x300 is a BITFIELD: seeded=true, seeding_complete=false,
+NOT OSStatus and NOT application-registry-ready. No GUI/SpringBoard proof.
+
+Root cause: hardware breakpoint at actual EL0 fault captured FAR8/x0=0 and
+user frames through CFDateFormatterCreateISO8601Formatter -> MCM formatter.
+Missing original ICU data caused the repeated MCM segfault. Matching ICU data
+fixes it; independent native ISO8601 epoch formatting PASS. SystemVersion alone
+did not fix it. Correct root/System MCM and mobile LS bootstrap contexts retained.
+V8's longer check caught delayed backboard SIGABRT from missing original
+EventProcessorConfiguration.plist; V9 installs exact 1313-byte source resource,
+then passes all health/reply gates. No original executable/kernel was patched.
+Initial logd SIGTRAP before controlled kickstart and duplicate BK class warning
+remain diagnostic limitations. Liveness is not proof of every daemon RPC.
+
+New qemu-service-ram.py uses native-Linux shared sparse 10GiB RAM backend,
+4GiB kernel window, 3GiB writable md0; source images unchanged. Separate QEMU
+layout, NOT a phone candidate or modification of phone ADT/512MiB payload.
+Small-root original-launchd baseline PASS heartbeat3 in45.089s. Unit checks:
+6 layout + 6 LS-status + 4 verdict regressions PASS; C/ObjC compile Werror PASS.
+V1-v8 failed/shorter trials and null-fault trace are preserved privately.
+V7 caught fresh-query file ownership bug, fixed 501:501; UI failure cannot pass.
+WSL gdb-multiarch17.1 installed (8packages/52.1MB); no phone service installed.
+
+Final native dir /home/mehmedamir/.cache/duchamp-qemu-tests/platform-services-jxtpwpjq;
+exports omit the retained native guest-ram.bin. No VM/GDB/HFS helper remains.
+See duchamp/PLATFORM-SERVICES-QEMU.md for replay, exact receipts and limitations.
+NEXT: complete/verify LS application registry, then native display-service
+requests before an audited SpringBoard trial in QEMU. Physical MT6897
+UFS/DMA/IOMMU/cache/resource ownership and Mali remain separate unproven work.
+
 ACTIVE HANDOFF — intact shared cache executed in QEMU; 13/13 PASS (2026-11-06):
 Continued the user's approved next-stage plan locally. Original20F66 dyld
 loaded untouched runtimecache UUIDE5420DB3-30D0-33AA-8B7E-05B5038BB46D.
