@@ -25,7 +25,7 @@ cflags="--target=aarch64-none-elf -O2 -ffreestanding -nostdlib -fno-pic -mgenera
 lk_ram=${LK_RAM_TRANSPORT:-}
 phone_layout=${PHONE_LAYOUT:-}
 phone_capture=${PHONE_CAPTURE:-}
-ldflags=
+ldflags="-Wl,--defsym,DUCHAMP_IMAGE_BASE=0"
 
 if [ -n "$phone_capture" ]; then
 	if [ "$phone_capture" != 1 ]; then

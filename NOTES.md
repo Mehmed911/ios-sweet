@@ -1,3 +1,39 @@
+ACTIVE HANDOFF — combined services candidate locally PASS; phone trial pending (2026-11-06):
+The user requested the fastest useful next boot checkpoint. Reused the exact
+phone-proven kernel e465723a540844817a5b9cb36c14984d660f9a8e41f6638240527b469189182b
+with the existing 32 MiB notifyd/syslogd/Procursus-launchctl RAM-root fixture.
+Fresh QEMU replay passed all 74 guest checks in 71.368 host seconds: five
+distinct processes, six ASL records, notifications/cancellation and two server
+heartbeats. Evidence: work/phone-services-batch-v2/qemu-proof/run/verification.json,
+SHA256 772c3971d0b455a9013b9d933e7147ef1b97b9e7e7a7d3b22464a3336eab191d.
+
+Selected image work/phone-services-candidate-v3/duchamp-services-batch-avb-none-lz4.img
+is 67108864 bytes, SHA256
+545112503a5e9052db709572cc840758619f2b7e27c9aa58c0af2a3924a8f6a8.
+The packager passed 12/12 checks including reconstructed guest payload, native
+handoff/materialization, real bootshim->XNU QEMU entry, boot-v4/AVB-NONE and
+LZ4 roundtrip. Report SHA256
+0b15c708455f7d8c23625e24dc476dd039532286f5d43ed4f8399bbfd695e63f.
+The new replay and package tools refuse existing outputs; a failed prior
+74-check proof was rejected without creating a candidate. Syntax checks pass.
+
+Packaging found an undefined DUCHAMP_IMAGE_BASE sentinel in legacy ELFs.
+build.sh now explicitly defines default base zero; capture/layout/QEMU-LK
+overrides were independently checked at 0/0x40000000/0x40200000 without
+undefined symbols or relocations. shim.ld is unchanged. Failed/intermediate
+outputs are preserved. Source receipts capture existing local loader edits;
+do not stage or overwrite those unrelated changes. Private fixtures stay local.
+
+No phone access or writes occurred this turn. Original Android was last
+verified restored after the preceding hardware trial (including independent
+ADB follow-up after the helper's post-reboot observation error; details below).
+The new combined batch is NOT yet phone-proven. Next: the user's concrete
+approval for this different boot_a image with restoration, fresh device/slot/
+backup checks, and bounded read-only recovery observation retries with exact
+command diagnostics. Never retry a flash automatically. No physical UFS,
+DMA/IOMMU/resource ownership, GUI or complete iOS claim follows from this work.
+See duchamp/PHONE-SERVICES-BATCH.md. Preserve all pre-existing user changes.
+
 LATEST HARDWARE RESULT — Apple launchd + C service PASS; Android restored (2026-11-06):
 The user explicitly approved the concrete Apple-launchd boot_a trial with stock
 restoration. The exact image SHA256 is
