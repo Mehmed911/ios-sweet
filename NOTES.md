@@ -1,3 +1,43 @@
+LATEST HARDWARE RESULT — Apple launchd + C service PASS; Android restored (2026-11-06):
+The user explicitly approved the concrete Apple-launchd boot_a trial with stock
+restoration. The exact image SHA256 is
+e36b7632ff402d39db162081c2c5bb401540651ba87a38d9fdd21afd6ca80686,
+64 MiB, original launchd/dyld/xpcproxy plus one diagnostic C service on a
+32 MiB HFS RAM root, cpus=1 and rd=md0. Physical UFS remains closed. Fresh
+offline revalidation had passed 17/17 in the preceding turn.
+
+Android preflight reconfirmed Duchamp/MT6897, original fingerprint, slot _a,
+unlocked state, completed boot, 80% charging battery and matching live boot_a,
+vendor_boot_a and lk_a hashes. A fresh binary-safe boot_a backup has SHA256
+1b972f4f1c98428f2fca1e7c1c8cf463e0122a70a290e482be3230c7838e3e12.
+Fastboot reconfirmed device/slot/unlock/size, wrote only boot_a successfully
+(1.770s) and accepted reboot. Original files and other user edits preserved.
+
+The user's clear physical-phone photo shows xpcproxy spawning service PID 3,
+launchd service state running, main pid=3 ppid=1, uid=0 euid=0,
+parent_path=/sbin/launchd, RAM file verified and heartbeats 1 through 11 with
+stable PID/PPID. Photo SHA256
+8e2d5566818cd8eb9a94793c60398a67e345d42af61db97256eaf58e09ce3243,
+saved as work/phone-apple-launchd-flash-trial-v1/phone-launchd-service-observation-01.jpg.
+This establishes original Apple launchd PID 1 and its root C service on the
+physical Duchamp RAM root, in addition to the earlier QEMU evidence. Persona
+lookup warnings are visible but did not prevent service startup/heartbeats.
+
+CURRENT STATE: ORIGINAL ANDROID RESTORED. The helper successfully wrote original
+boot_a (1.838s) and rebooted, then exited on an empty nonzero ADB verification
+error. Do not call the helper a clean PASS. Independent read-only follow-up
+verified boot_completed=1, Duchamp/MT6897, slot _a, original build fingerprint,
+Magisk uid=0 and live boot_a SHA256 matching the original backup. No extra flash
+was needed. Helper exec session 56751 ended; no restoration remains pending.
+Exact failed ADB invocation was not logged; future helpers should record it
+and tolerate bounded transport errors only during read-only boot observation,
+never repeat a flash automatically. Logs, fresh backup and plan are under
+work/phone-apple-launchd-flash-trial-v1.
+Scope: original launchd + one C service from RAM is proven on the phone.
+Physical UFS/DMA/IOMMU/firmware ownership, persistent root, Mali, SpringBoard
+and other peripherals remain unproven. See duchamp/PHONE-LAUNCHD-TRIAL-PLAN.md.
+Preserve pre-existing user changes.
+
 Next reviewable checkpoint — Apple launchd RAM root (2026-11-06):
 The user asked what to do after PC/x0 capture. The next useful phone checkpoint
 is the existing Apple-launchd + xpcproxy + one C service candidate, rather than
