@@ -1,3 +1,35 @@
+Active handoff — runtime Image PC/x0 CAPTURED; STOCK RESTORED (2026-11-06):
+The user explicitly requested repeating the isolated capture flash to read the
+numbers. Same verified boot-v4/LZ4/AVB-NONE image SHA256
+d4d39727f226cd1551df1f5bc11775c1cd05654fa661b1f65ae6d308902e023c;
+fresh original 64 MiB boot_a backup SHA256
+1b972f4f1c98428f2fca1e7c1c8cf463e0122a70a290e482be3230c7838e3e12.
+Device/slot/unlock/battery preflight passed, and only boot_a was flashed
+(1.768s). The new legible user photo shows:
+PC=0X0000000040000000
+X0=0X0000000047C80000
+The capture computes runtime Android Image _head with ADR and preserves entry
+x0 before C. These are observed phone values, matching the earlier static
+Image/FDT address evidence. The photo SHA256 is
+b4386baa506cf2db710959a9d3dfbb398ad0119d0b25120526337b6ca9b1c604,
+stored privately in work/phone-pc-x0-flash-trial-v2/phone-pc-x0-observation-02.jpg.
+
+The guarded helper restored original boot_a (1.828s), rebooted Android and
+verified boot_completed=1, Duchamp/MT6897, slot _a and the live partition hash.
+It exited successfully at 03:09:15 local time. Independent ADB reconfirmed the
+original V816.0.17.0.UNLMIXM build fingerprint and Magisk uid=0. No restore
+helper remains pending. No other partition or slot selection was changed.
+
+Scope: Image _head and incoming x0 are now numerically observed. This photo
+does not display CurrentEL/SCTLR, dereference FDT contents, transport a capsule,
+or enter XNU. LK's own internal PC, capsule lifetime/ownership, dynamic reserved
+allocations and UFS/DMA/IOMMU/resource ownership remain separate unknowns.
+The saved static audit JSON stays immutable; its capture=false fields describe
+that older offline artifact, not the newer photo. An approved boot_a route is
+available for controlled trials; no no-write RAM provider was discovered.
+See duchamp/PHONE-PC-X0-FLASH-TRIAL.md and MT6897-LK-HANDOFF-CONTRACT.md.
+Preserve pre-existing user edits. End of latest active handoff.
+
 Active handoff — approved PC/x0 phone flash trial (2026-11-06):
 The user explicitly accepted flashing. Read-only ADB preflight confirmed
 Duchamp/MT6897, unlocked bootloader, slot _a, completed Android boot, Magisk

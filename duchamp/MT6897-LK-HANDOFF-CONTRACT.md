@@ -1,9 +1,23 @@
 # Duchamp MT6897 LK handoff contract
 
-This document records only facts reproduced from the saved Duchamp artifacts.
-It deliberately separates LK's own load mapping, Android's static Image header
-contract, and the final FDT handoff.  None of the checks below contacts a
-phone, executes firmware, accesses MMIO, boots XNU, or authorizes flashing.
+This document records the saved-artifact audit and a later, separately
+approved hardware capture. It separates LK's own load mapping, Android's Image
+header contract, and the final FDT handoff. The offline audit commands do not
+contact a phone, execute firmware, access MMIO, boot XNU, or authorize flashing.
+
+## Later hardware observation, 2026-11-06
+
+A user-approved isolated diagnostic booted through `boot_a` and displayed the
+runtime Image `_head` address `0x40000000` and inherited entry `x0=0x47c80000`.
+The legible user photo and exact capture-image receipts are documented in
+[PHONE-PC-X0-FLASH-TRIAL.md](PHONE-PC-X0-FLASH-TRIAL.md). The original `boot_a`
+was restored afterward and verified through Android/root.
+
+These two numeric observations now independently corroborate the earlier
+static Image/FDT placement. The historical offline JSON remains immutable and
+still marks runtime capture false because its saved-file inputs do not include
+this later photo. The observation does not measure LK's own internal PC,
+validate live FDT contents, or establish a phone capsule ownership contract.
 
 ## Pinned evidence
 
@@ -48,7 +62,8 @@ flags       = 0x0a
 ```
 
 Consequently `0x40000000` is the static Android Image load/entry contract for
-this captured image.  It is not a direct runtime PC capture.  LK computes the
+this captured image. That audit alone is not a runtime capture; the later
+hardware observation above separately confirms the Image address. LK computes the
 kernel target dynamically from the boot image and its memory allocator.
 
 ### 3. Final live FDT handoff
@@ -63,9 +78,10 @@ runtime `/proc/iomem` capture contains exactly the page-rounded reservation:
 
 This independently corroborates `0x47c80000` as the final FDT placement for
 the captured Android boot.  The DTB does not contain a property describing its
-own physical address, and the incoming bootshim `x0` value was not numerically
-captured.  The report therefore does not promote this evidence to a live
-register measurement.
+own physical address. At the time of the static audit, incoming bootshim `x0`
+had not been numerically captured, so that report does not promote its saved
+inputs to a live register measurement. The later hardware observation above
+now independently confirms the inherited `x0` value for the approved trial.
 
 ## LK-to-secure-monitor handoff
 
@@ -150,11 +166,13 @@ capsule section, and absence of XNU jump, payload and LK transport symbols.
 
 ## Still unknown
 
-- The numeric LK-to-Image runtime PC has not been captured.
-- The numeric incoming Linux `x0` FDT pointer has not been captured.
+- LK's own numeric internal PC has not been captured; the diagnostic observed
+  the runtime Android Image `_head`, a separate address.
+- The current photo does not display numeric CurrentEL or SCTLR values.
 - Final addresses of the four dynamic reserved-memory requests are not proven.
 - No safe phone capsule/source placement has been established.
 - This milestone does not prove DMA/IOMMU, UFS, firmware ownership, or a full
   phone boot.
 
-Those unknowns keep the phone path execution-blocked by design.
+Those unknowns keep a new phone capsule/transport path closed. The approved
+isolated capture route and its completed stock recovery are documented above.

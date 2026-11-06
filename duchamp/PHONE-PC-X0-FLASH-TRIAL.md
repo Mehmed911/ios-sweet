@@ -63,11 +63,48 @@ hash matching the original backup. Recovery completed at 02:57:20 local time.
 A separate ADB check reconfirmed the original Android build fingerprint and
 Magisk root (`uid=0`). The helper has exited successfully.
 
-The phone is back on its original Android boot image. The numeric PC/x0
-measurement remains incomplete because the photo is unreadable; it must not
-be filled from static LK metadata or QEMU values. A clearer capture is needed
-before promoting those runtime address claims.
+After the first trial the phone was back on its original Android boot image,
+with the numeric PC/x0 measurement still incomplete because the first photo
+was unreadable. The repeat trial below resolves the two numeric observations.
 
 Private build, backup and transcript files are under the ignored directory
 `work/phone-pc-x0-flash-trial-v1`. The 64 MiB QEMU-only LK transport layout
 artifact was not used in this phone trial.
+
+## Explicitly approved repeat trial: numeric hardware values captured
+
+The user requested reflashing the same diagnostic image to read its numbers.
+Read-only preflight again confirmed Duchamp/MT6897, unlocked bootloader, slot
+`_a`, completed original Android boot, 81% charging battery and the original
+live `boot_a` hash. A new binary-safe backup was captured and verified.
+
+The unchanged diagnostic image (SHA-256 `d4d39727...902e023c` as pinned above)
+was successfully written only to `boot_a` (1.768 seconds), and reboot was
+accepted. No new QEMU run was required for this byte-identical image.
+
+The second user photo is legible and shows:
+
+```text
+PC=0X0000000040000000
+X0=0X0000000047C80000
+```
+
+The photo is `work/phone-pc-x0-flash-trial-v2/phone-pc-x0-observation-02.jpg`,
+SHA-256 `b4386baa506cf2db710959a9d3dfbb398ad0119d0b25120526337b6ca9b1c604`.
+The values were visually transcribed from that supplied photo. The diagnostic
+computes the runtime Android Image `_head` address using `adr` and saves entry
+`x0` before the first C call. Thus the displayed PC identifies the loaded Image
+header, not LK's own internal PC. Both values match the earlier static
+Image/FDT placement evidence.
+
+The capture does not dereference or validate FDT contents, display numeric
+CurrentEL/SCTLR, transport a capsule, or enter XNU. Its evidence must not be
+promoted into those claims or into UFS/DMA/IOMMU/resource ownership.
+
+After the user returned to Fastboot, the guarded helper restored the fresh
+original `boot_a` (send/write OKAY, 1.828 seconds), rebooted Android and verified
+boot completion, Duchamp/MT6897, slot `_a` and the original live partition hash.
+Recovery completed at 03:09:15 local time. A separate ADB check verified the
+original build fingerprint and Magisk `uid=0`. The helper exited successfully.
+The private plan, fresh backup and transcripts remain under
+`work/phone-pc-x0-flash-trial-v2`.

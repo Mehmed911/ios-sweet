@@ -3,13 +3,27 @@
 ## Result
 
 There is no documented LK or UEFI entry provider that can launch the Duchamp
-image from RAM under the current no-partition-write rule.  The provider gate
+image from RAM under a no-partition-write rule. The provider gate
 therefore remains closed.
 
 This is a measured limitation, not a claim that the loader or XNU payload is
 invalid.  The existing `mt6897_lk_transport` safely consumes an immutable
 capsule that is already in RAM, but something else must first transfer control
 to that code.  It is a transport consumer, not a phone entry mechanism.
+
+## Later approved boot-partition diagnostic
+
+On 2026-11-06 the user authorized an isolated `boot_a` diagnostic followed by
+exact stock restoration, then explicitly requested a repeat to read the
+numbers. The repeat photo measured runtime Android Image `_head=0x40000000`
+and inherited `x0=0x47c80000`. Android and the original live `boot_a` hash were
+verified after restoration. See
+[PHONE-PC-X0-FLASH-TRIAL.md](../PHONE-PC-X0-FLASH-TRIAL.md).
+
+That approved route can deploy controlled diagnostics through a boot-partition
+write. It supplies the two missing numeric entry observations for that route.
+It does not provide a no-write RAM launch command or prove capsule placement,
+cache ownership, or physical UFS readiness.
 
 ## Exact LK command audit
 
