@@ -111,10 +111,12 @@ the exact stop marker, unchanged disk/base hashes and unchanged test sources.
 Framebuffers are sampled; an absence of visible panic alone is insufficient.
 No new CI kernel build or phone test is needed for this fixture.
 
-Next, prepare writable service state separately from the untouched cache
-storage, integrate the original container/log providers and policies, and
-require an actual native lsd request/reply. Revisit original launchd's
-PID-1 disk-root startup as its own explicit test. Then work through backboardd
-and SpringBoard dependencies from observed failures. The current phone RAM
-payload cannot hold these runtime cache files; QEMU success does not supply
-physical MT6897 UFS/DMA/IOMMU ownership or Mali support.
+The subsequent [platform-services batch](PLATFORM-SERVICES-QEMU.md) passed
+with a separate large writable QEMU md0, original launchd as PID 1, original
+container/log/LS providers and a witnessed native LS reply. Original
+runningboardd/backboardd also passed six five-second process health checks
+and a repeated LS request. This RAM fixture does not resolve the historical
+PID-1 direct disk-root wait. Application-registry completion, native display
+operations and SpringBoard remain untested. The current phone RAM payload
+cannot hold these runtime cache files; QEMU success does not supply physical
+MT6897 UFS/DMA/IOMMU ownership or Mali support.

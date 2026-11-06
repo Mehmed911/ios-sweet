@@ -1,5 +1,11 @@
 # Original lsd: first runtime diagnostic in QEMU
 
+For the later successful native request/reply and UI-daemon health batch,
+see [platform services in QEMU](PLATFORM-SERVICES-QEMU.md). The first failed
+fixture below remains a historical diagnostic; its verdict has not changed.
+The later original LS response is `0x300`: transport succeeded, database
+seeding is incomplete. It does not establish a ready application registry.
+
 ## Actual result, 2026-11-06
 
 The first original LaunchServices daemon fixture **did not pass**. QEMU ran
@@ -127,5 +133,6 @@ their resolved original policies/resources into a separate fixture, and add
 a real native request/reply witness. The SystemOS/Cryptex copy was partial at
 this first diagnostic. The subsequent [complete acquisition and export audit](SYSTEMOS-CACHE-RECOVERY.md)
 resolves all strong source paths, but exposes missing standalone bind/rebase
-metadata and external cache references. Runtime loading remains unvalidated.
+metadata and external cache references. The later intact-cache fixture
+validates runtime loading without treating those exports as standalone files.
 Physical-phone state remains original Android restored, with no recovery due.
