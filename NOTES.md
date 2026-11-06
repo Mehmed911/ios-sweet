@@ -1,3 +1,64 @@
+ACTIVE HANDOFF — native readiness and SpringBoard process PASS (2026-11-07):
+Implementation/docs commit: eeec2a18e44e55f6b52097795ad70cfd869fcd6e.
+Completed the authorized QEMU batch:22/22 checks PASS (18 core/order/process,
+4 UI-provider),187.382 host seconds. Final report
+work/ui-readiness-qemu-v6/evidence/verification.json SHA256
+7d91e37d0e651b62ec251935ade0875a3a1a7fa8beb1f858bcf68871570c5dfe.
+Inputs f2dc87ed1dec48e387b7613cfcda538b3d44275724964c41dfc55cd4fe879d56;
+root 8029fb33aa7805e773e10848f05af0f85349a1e1c9fe1e3dcea35890f3f9c171.
+All294 installed-file roundtrips match; base/source root/13 tested source pins
+unchanged. Original e465723a...9182b kernel unchanged; no new CI build.
+No phone/ADB/flash/partition write, physical UFS or GPU access.
+
+Original launchd PID1; logd7, MCM5, installd13 UID/GID33, lsd17 mobile,
+runningboardd22 root and backboardd25 mobile. Original SpringBoard PID34 mobile,
+launchd parent/exactpath verified; all six five-second health samples PASS.
+LS native read/rebuild callbacks witnessed; status256/0x100 means seeded AND
+seeding_complete. Original SpringBoard record installed1/nonplaceholder with
+exact bundle path verified. Full stock-app inventory remains unverified.
+Two native BackBoard display MIG replies kr0,values1125,2436,1,0 /flags0,0;
+opaque slots are not physical-panel-discovery or rendering proof.
+SpringBoard plist kept outside LaunchDaemons; bootstrap ordering after all
+native readiness/record gates verified. RunAtLoadFalse alone allowed an early
+EmbeddedHomeScreen launch in V4; no longer relied on as an ordering gate.
+
+V1 FAILED121.648s: actual native rebuild -54; display checker wrongly rejected
+zero fourth scalar. V2 FAILED138.168s: exact single rebuild entitlement on OUR
+ad-hoc client fixed authorization, display replies PASS, LS still0x300.
+V3 PASS142.138s,19 checks: original installd/home + minimal bundle resources
+made LS0x100. Additions tested together, not an isolated per-file causal proof.
+V4 FAILED162.624s: full38-file/2202072-byte original bundle and native app record
+PASS, but missing original libobjc-trampolines.dylib killed SpringBoard.
+V5 FAILED176.208s: recovered module + deferred bootstrap/native identity PASS;
+health1/2 alive,3 dead. Actual nil-dictionary exception in ISImageBagIcon
+_generateImageWithDescriptor:+328; matched live slide44630000 and actual stack.
+Quiet disassembly/call-stub lookup traces nil slot to default app/App Clip
+asset bag; global ipsw ObjC analysis hit its own host OOM, not a guest failure.
+V6 adds115 original IconServices/MobileIcons/font files (9788380bytes); prior
+nil exception absent in this short window. Exact individual resource not isolated.
+Seven parser + four overall-verdict regressions PASS; runtime C/ObjC and decoder
+C++ compile with Werror PASS. All failed/successful trials remain private.
+
+Original68080-byte trampoline decoded by pinned read-only apfs-fuse algorithm14,
+exact usr/lib path/inode3136/size. Existing-output/unsupported/invalid-image
+negative checks PASS. SystemOS image freshly SHA-verified2279bf44...fdd3;
+module a5410b215468c275e1f861c7e605f58401e332f7f23765a6e1fbe7391d4f05df.
+Other resource extractions inherit prior full-OS hash after exact size/mtime
+checks and verify each file hash; they do not freshly hash that large image.
+
+IMPORTANT: final PNG visually inspected: diagnostic console only, no observed
+lock/home screen. full_gui_ready=false, rendering_verified=false stay set.
+SpringBoard stderr retains PLClientLogging unknown permission type2. Missing
+native lookups include mobilegestalt/iconservices/searchd/sessionservices/DND;
+these are leads, not an attributed cause of absent graphical output.
+NEXT: inspect native compositor/window-server state and actual presentation;
+isolate which missing service requests block that path. Process liveness is
+not GUI success. Physical MT6897 UFS/DMA/IOMMU/cache/resource ownership/Mali
+remain separate unproven work; large QEMU md0 layout is NOT a phone candidate.
+Native final dir /home/mehmedamir/.cache/duchamp-qemu-tests/platform-services-a7tsocao;
+exports retain evidence and omit native guest-ram.bin only. See
+ duchamp/UI-READINESS-QEMU.md. No VM/GDB/APFS helper remains active.
+
 ACTIVE HANDOFF — original platform services and UI daemon health PASS (2026-11-07):
 Implementation/docs commit: 7376d79677fbf5e2a4a1112f7dc04a6565e89925.
 Completed the authorized local batch; no phone/ADB, flash, partition write,
