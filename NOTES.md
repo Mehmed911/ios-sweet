@@ -1,3 +1,47 @@
+ACTIVE LOCAL HANDOFF — UI dependency audit and IOSurface QEMU PASS (2026-11-06):
+The user requested UI-service dependency inspection inside QEMU. No phone was
+accessed or flashed; original Android remains last verified restored below.
+Twelve actual GUI executable/job files were selectively extracted from the
+existing complete 20F66 OS member into work/ui-daemon-scan-v1/apple-extracted.
+Source image SHA256
+64354ba3475d3c34d6fc531f75585a7b24af0fdb7a3a8a2bdf95c7f351a3f290,
+4728546953 bytes, CRC32 028fc181, matching the saved IPSW index. All six
+executables are plain arm64/iOS16.5. Exposed missing strong paths: SpringBoard
+1 (its main framework), backboardd29, runningboardd2, mediaserverd6,
+splashboardd8. lsd is complete:88 binaries/106575136 bytes, not yet run here.
+Unknown dependencies of absent frameworks cannot yet be traversed. Weak/
+dynamic imports, services and hardware compatibility are not established by
+the static closure. Original mobile identities/Mach endpoints are recorded.
+
+Available original IOSurface/IOMobileFramebuffer/MiniDisplay have a combined
+81-binary strong closure. New tools/audit-duchamp-ui-runtime.py records this
+with conflict/unsafe/unresolved-path failure gates; its six negative/scope
+unit tests passed. New tools/sweet-ui-surface.m and test-duchamp-ui-surface.py
+use the same e465723a...9182b kernel and a881410d...417d8 QEMU ADT, a copied
+128 MiB HFS root, original launchd PID1 and no kernel/phone image changes.
+
+work/ui-surface-qemu-v3 passed14/14 in35.806 host seconds. Root parent PID3
+created IOSurface ID2,64x32,stride256,allocation16384; independent exec child
+PID4 verified/rewrote2048 pixels; parent verified complete writeback after
+normal child exit. Saved logs/result/heartbeats and all90 installed files plus
+original launchd/xpcproxy hashes match. Source snapshot matches current code.
+QEMU report SHA256
+3b1ae8542e0f84beb341ec25d5ad2634a99bcdc767d9044b21bfcdace81ccdb9;
+payload1d0f3987c54d40309c8ac976ed3564091729cac321f727a63abef3a979340087;
+root10ed2fc8043e5c8d0515e2544bb741b82fd49ab6357c7589ac5d14f943f1d524.
+No display swap, GPU/Mali acceleration, full GUI or physical DMA/cache claim.
+v1 HFS catalog deletion failure and v2 missing saved HFS log/result evidence
+remain preserved. v3 replaces the existing copied job and syncs before the
+console stop marker; full saved-evidence verification now passes. Independent
+read-only review found no material issue. See duchamp/UI-DEPENDENCIES-QEMU.md.
+
+NEXT: original lsd runtime test in QEMU with its native mobile job/endpoints,
+bounded startup/client checks and dynamic-dependency diagnostics. The matching
+GUI frameworks/Cryptex cache still need availability/auditing before higher UI
+jobs; no extra download was made this turn. Physical UFS remains closed and
+phone state unchanged. Private Apple files and detailed evidence stay in work/
+and research/, outside git. Preserve pre-existing unrelated user edits.
+
 LATEST HARDWARE RESULT — combined services PASS; Android restored (2026-11-06):
 The user approved combined launchctl/syslogd/notifyd boot_a image SHA256
 545112503a5e9052db709572cc840758619f2b7e27c9aa58c0af2a3924a8f6a8
