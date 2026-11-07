@@ -1,3 +1,9 @@
+ACTIVE HANDOFF — live CPU and interrupt verification (2026-11-08):
+
+- Native QEMU PID 2540 is still the original Windows Setup session. The active command uses Cortex-A76, one vCPU and GICv3. XNU machine_info and real_ncpus independently report one CPU. Verified the registered SweetCPU object's vtable, IOKit cpusRunning and the CPU0 SGI signal flag in guest RAM. The timer IRQ witness is set for INTID 27 and the configured guest timebase is 62.5 MHz.
+- The active GUI fixture still carries qcom,kryo470 in its legacy ADT. The pinned XNU binary matches that name and arm,cortex-a76/arm,cortex-a510/arm,cortex-a715 to the same SweetCPU class. The separate boot-profile generator emits matching Cortex identifiers. Its 24 tests and the six QEMU RAM loader tests passed.
+- The saved phone FDT hash matches the pinned capture. Its eight CPU reg values identify four Cortex-A510 and four Cortex-A715 cores, and its PSCI method is smc. This check was read-only, and did not test secondary CPU startup on hardware.
+
 ACTIVE HANDOFF — live Windows Setup navigation recovered (2026-11-08):
 
 - Preserved native QEMU PID 2540 and Setup PID 37 in run `setup-run-desktop-20261107-221715-3744`. The frozen source buffer matched SwapEnd 908. The first 42 HID submissions reached the BackBoard client with zero drops and an empty ring.
