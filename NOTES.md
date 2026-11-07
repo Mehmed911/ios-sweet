@@ -1,3 +1,25 @@
+ACTIVE HANDOFF — native compositor traced and synthetic framebuffer PASS (2026-11-07):
+Read duchamp/COMPOSITOR-QEMU.md. Private evidence in work/compositor-qemu-20261107.
+Verification SHA256 30d16a4391704a782e89183f0ef0893d132082514fd3d4a4bebd2e824cb0a725.
+Six observation checks passed. Native V3 reached the original service marker
+in 192.520 host seconds. Hardware trace on the unchanged e465723a kernel
+and 8029fb33 V6 root showed backboardd PID25 power 1, SwapEnd ID1 while on
+with four zero IOSurface IDs and zero rects, then power 0 at the same vsync.
+RAM confirmed one swap, zero layer logs, display off, dirty pending, active
+vsync and byte-for-byte match at framebuffer PA 0xfcc2f000.
+A sweethidtest=7 run reached the same marker in 191.264s with the same empty
+swap and off state. End-to-end Home delivery was not checked. V1 debugger
+signed address error fixed. V2 ran past the readiness marker and had an IRQ
+latency panic. Corrected V3 stopped cleanly at the intended marker.
+Synthetic isolated scanout PASS in 75.246s: original IOSurface/IOKit,
+selector 5 submitted ID2, 2048/2048 BGRA pixels at (521,1801), one layer
+consumed, dirty false. This proves CPU copy in QEMU. Native GUI unverified.
+No kernel or shared-runner changes. No CI, phone, flash, UFS or Mali access.
+Next trace QuartzCore render_display to IOMobileFramebufferSwapSetLayer.
+Verify nonzero native surface ID, subsequent SwapEnd and captured pixels.
+The 1125x2436 BackBoard geometry vs 1220x2712 AppleCLCD geometry remains
+an unisolated difference for the native path.
+
 ACTIVE HANDOFF — native readiness and SpringBoard process PASS (2026-11-07):
 Implementation/docs commit: eeec2a18e44e55f6b52097795ad70cfd869fcd6e.
 Completed the authorized QEMU batch:22/22 checks PASS (18 core/order/process,
