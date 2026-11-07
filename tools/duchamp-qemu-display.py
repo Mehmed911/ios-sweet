@@ -111,7 +111,7 @@ def consumed_touches(run):
     return 0
 
 
-def make_handler(run, port):
+def make_handler(run, port, native_windows=False):
     lock = threading.Lock()
     frame_lock = threading.Lock()
     journal = run / 'live-touch.jsonl'
@@ -119,6 +119,10 @@ def make_handler(run, port):
     frame_version = ''
     jpeg = b''
     host = f'127.0.0.1:{port}'
+    page = PAGE
+    if native_windows:
+        page = page.replace('Duchamp QEMU Fast', 'Duchamp QEMU Windows')
+        page = page.replace('محاكي Duchamp', 'محاكي Duchamp على ويندوز')
 
     def version():
         try:
@@ -166,7 +170,7 @@ def make_handler(run, port):
                 self.send_error(403)
                 return
             if self.path == '/':
-                self.send_body(200, 'text/html; charset=utf-8', PAGE.encode())
+                self.send_body(200, 'text/html; charset=utf-8', page.encode())
             elif self.path == '/frame' or self.path.startswith('/frame?after='):
                 after = self.path.removeprefix('/frame?after=')
                 status, data, current = image(after)
@@ -222,6 +226,7 @@ def make_handler(run, port):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port', required=True, type=int)
+    parser.add_argument('--native-windows', action='store_true')
     parser.add_argument('--attach', action='store_true', help='view an existing QEMU session without restarting it')
     parser.add_argument('run', type=Path)
     parser.add_argument('command', nargs=argparse.REMAINDER)
@@ -234,7 +239,7 @@ def main():
             parser.error('attach requires the QEMU RAM-only layout')
     elif not args.command or args.run.exists():
         parser.error('a fresh run directory and its QEMU command are required')
-    with ThreadingHTTPServer(('127.0.0.1', args.port), make_handler(args.run, args.port)) as server:
+    with ThreadingHTTPServer(('127.0.0.1', args.port), make_handler(args.run, args.port, args.native_windows)) as server:
         worker = threading.Thread(target=server.serve_forever, daemon=True)
         worker.start()
         try:

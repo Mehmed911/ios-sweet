@@ -1,16 +1,17 @@
-param([switch]$InstallShortcut)
+param([switch]$InstallShortcut, [switch]$WindowsNative)
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 $distro = 'Ubuntu'
-$port = 18291
+$port = if ($WindowsNative) { 18292 } else { 18291 }
+$title = if ($WindowsNative) { 'Duchamp QEMU Windows' } else { 'Duchamp QEMU Fast' }
 $url = "http://127.0.0.1:$port/"
 $edge = Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application\msedge.exe'
 $logs = Join-Path $repo 'work\qemu-desktop'
 
 if ($InstallShortcut) {
     $desktop = [Environment]::GetFolderPath('DesktopDirectory')
-    $destination = Join-Path $desktop 'Duchamp QEMU.lnk'
+    $destination = Join-Path $desktop "$(if ($WindowsNative) { 'Duchamp QEMU Windows' } else { 'Duchamp QEMU' }).lnk"
     if (Test-Path -LiteralPath $destination) {
         throw "A shortcut already exists at $destination"
     }
@@ -19,6 +20,7 @@ if ($InstallShortcut) {
     $shortcut = $shell.CreateShortcut($destination)
     $shortcut.TargetPath = $engine
     $shortcut.Arguments = '-NoProfile -NonInteractive -WindowStyle Hidden -File "' + $PSCommandPath + '"'
+    if ($WindowsNative) { $shortcut.Arguments += ' -WindowsNative' }
     $shortcut.WorkingDirectory = $repo
     $shortcut.Description = 'Start or reopen the local Duchamp QEMU test'
     $shortcut.IconLocation = "$edge,0"
@@ -30,13 +32,13 @@ if ($InstallShortcut) {
 function Test-DuchampViewer {
     try {
         $reply = Invoke-WebRequest -UseBasicParsing -Uri $url -TimeoutSec 2
-        return ($reply.StatusCode -eq 200 -and $reply.Content -match '<title>Duchamp QEMU Fast</title>')
+        return ($reply.StatusCode -eq 200 -and $reply.Content.Contains("<title>$title</title>"))
     } catch {
         return $false
     }
 }
 
-$mutex = [Threading.Mutex]::new($false, 'Local\DuchampQemuDesktopLauncher')
+$mutex = [Threading.Mutex]::new($false, "Local\DuchampQemuDesktopLauncher$port")
 $locked = $false
 try {
     $locked = $mutex.WaitOne([TimeSpan]::FromSeconds(35))
@@ -70,6 +72,16 @@ try {
         $stderr = Join-Path $logs "$run.stderr.txt"
         $arguments = @('-d', $distro, '--cd', ('"' + $linuxRepo + '"'), '--', 'sh',
             'tools/run-duchamp-qemu-desktop.sh', $port, $run)
+        if ($WindowsNative) {
+            $python = [string](& py.exe -3 -c 'import sys; print(sys.executable)')
+            if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $python -PathType Leaf)) {
+                throw 'Windows Python is required to start native QEMU.'
+            }
+            $linuxPython = [string](& wsl.exe -d $distro -- wslpath -u ($python.Replace('\', '/')))
+            $nativeLog = Join-Path $logs "$run.native.txt"
+            $linuxLog = [string](& wsl.exe -d $distro -- wslpath -u ($nativeLog.Replace('\', '/')))
+            $arguments += @(('"' + $linuxPython + '"'), ('"' + $linuxLog + '"'))
+        }
         $worker = Start-Process -FilePath 'wsl.exe' -ArgumentList $arguments -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
         $limit = [DateTime]::UtcNow.AddSeconds(25)
         while (-not (Test-DuchampViewer)) {

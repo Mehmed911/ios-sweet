@@ -240,10 +240,20 @@ def emit(kind, pid, name, **fields):
     gdb.write('QUARTZCORE ' + json.dumps(event) + '\n')
 
 def framebuffer():
-    with open('guest-ram.bin', 'rb') as ram:
-        ram.seek(FRAMEBUFFER_OFFSET)
-        pixels = ram.read(FRAMEBUFFER_STRIDE * FRAMEBUFFER_HEIGHT)
-    if len(pixels) != FRAMEBUFFER_STRIDE * FRAMEBUFFER_HEIGHT:
+    size = FRAMEBUFFER_STRIDE * FRAMEBUFFER_HEIGHT
+    native_endpoint = os.environ.get('SWEET_QEMU_WINDOWS_FRAME_SOCKET')
+    if native_endpoint:
+        import socket
+        with socket.socket(socket.AF_UNIX) as channel:
+            channel.settimeout(15)
+            channel.connect(native_endpoint)
+            with channel.makefile('rb') as source:
+                pixels = source.read(size)
+    else:
+        with open('guest-ram.bin', 'rb') as ram:
+            ram.seek(FRAMEBUFFER_OFFSET)
+            pixels = ram.read(size)
+    if len(pixels) != size:
         raise ValueError('short physical framebuffer')
     return pixels
 

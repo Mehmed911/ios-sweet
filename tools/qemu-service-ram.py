@@ -61,8 +61,10 @@ def virtual_tree(raw):
     return adt.serialize(tree)
 
 
-def layout(payload, root_bytes):
+def layout(payload, root_bytes, root_growth=0):
     require(0 < root_bytes <= 3 << 30 and root_bytes % PAGE == 0, 'root size must be aligned and at most 3 GiB')
+    require(0 <= root_growth <= 128 << 20 and root_growth % PAGE == 0, 'invalid HFS growth allowance')
+    root_bytes += root_growth
     require(len(payload) >= 0x2a8, 'truncated payload')
     magic, version, count = struct.unpack_from('<8sII', payload)
     require(magic == b'SWEETXNU' and version == 1 and 0 < count <= 32, 'invalid payload')
@@ -99,6 +101,15 @@ def layout(payload, root_bytes):
         root_pa=root_pa, root_bytes=root_bytes, adt_pa=adt_pa, boot_pa=boot_pa, top=top,
         entry_pa=entry + delta, adt=updated_adt, segments=segments,
         cmdline=payload[0x48:0x48 + 608])
+
+
+def pack_boot_args(plan, fb):
+    ba = struct.pack('<HH4x4Q6QI4xQI', 2, 2, plan['virt_base'], PHYS_BASE, WINDOW, plan['top'],
+        fb['base'], 1, fb['stride'], fb['width'], fb['height'], 32, 0,
+        plan['adt_pa'] - (PHYS_BASE - plan['virt_base']), len(plan['adt']))
+    ba += plan['cmdline'] + bytes(4) + struct.pack('<QQ', 0, WINDOW)
+    require(len(ba) == 736, 'boot args layout differs')
+    return ba
 
 
 def copy_range(source, destination, count):
@@ -152,11 +163,7 @@ def run_vm(kernel, base_adt, root, out, seconds, stop_markers, cmdline=None, deb
     (out / 'kernel-only-payload.bin').write_bytes(payload)
     plan = layout(payload, root.stat().st_size)
     fb = dict(base=0xfcc2f000, width=1220, height=2712, stride=4992)
-    ba = struct.pack('<HH4x4Q6QI4xQI', 2, 2, plan['virt_base'], PHYS_BASE, WINDOW, plan['top'],
-        fb['base'], 1, fb['stride'], fb['width'], fb['height'], 32, 0,
-        plan['adt_pa'] - (PHYS_BASE - plan['virt_base']), len(plan['adt']))
-    ba += plan['cmdline'] + bytes(4) + struct.pack('<QQ', 0, WINDOW)
-    require(len(ba) == 736, 'boot args layout differs')
+    ba = pack_boot_args(plan, fb)
     ram_path = out / 'guest-ram.bin'
     with ram_path.open('xb') as ram:
         ram.truncate(plan['ram_bytes'])

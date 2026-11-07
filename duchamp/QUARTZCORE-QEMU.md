@@ -425,3 +425,17 @@ an Edge app window and uses the existing Ubuntu WSL replay fixtures.
 Opening the shortcut again reuses the running test. Wait for the
 country screen before interacting with Setup. Each fresh run has a
 one-hour time limit.
+
+Pass `-WindowsNative` to run the VM in the installed Windows
+`qemu-system-aarch64.exe` and open the Duchamp QEMU Windows viewer.
+The Windows build uses separate RAM banks for the XNU window,
+early text console, and Setup framebuffer. A four-byte inert ROM
+enables QEMU's DIMM address space. GDB verifies that the pinned
+loader stub is the guest entry point before continuing.
+
+Ubuntu WSL prepares the pinned HFS+ assets in a temporary copy-on-write
+overlay and runs the existing GDB digitizer and scanout helpers. The
+Windows worker stages bytes into the paused emulator's RAM and exposes
+its scanout to those helpers over loopback. The Setup VM uses a RAM root
+and its Windows QEMU process does not attach a guest drive. Use
+`-InstallShortcut -WindowsNative` for a separate desktop shortcut.

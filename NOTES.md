@@ -1,3 +1,10 @@
+ACTIVE HANDOFF — Duchamp Setup on native Windows QEMU (2026-11-08):
+
+- Launched the pinned 20F66 RAM-root replay in C:\Program Files\qemu\qemu-system-aarch64.exe 10.2.50. Windows QEMU PID 20704 was live at handoff. Ubuntu WSL prepared the verified font/HID overlay and ran the existing GDB helpers. The earlier WSL emulator session was not restarted.
+- The first native RAM layout missed the independent early text console at 0x9c000000. The pinned ADT and fbcon_init data-abort trace identified the missing bank. A compact inert ROM now enables the native DIMM map. The private WSL NAT debugger route reduced an 80–100 exchange localhost relay probe with split RSP-like replies from 44.356 ms to 0.167 ms per exchange.
+- Run setup-run-desktop-20261107-214658-16008 reached the country picker. Setup PID 37 connected to BackBoard with status 0 on port 4867. The viewer reported HTTP 200 and input ready at SwapEnd 651. Desktop pointer down and up reached the guest queue at steps 13 and 14. The native viewer and emulator were left running. Windows C: had about 250 MiB free after the test.
+
+
 ACTIVE HANDOFF — Windows desktop QEMU launcher (2026-11-08):
 
 - The Duchamp QEMU desktop shortcut opens the existing Ubuntu replay in a dedicated Windows window. It reuses a live session and starts a fresh RAM-backed test otherwise. The local Ubuntu fixtures stay outside Git.
