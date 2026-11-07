@@ -1,3 +1,12 @@
+ACTIVE HANDOFF — native 20F66 Setup language picker after a QEMU swipe (2026-11-07):
+
+- Added opt-in continuous QuartzCore software scanout and a bounded bottom-edge swipe through the existing SweetHIDTouch path. The same CI 41543710742 kernel, manual Setup mode, and user/501 session were used. The original arm64 20F66 IOHIDEventServicePlugin bundle was installed and byte-verified in the temporary QEMU RAM volume. The original root hash was unchanged.
+- BackBoard PID 25 opened the touch service and enqueued all ten digitizer events. Kernel timestamps put the swipe at 246.959 ms, from (540,2380) to (540,1180). Setup PID 37 received BackBoard display port 6147 with status 0. After release, the native BuddyLanguageController ran viewWillAppear: and tableView:numberOfRowsInSection:.
+- The 328.636-second gesture-v4 run completed without an observed kernel panic. It recorded 17 scanout refreshes and five frame samples. The final 1220×2712 PNG visibly shows the language list. Several labels render as missing glyphs and the captured frame is dim. SwapEnd 1047 selects IOSurface 5 in layer 0. All five sampled rows and all 3,308,640 active BGRA pixels matched. SwapEnd 1013 also matched the source pixels but did not demonstrate a change in the sampled rows.
+- Private proof: `work/quartzcore-setup-qemu-20261107/gesture-v4/verification.json` SHA-256 6b73e3203e875b8cbc304fb2c8555efd04b6c2a871cbefa9b4e06d275c715583. Screenshot `native-frame-00000417.png` SHA-256 3bee572e48ff2dc7df8edad0c41c88c46049b7fca9892343b3803f3ed4132d7f. The same folder contains the compressed raw inputs, event trace and kernel log. See `duchamp/QUARTZCORE-QEMU.md`. No phone access.
+- Reclaimed host space with in-place compression of two existing QEMU logs and two existing diagnostic HFS images. Each file's original SHA-256 was preserved.
+
+
 ACTIVE HANDOFF — visible 20F66 Setup Hello in QEMU (2026-11-07):
 
 - SpringBoard PID 34 launched Setup PID 37 in user/501 with the QEMU-only iOSUser session correction. Setup received BackBoard display port 5891 and a successful native screen reply. The app-specific watchdog allowance was measured at 120 seconds in the prior replay.

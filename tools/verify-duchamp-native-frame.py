@@ -15,7 +15,10 @@ def sha(data):
 
 
 def software_pixels_match(run, blit, frame, surface):
-    source = (run / 'setup-software-source.raw').read_bytes()
+    source_name = blit.get('source_capture', 'setup-software-source.raw')
+    if source_name not in ('setup-software-source.raw', 'setup-software-source-%08x.raw' % blit['swap_id']):
+        raise ValueError('unexpected software capture filename')
+    source = (run / source_name).read_bytes()
     source_width, source_height, source_stride = 1125, 2436, 4608
     width = ACTIVE_ROW_BYTES // 4
     if (blit['surface_id'] != surface or len(source) != source_height * source_stride

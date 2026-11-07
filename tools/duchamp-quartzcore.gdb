@@ -16,6 +16,12 @@ FRAMEBUFFER_HEIGHT = 2712
 SOFTWARE_WIDTH = 1125
 SOFTWARE_HEIGHT = 2436
 SOFTWARE_STRIDE = 4608
+TOUCH_TIMER = 0xfffffe0007a51038
+TOUCH_TIMER_RESUME = 0xfffffe0007a510b0
+TOUCH_TIMER_DELAY = 0xfffffe0007a510f4
+TOUCH_SEND = 0xfffffe0007a5191c
+# Finger starts within the digitizer's bottom-edge region.
+SWIPE_Y = (2380, 2350, 2290, 2180, 2020, 1810, 1580, 1350, 1180, 1180)
 USER_SITES = {
     'render_display': 0x1882d90dc,
     'transaction_commit': 0x1882d5148,
@@ -48,9 +54,11 @@ setup_trace = os.environ.get('SWEET_QEMU_SETUP_TRACE') == '1'
 setup_session = os.environ.get('SWEET_QEMU_SETUP_SESSION') == '1'
 setup_without_proximity = os.environ.get('SWEET_QEMU_SETUP_WITHOUT_PROXIMITY') == '1'
 setup_software_scanout = os.environ.get('SWEET_QEMU_SETUP_SOFTWARE_SCANOUT') == '1'
+setup_swipe = os.environ.get('SWEET_QEMU_SETUP_SWIPE') == '1'
 setup_submissions = {}
 ui_processes = ('backboardd', 'SpringBoard', 'Setup') if setup_trace else ('backboardd', 'SpringBoard')
 setup_capture_delays = (0, 60, 120, 180, 240, 300)
+swipe_capture_delays = (45, 120, 240, 480, 720)
 registers = {r.name.upper(): r.name for r in gdb.newest_frame().architecture().registers()}
 
 def reg(name):
@@ -244,11 +252,19 @@ def setup_pixels_ready(source):
 
 def scale_software_frame(source, width, height, stride):
     columns = [(x * SOFTWARE_WIDTH // width) * 4 for x in range(width)]
+    runs = []
+    start = end = columns[0]
+    for x in columns[1:]:
+        if x != end + 4:
+            runs.append((start, end + 4))
+            start = x
+        end = x
+    runs.append((start, end + 4))
     padding = bytes(stride - width * 4)
     rows = []
     for y in range(SOFTWARE_HEIGHT):
         row = source[y * SOFTWARE_STRIDE:(y + 1) * SOFTWARE_STRIDE]
-        rows.append(b''.join(row[x:x + 4] for x in columns) + padding)
+        rows.append(b''.join(row[first:last] for first, last in runs) + padding)
     return b''.join(rows[y * SOFTWARE_HEIGHT // height] for y in range(height))
 
 
@@ -278,6 +294,29 @@ class Trace(gdb.Breakpoint):
     def stop(self):
         kind = self.kind
         try:
+            if kind == 'touch_timer':
+                if opcode_at(TOUCH_TIMER) != 'de030094' or reg('x1') != 12 or reg('x2') != 0x40:
+                    raise ValueError('unexpected QEMU HID timer call')
+                state['advance_touch'] = True
+                return True
+            if kind == 'touch_delay':
+                if opcode_at(TOUCH_TIMER_DELAY) != '680240f9':
+                    raise ValueError('unexpected QEMU HID timer delay site')
+                if state.get('setup_blit'):
+                    state['short_touch_delay'] = True
+                    return True
+                return False
+            if kind == 'touch_dispatch':
+                if opcode_at(reg('pc')) != '00013fd6' or not reg('x1'):
+                    raise ValueError('unexpected digitizer dispatch')
+                clients = uint(reg('x0') + 0xa0)
+                emit(kind, 0, 'kernel', step=state['swipe_step'], event_va=hex(reg('x1')),
+                     clients=uint(clients + 0x14, 4) if clients else 0)
+                return False
+            if kind == 'touch_enqueue':
+                if state.get('swipe_step'):
+                    emit(kind, 0, 'kernel', step=state['swipe_step'], event_va=hex(reg('x1')))
+                return False
             if kind == 'timer_key':
                 down = reg('x3') & 0xff
                 press = state.get('power_off', False) and 'wake_pressed' not in state and down
@@ -293,6 +332,15 @@ class Trace(gdb.Breakpoint):
                     return True
                 return False
             pid, name = process()
+            if kind.startswith('setup_language_'):
+                if name == 'Setup' and pid == state.get('setup_pid') and hits[kind, name] < 8:
+                    hits[kind, name] += 1
+                    emit(kind, pid, name, pc=hex(reg('pc')), after_swipe=state.get('swipe_step') == len(SWIPE_Y))
+                return False
+            if kind in ('hid_service_candidate', 'hid_service_result', 'hid_service_open'):
+                if name == 'backboardd' and (kind != 'hid_service_open' or reg('x2') == 0x65737563):
+                    emit(kind, pid, name, x0=hex(reg('x0')), x1=hex(reg('x1')), x2=hex(reg('x2')))
+                return False
             if kind in ('setup_submit', 'setup_normalized', 'setup_session_select', 'setup_session_checked',
                         'setup_submit_done'):
                 return trace_setup_session(kind, pid, name)
@@ -354,7 +402,8 @@ class Trace(gdb.Breakpoint):
                          screen_values=list(values), connected=bool(port and status == 0))
                 return False
             if kind in ('setup_sw_destination', 'setup_sw_draw_complete'):
-                if name != 'backboardd' or not state.get('software_attempted') or state.get('setup_blit'):
+                if (name != 'backboardd' or not state.get('software_attempted')
+                        or (not setup_swipe and state.get('setup_blit'))):
                     return False
                 if kind == 'setup_sw_destination':
                     if (opcode_at(reg('pc')) == 'e9234029' and reg('x1') and reg('x1') == reg('x4')
@@ -364,12 +413,14 @@ class Trace(gdb.Breakpoint):
                       and 'setup_software_pixels' not in state):
                     address = state['setup_software_target'][1]
                     pixels = read(address, SOFTWARE_STRIDE * SOFTWARE_HEIGHT)
-                    if setup_pixels_ready(pixels):
-                        with open('setup-software-source.raw', 'xb') as capture:
-                            capture.write(pixels)
+                    if state.get('setup_blit') or setup_pixels_ready(pixels):
+                        if not setup_swipe:
+                            with open('setup-software-source.raw', 'xb') as capture:
+                                capture.write(pixels)
                         state['setup_software_pixels'] = pixels
-                        emit('setup_sw_pixels', pid, name, address=hex(address), width=SOFTWARE_WIDTH,
-                             height=SOFTWARE_HEIGHT, stride=SOFTWARE_STRIDE, sha256=hashlib.sha256(pixels).hexdigest())
+                        if not setup_swipe or not state.get('setup_blit'):
+                            emit('setup_sw_pixels', pid, name, address=hex(address), width=SOFTWARE_WIDTH,
+                                 height=SOFTWARE_HEIGHT, stride=SOFTWARE_STRIDE, sha256=hashlib.sha256(pixels).hexdigest())
                 return False
             if kind == 'context_commit' and name == 'Setup':
                 state['setup_pid'] = pid
@@ -395,7 +446,7 @@ class Trace(gdb.Breakpoint):
                 capture_due = (not setup_trace or
                     (state.get('setup_pid') is None and not state.get('baseline_captured')) or
                     (state.get('setup_pid') is not None and fields['vsync'] >= state.get('next_setup_capture', 0)))
-                if (kind == 'present' and eligible and capture_due
+                if (kind == 'present' and eligible and (setup_swipe or capture_due)
                         and (not setup_software_scanout or 'setup_software_pixels' in state)):
                     state['nonempty_present'] = fields.copy()
                     state['frame_before'] = framebuffer()
@@ -422,13 +473,21 @@ class Trace(gdb.Breakpoint):
                             or destination < 0xfffffe0000000000):
                         raise ValueError('Setup scanout does not match the pinned full-screen IOSurface')
                     software = state.pop('setup_software_pixels')
+                    if setup_swipe and software == state.get('last_software_frame'):
+                        state['disable_site'] = self
+                        return True
                     output = scale_software_frame(software, width // 4, height, stride)
                     read(destination + len(output) - 1, 1)
                     gdb.selected_inferior().write_memory(destination, output)
                     state['setup_blit'] = True
-                    emit('setup_sw_blit', pid, name, swap_id=present['swap_id'], surface_id=surface,
-                         source_sha256=hashlib.sha256(software).hexdigest(),
-                         scanout_source_sha256=hashlib.sha256(output).hexdigest())
+                    blit = dict(swap_id=present['swap_id'], surface_id=surface,
+                                source_sha256=hashlib.sha256(software).hexdigest(),
+                                scanout_source_sha256=hashlib.sha256(output).hexdigest())
+                    if setup_swipe:
+                        state['last_software_frame'] = software
+                        state['current_blit'] = blit
+                    else:
+                        emit('setup_sw_blit', pid, name, **blit)
                 rows = sorted({height * fraction // 4 for fraction in range(4)} | {height - 1})
                 state['sample'] = (layer, surface, width, [
                     (row, start + row * FRAMEBUFFER_STRIDE, read(reg('x1') + row * stride, width))
@@ -439,8 +498,26 @@ class Trace(gdb.Breakpoint):
                 present = state.pop('nonempty_present', None)
                 if present is None:
                     return False
-                pixels, before = framebuffer(), state.pop('frame_before')
+                before = state.pop('frame_before')
                 sample = state.pop('sample', None)
+                if setup_swipe:
+                    blit = state.pop('current_blit', None)
+                    if not blit or not sample:
+                        return False
+                    emit('setup_refresh', pid, name, **blit, vsync=present['vsync'])
+                    count = state.get('swipe_captures', 0)
+                    if (count >= len(swipe_capture_delays) or count and
+                            (state.get('swipe_step') != len(SWIPE_Y)
+                             or present['vsync'] < state.get('next_setup_capture', 0))):
+                        return False
+                    source_name = 'setup-software-source-%08x.raw' % present['swap_id']
+                    with open(source_name, 'xb') as source:
+                        source.write(state['last_software_frame'])
+                    emit('setup_sw_blit', pid, name, **blit, source_capture=source_name)
+                    state['swipe_captures'] = count + 1
+                    state['next_setup_capture'] = present['vsync'] + swipe_capture_delays[count]
+                    present['swipe_step'] = state.get('swipe_step', 0)
+                pixels = framebuffer()
                 if sample:
                     layer, surface, width, expected_rows = sample
                     rows = []
@@ -463,6 +540,8 @@ class Trace(gdb.Breakpoint):
                      before_sha256=hashlib.sha256(before).hexdigest(), **present)
                 if not setup_trace:
                     return True
+                if setup_swipe:
+                    return False
                 if setup_software_scanout and state.get('setup_blit'):
                     return True
                 if present['setup_pid'] is None:
@@ -541,6 +620,8 @@ try:
         raise RuntimeError('Setup experiments require the Setup trace')
     if setup_software_scanout and not (setup_session and setup_without_proximity and software_test):
         raise RuntimeError('Setup software scanout requires the manual Setup and software renderer experiments')
+    if setup_swipe and (not setup_software_scanout or 'sweethidtest=15' not in layout['cmdline'].split()):
+        raise RuntimeError('Setup swipe requires software scanout and its bounded QEMU HID timer')
     cache = Trace(0xfffffe0007885ee0, 'shared_cache')
     points.append(cache)
     gdb.execute('continue')
@@ -552,6 +633,13 @@ try:
         'present': 0xfffffe0007a4dc24, 'present_done': 0xfffffe0007a4db58}.items())
     if wake_test:
         points.append(Trace(0xfffffe0007a51038, 'timer_key'))
+    if setup_swipe:
+        points.extend(Trace(va, kind) for va, kind in (
+            (TOUCH_TIMER, 'touch_timer'), (TOUCH_TIMER_DELAY, 'touch_delay'),
+            (0xfffffe0007a51800, 'touch_dispatch'), (0xfffffe0007a5be24, 'touch_enqueue')))
+        points.extend(Trace(va + state['slide'], kind) for va, kind in (
+            (0x18e5896b8, 'hid_service_candidate'), (0x18e5897d0, 'hid_service_result'),
+            (0x18e54c55c, 'hid_service_open')))
     if software_test:
         points.append(Trace(0x1882e25b0 + state['slide'], 'software_fallback'))
     if setup_software_scanout:
@@ -591,6 +679,12 @@ try:
             if not any(point.kind == 'setup_proximity_resume' and point.location == '*' + hex(address)
                        for point in points):
                 points.append(Trace(address, 'setup_proximity_resume'))
+                if setup_swipe:
+                    base = address - 0xabc08
+                    points.extend(Trace(base + offset, kind) for offset, kind in {
+                        0x37b28: 'setup_language_init', 0x37d3c: 'setup_language_did_load',
+                        0x37e58: 'setup_language_will_appear', 0x383f0: 'setup_language_number_of_rows',
+                    }.items())
         elif 'return_setup_no_peer' in state:
             gdb.execute('set $x0 = 0', to_string=True)
             gdb.execute('set $pc = ' + hex(state.pop('return_setup_no_peer')), to_string=True)
@@ -603,6 +697,28 @@ try:
         elif state.pop('rewrite_usage', False):
             gdb.execute('set $x2 = 0x30', to_string=True)
             emit('qemu_power_key', 0, 'kernel', down=state['wake_pressed'])
+        elif state.pop('advance_touch', False):
+            step = state.get('swipe_step', 0)
+            if step == len(SWIPE_Y):
+                gdb.execute('set $pc = ' + hex(TOUCH_TIMER_RESUME), to_string=True)
+                emit('setup_swipe_window_complete', 0, 'kernel', captures=state['swipe_captures'])
+                break
+            if state.get('swipe_captures'):
+                if opcode_at(TOUCH_SEND) != 'e80300aa' or not uint(0xfffffe00081029f0):
+                    raise RuntimeError('pinned QEMU digitizer is unavailable')
+                down, x, y = int(step < len(SWIPE_Y) - 1), 540, SWIPE_Y[step]
+                for register, value in zip(('x0', 'x1', 'x2', 'x3', 'x30'),
+                                           (0, down, x, y, TOUCH_TIMER_RESUME)):
+                    gdb.execute('set $%s = %#x' % (register, value), to_string=True)
+                gdb.execute('set $pc = ' + hex(TOUCH_SEND), to_string=True)
+                state['swipe_step'] = step + 1
+                emit('qemu_touch', 0, 'kernel', step=step + 1, down=bool(down), x=x, y=y)
+            else:
+                # Skip the periodic Home event in this QEMU experiment.
+                gdb.execute('set $pc = ' + hex(TOUCH_TIMER_RESUME), to_string=True)
+        elif state.pop('short_touch_delay', False):
+            delay = 35000 if state.get('swipe_step') == len(SWIPE_Y) else 25
+            gdb.execute('set $x1 = ' + str(delay), to_string=True)
         elif state.pop('redirect_renderer', False):
             # EAGLServer::renderer expects an OGL::Context at its common
             # assignment. Route one observed nil Metal result through
@@ -615,7 +731,11 @@ try:
             state['ipc_site'] = Trace(0xfffffe0007314af8, 'springboard_ipc')
             points.append(state['ipc_site'])
         elif state.pop('install_copy_site', False):
-            points.append(Trace(0xfffffe0007a4df10, 'copy_rows'))
+            if 'copy_site' in state:
+                state['copy_site'].enabled = True
+            else:
+                state['copy_site'] = Trace(0xfffffe0007a4df10, 'copy_rows')
+                points.append(state['copy_site'])
         elif 'disable_site' in state:
             state.pop('disable_site').enabled = False
         else:

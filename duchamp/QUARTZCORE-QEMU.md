@@ -346,3 +346,30 @@ The experiment uses nearest-neighbor scaling in QEMU. Verify the
 captured swap with the frame checker. When the software blit is in
 the trace, it also checks every active framebuffer pixel against
 the saved native software buffer.
+
+For continuous Setup scanout and one bottom-edge swipe, add
+`SWEET_QEMU_SETUP_SWIPE=1` and the QEMU boot argument
+`sweethidtest=15`. The debugger uses the kernel's existing test
+timer to feed the registered touchscreen with a down event, moves
+and an up event. It traces touchscreen clients and queue submissions,
+and refreshes the native layer after changed QuartzCore draws. It
+saves the software buffer and the physical scanout under the same
+SwapEnd number for each sampled frame.
+
+BackBoard needs the original arm64 20F66
+`/System/Library/HIDPlugins/ServicePlugins/IOHIDEventServicePlugin.plugin`
+bundle in the test root to open the `HIDServiceSupport` device. The
+local replay helper can install the three bundle files into the
+QEMU RAM copy and verify their bytes by readback. Its
+`SWEET_QEMU_SETUP_HID_PLUGIN` input is a private directory with
+`Info.plist`, `IOHIDEventServicePlugin` and `CodeResources`.
+No Apple files are included in the repository.
+
+The gesture-v4 replay enqueued all ten touchscreen events to
+BackBoard and reached Setup's native language table. The captured
+language list is visible in `native-frame-00000417.png`. SwapEnd
+1047 and SwapSetLayer agree on layer 0, IOSurface 5. The verifier
+matched every active pixel at 1220×2712. The image is dim and some
+language labels show missing glyphs. The evidence directory
+`work/quartzcore-setup-qemu-20261107/gesture-v4` retains the trace and
+the compressed raw software and framebuffer buffers.
