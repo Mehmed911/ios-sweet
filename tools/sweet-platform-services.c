@@ -2,6 +2,9 @@
  * bounded native LaunchServices reply witness. A Mach lookup is not a reply.
  */
 #include "sweet-ipc.h"
+#ifndef SWEET_LSD_QUERY_SECONDS
+#define SWEET_LSD_QUERY_SECONDS 20
+#endif
 extern int fork(void),dup2(int,int),waitpid(int,int *,int),execve(const char *,char *const [],char *const []);
 extern int setuid(unsigned int),setgid(unsigned int),setenv(const char *,const char *,int);
 extern char ***_NSGetEnviron(void);
@@ -74,7 +77,7 @@ static int query(void) {
     if(chown("/private/var/tmp/platform-native-query.txt",501,501))return 0;
     char *start[]={"launchctl","kickstart","-p","system/org.sweet.qemu.lsd-native",0};
     if(command("native-start","/bin/launchctl",start,0)) return 0;
-    for(int i=0;i<20;i++) {
+    for(int i=0;i<SWEET_LSD_QUERY_SECONDS;i++) {
         int fd=open("/private/var/tmp/platform-native-query.txt",0);
         if(fd>=0) {
             ssize_t n=read(fd,output,sizeof(output)-1);close(fd);

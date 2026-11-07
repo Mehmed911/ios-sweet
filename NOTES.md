@@ -1,3 +1,11 @@
+ACTIVE HANDOFF — 20F66 Setup launch in QEMU (2026-11-07):
+
+- Added 645 pinned original Setup.app and framework files and 82 native RunningBoard/FrontBoard policy files to a separate HFS RAM root. Each file passed a byte-for-byte readback. Setup's 95 linked install names are present in the matching dyld cache.
+- The system-lsd replay retained the native binary and mobile credentials. UID 501 still received the native LaunchServices reply. With the QEMU-only interrupt timeout scale set to 4, the last run reached Setup activation from SpringBoard PID 34 after booting the CI 41543710742 kernel. The 460.256-second run recorded no XNU panic.
+- RunningBoard returned code 5. Native launchd rejected UIKitApplication:com.apple.purplebuddy in system with error 134. The serialized request recovered from PID 1 selects /Applications/Setup.app/Setup and mobile with no LimitLoadToSessionType. The system session name is System and the existing user session is iOSUser. SpringBoard then aborted at its app-layout assertion.
+- No Setup exec, Setup context commit, or eligible Setup frame was observed. Next validate the launchd session for this specific job, then capture Setup pixels and verify their SwapEnd surface. All runs used QEMU.
+- Evidence: `work/quartzcore-setup-qemu-20261107/session-rejection/verification.json` SHA-256 ce54177a7b146348514f5142a8c79c1a17b247666088807313ff6a816eb0ab6e. See `duchamp/QUARTZCORE-QEMU.md`.
+
 ACTIVE HANDOFF — verified native compositor scanout in QEMU (2026-11-07):
 
 - Reclaimed host space by compressing seven prior QEMU RAM-root dumps in place. All seven SHA-256 values stayed identical. Rehashed the 20F66 image (64354ba3475d3c34d6fc531f75585a7b24af0fdb7a3a8a2bdf95c7f351a3f290), installed and round-tripped 557 CoreEmoji resources in a separate root (ae2c474570e5be596ecdae81a153d7f608611ec176d5696cbe0e4f09f162ed63).

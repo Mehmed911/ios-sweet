@@ -137,6 +137,82 @@ The private replay evidence is in `work/quartzcore-emoji-qemu-20261107`.
 Its manifest SHA-256 is
 `4602731ada509574f3e94ec70076a874fb7ff3380c1f5d42077953ab35ba23ec`.
 
+## Setup Assistant replay
+
+The original 20F66 `/Applications/Setup.app` identifies itself as
+`com.apple.purplebuddy`. Its 95 linked libraries are present by install
+name in the matching shared-cache inventory. The isolated root adds
+632 original app files and 13 files from the original SetupAssistant,
+SetupAssistantUI and SetupAssistantSupport framework bundles. The
+executable is installed as mode 0755. All 645 file contents are pinned
+and verified by reading them back from HFS.
+
+The first replay used the existing 20-second LaunchServices query
+deadline. The readiness controller logged `PLATFORM NATIVE QUERY TIMEOUT`
+and stopped before launching SpringBoard. Launchd subsequently recorded
+a successful exit from the native query client. The Setup fixture builds
+the diagnostic controller with a 45-second deadline and keeps its native
+reply, service identity and registry checks.
+
+With that change, the native LaunchServices reply returned status 256
+and the registry rebuild succeeded. SpringBoard PID 34 reached
+`SBStartupTransitionToSetup` and `_activateSetupWithCompletion`.
+The guest log then recorded `Unable to execute launch request` and
+`Could not find plist for domain attribute`, both from the matching
+RunningBoard image. SpringBoard aborted during its app-layout transition.
+No Setup exec was observed in this trial.
+
+The guest lacked the `/System/Library/LifecyclePolicy` and
+`/System/Library/RunningBoard` trees. The policy replay adds 82 matching
+20F66 files, including the FrontBoard domain-attributes plist and
+metadata for RunningBoard and FrontBoard. Each file is pinned and read
+back from HFS. The debugger traces RunningBoard's request, execution
+and completion entry points after SpringBoard requests Setup.
+
+The policy replay kept SpringBoard alive and reached RunningBoard's
+launch execution entry, with no Setup exec or eligible display transfer
+observed. The saved `launchctl print` output showed `lsd` in `user/501`
+and `runningboardd` in `system`. The console recorded unsuccessful
+system lookups for `com.apple.lsd.mapdb` from runningboardd, although
+the original lsd job advertised that endpoint.
+
+`--setup-lsd-system` adds `LimitLoadToSessionType=System` to the
+original lsd job on a separate Setup replay root. It retains the
+`mobile` credentials, native service names and native binary.
+
+Two replays with the launch-result trace stopped before the Setup
+transition because the development kernel reported an interrupt latency
+panic. The system-lsd replay confirmed the job's system bootstrap domain
+and the successful UID 501 LaunchServices reply. Its interrupt handler
+took 24.017264 ms against a 13.631488 ms limit. The earlier replay with
+the user-domain lsd job reported 32.622288 ms against the same limit.
+
+The system-lsd retry used `ml-timeout-interrupt-masked-scale=4` in
+`qemu-service-ram.py`'s `run_vm(cmdline=...)` for the diagnostic VM.
+The timeout remained enabled. The run ended after 460.256 host seconds
+with no XNU panic observed. SpringBoard PID 34 entered both Setup
+transition sites. RunningBoard returned a null launch result with
+`RBSRequestErrorDomain` code 5 six times. Launchd identified
+`UIKitApplication:com.apple.purplebuddy[...][rb-legacy]` in the system
+domain and returned error 134, `Service cannot load in requested session`.
+SpringBoard subsequently aborted with its app-layout assertion.
+
+The validator in the matching 20F66 launchd image reads
+`LimitLoadToSessionType` at unslid address `0x100003578`. A mismatch
+branches to the error 134 return at `0x100003698`. The serialized
+submission recovered from PID 1 matches a rejected label in the
+console. It names `/Applications/Setup.app/Setup` and user `mobile`
+and omits `LimitLoadToSessionType`. The stopped launchd contains a
+system domain with session name `System` and a user domain with
+session name `iOSUser`. The validator's missing-key path rejects the
+system domain when its session-name pointer is set. The next replay
+needs to validate correct session selection for this specific job.
+
+There was no Setup exec, Setup context commit, or eligible captured
+present in this run. The console framebuffer records the refusal.
+Private evidence is in
+`work/quartzcore-setup-qemu-20261107/session-rejection`.
+
 ## Local replay
 
 Use `prepare-duchamp-quartzcore-root.py` to create a fresh copy with the
@@ -146,6 +222,7 @@ Supply the matching UIKitCore Artwork and CoverSheet tree with
 `--artwork-resources`.
 Supply the matching AddressBookLegacy tree with `--address-book-resources`.
 Supply the matching CoreEmoji tree with `--emoji-resources`.
+Supply the matching Setup app and framework tree with `--setup-resources`.
 The tools expect local extractions of the original 20F66 system image.
 They do not contain or download Apple files.
 
@@ -169,3 +246,7 @@ call returns. Run `tools/verify-duchamp-native-frame.py RUN_DIRECTORY`
 to check the layer ID, SwapEnd record and bytes. The report tracks whether
 the active framebuffer contains any nonblack RGB pixels separately from
 transfer verification.
+For a Setup replay, set `SWEET_QEMU_SETUP_TRACE=1` for the QEMU runner.
+The debugger records SpringBoard's Setup transition and activation
+calls, follows Setup's native cache and context commits, and captures
+later swaps. Use `--swap-id` to verify one numbered capture.

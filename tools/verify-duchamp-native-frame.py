@@ -14,20 +14,26 @@ def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def verify(run):
+def verify(run, swap_id=None):
     layout = json.loads((run / 'layout.json').read_text())
     if not layout['qemu_only'] or layout['physical_storage']:
         raise ValueError('expected QEMU-only trace')
     events = [json.loads(line) for line in (run / 'quartzcore-events.jsonl').read_text().splitlines()]
+    end = next((i for i, e in enumerate(events) if e['event'] == 'present_done'
+                and (swap_id is None or e['swap_id'] == swap_id)), None)
+    prior = events if end is None else events[:end]
     observed = dict(springboard_context_commits=sum(
-        e['event'] == 'context_commit' and e['process'] == 'SpringBoard' for e in events),
+        e['event'] == 'context_commit' and e['process'] == 'SpringBoard' for e in prior),
         springboard_surface_create_calls=sum(
-            e['event'] == 'iosurface_create' and e['process'] == 'SpringBoard' for e in events))
-    end = next((i for i, e in enumerate(events) if e['event'] == 'present_done'), None)
+            e['event'] == 'iosurface_create' and e['process'] == 'SpringBoard' for e in prior),
+        setup_context_commits=sum(e['event'] == 'context_commit' and e['process'] == 'Setup' for e in prior))
     if end is None:
         return dict(verified=False, reason='no captured eligible present', **observed)
     present = events[end]
-    frame = (run / 'native-frame.raw').read_bytes()
+    capture = present.get('capture', 'native-frame.raw')
+    if capture not in ('native-frame.raw', 'native-frame-%08x.raw' % present['swap_id']):
+        raise ValueError('unexpected native capture filename')
+    frame = (run / capture).read_bytes()
     def same_swap(event):
         return event.get('swap_id') == present['swap_id']
 
@@ -69,14 +75,15 @@ def verify(run):
         changed_rows=any(row['changed'] for row in rows) and present['before_sha256'] != present['sha256'])
     return dict(verified=all(checks.values()), checks=checks, swap_id=present['swap_id'],
         surface_id=surface, layer=layer, matched_rows=matched, sampled_rows=len(rows),
-        active_rgb_nonblack=rgb_nonblack, **observed)
+        active_rgb_nonblack=rgb_nonblack, capture=capture, setup_pid=present.get('setup_pid'), **observed)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('run', type=Path)
+    parser.add_argument('--swap-id', type=lambda value: int(value, 0))
     args = parser.parse_args()
-    report = verify(args.run)
+    report = verify(args.run, args.swap_id)
     print(json.dumps(report, indent=2))
     return 0 if report['verified'] else 1
 

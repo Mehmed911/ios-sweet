@@ -41,6 +41,9 @@ hits = Counter()
 state = {}
 wake_test = os.environ.get('SWEET_QEMU_POWER_EVENT') == '1'
 software_test = os.environ.get('SWEET_QEMU_SOFTWARE_RENDERER') == '1'
+setup_trace = os.environ.get('SWEET_QEMU_SETUP_TRACE') == '1'
+ui_processes = ('backboardd', 'SpringBoard', 'Setup') if setup_trace else ('backboardd', 'SpringBoard')
+setup_capture_delays = (0, 60, 120, 180, 240, 300)
 registers = {r.name.upper(): r.name for r in gdb.newest_frame().architecture().registers()}
 
 def reg(name):
@@ -58,6 +61,35 @@ def opcode_at(address):
     except gdb.MemoryError:
         # The breakpoint can precede the first demand-paged instruction fetch.
         return None
+
+def user_ivar(object_address, offset_address):
+    offset = uint(offset_address + state['slide'], 4)
+    if not object_address or not 8 <= offset < 0x1000 or offset % 8:
+        return 0
+    return uint(object_address + offset)
+
+
+def string_hint(address, match):
+    if not address:
+        return None
+    try:
+        header = read(address, 64)
+    except gdb.MemoryError:
+        return None
+    data = [header[16:]]
+    for offset in (16, 24, 32):
+        pointer = int.from_bytes(header[offset:offset + 8], 'little')
+        if pointer:
+            try:
+                data.append(read(pointer, 64))
+            except gdb.MemoryError:
+                pass
+    for chunk in data:
+        value = chunk.split(b'\0', 1)[0].decode('ascii', 'replace')
+        if value.isascii() and match(value):
+            return value
+    return None
+
 
 def process():
     thread = reg(registers['TPIDR_EL1'])
@@ -129,7 +161,7 @@ class Trace(gdb.Breakpoint):
                 return False
             pid, name = process()
             if kind == 'shared_cache':
-                if name not in ('backboardd', 'SpringBoard') or name in state.get('cache_users', ()):
+                if name not in ui_processes or name in state.get('cache_users', ()):
                     return False
                 # _shared_region_check_np has just obtained the start address,
                 # at SP+0x38, from vm_shared_region_start_address.
@@ -145,10 +177,17 @@ class Trace(gdb.Breakpoint):
                 if state.get('slide', slide) != slide:
                     raise ValueError('SpringBoard has a different cache slide')
                 return False
-            if name not in ('backboardd', 'SpringBoard') and kind not in ('present', 'present_done', 'copy_rows'):
+            if kind.startswith('rbs_setup_'):
+                if name != 'runningboardd' or not state.get('setup_activation_seen'):
+                    return False
+            elif name not in ui_processes and kind not in ('present', 'present_done', 'copy_rows'):
                 return False
-            if kind == 'springboard_ipc' and name != 'SpringBoard':
+            if kind in ('springboard_ipc', 'setup_transition', 'setup_activate') and name != 'SpringBoard':
                 return False
+            if kind == 'context_commit' and name == 'Setup':
+                state['setup_pid'] = pid
+            if kind == 'setup_activate':
+                state['setup_activation_seen'] = True
             hits[kind, name] += 1
             fields = {}
             if kind == 'power':
@@ -163,7 +202,11 @@ class Trace(gdb.Breakpoint):
                 mask, = struct.unpack_from('<I', record, 0x104)
                 fields = dict(swap_id=struct.unpack_from('<I', record, 0x50)[0],
                               surfaces=surfaces, mask=hex(mask), vsync=uint(reg('x0') + 0x98))
-                if kind == 'present' and any(surface and mask & (1 << i) for i, surface in enumerate(surfaces)):
+                eligible = any(surface and mask & (1 << i) for i, surface in enumerate(surfaces))
+                capture_due = (not setup_trace or
+                    (state.get('setup_pid') is None and not state.get('baseline_captured')) or
+                    (state.get('setup_pid') is not None and fields['vsync'] >= state.get('next_setup_capture', 0)))
+                if kind == 'present' and eligible and capture_due:
                     state['nonempty_present'] = fields.copy()
                     state['frame_before'] = framebuffer()
                     state['install_copy_site'] = True
@@ -188,10 +231,11 @@ class Trace(gdb.Breakpoint):
                 state['disable_site'] = self
                 return True
             elif kind == 'present_done':
-                if 'nonempty_present' not in state:
+                present = state.pop('nonempty_present', None)
+                if present is None:
                     return False
-                pixels, before = framebuffer(), state['frame_before']
-                sample = state.get('sample')
+                pixels, before = framebuffer(), state.pop('frame_before')
+                sample = state.pop('sample', None)
                 if sample:
                     layer, surface, width, expected_rows = sample
                     rows = []
@@ -203,12 +247,26 @@ class Trace(gdb.Breakpoint):
                             physical_sha256=hashlib.sha256(actual).hexdigest(),
                             matches=actual == expected, changed=actual != before_row))
                     emit('layer_pixels', pid, name, layer=layer, surface_id=surface, rows=rows,
-                         swap_id=state['nonempty_present']['swap_id'])
-                with open('native-frame.raw', 'xb') as frame:
+                         swap_id=present['swap_id'])
+                capture = 'native-frame.raw'
+                if setup_trace:
+                    capture = 'native-frame-%08x.raw' % present['swap_id']
+                    present['setup_pid'] = state.get('setup_pid')
+                with open(capture, 'xb') as frame:
                     frame.write(pixels)
-                emit(kind, pid, name, sha256=hashlib.sha256(pixels).hexdigest(),
-                     before_sha256=hashlib.sha256(before).hexdigest(), **state['nonempty_present'])
-                return True
+                emit(kind, pid, name, capture=capture, sha256=hashlib.sha256(pixels).hexdigest(),
+                     before_sha256=hashlib.sha256(before).hexdigest(), **present)
+                if not setup_trace:
+                    return True
+                if present['setup_pid'] is None:
+                    state['baseline_captured'] = True
+                    return False
+                count = state.get('setup_captures', 0) + 1
+                state['setup_captures'] = count
+                if count == len(setup_capture_delays):
+                    return True
+                state['next_setup_capture'] = present['vsync'] + setup_capture_delays[count]
+                return False
             elif kind == 'springboard_ipc':
                 fields = user_stack()
             elif kind == 'software_fallback':
@@ -226,6 +284,26 @@ class Trace(gdb.Breakpoint):
                 if kind == 'layer_surface_id':
                     fields.update(layer=reg('x24'), surface_id=reg('x0') & 0xffffffff,
                                   surface=hex(reg('x21')), connection=hex(reg('x20')))
+                if kind == 'rbs_setup_finish':
+                    fields['error'] = hex(reg('x5'))
+                if kind == 'rbs_setup_request':
+                    # 20F66 RBSLaunchRequest._context and RBSLaunchContext._bundleIdentifier.
+                    try:
+                        context = user_ivar(reg('x2'), 0x1dd3b6b08)
+                        identifier = user_ivar(context, 0x1dd3b69fc)
+                        fields['bundle'] = string_hint(identifier, lambda value: value.startswith('com.apple.'))
+                    except gdb.MemoryError:
+                        fields['bundle'] = None
+                if kind == 'rbs_setup_result':
+                    error = uint(reg('sp') + 8)
+                    fields.update(result=hex(reg('x0')), error=hex(error))
+                    if error:
+                        try:
+                            fields['error_code'] = user_ivar(error, 0x1dce8886c)
+                            domain = user_ivar(error, 0x1dce88870)
+                            fields['error_domain'] = string_hint(domain, lambda value: value.endswith('ErrorDomain'))
+                        except gdb.MemoryError:
+                            pass
             # Layer clears can exhaust the sample cap before the first real frame.
             has_surface = ((kind in ('swap_set_layer', 'kern_swap_set_layer') and reg('x2'))
                            or (kind == 'layer_surface_id' and reg('x0'))
@@ -263,6 +341,11 @@ try:
         points.append(Trace(0xfffffe0007a51038, 'timer_key'))
     if software_test:
         points.append(Trace(0x1882e25b0 + state['slide'], 'software_fallback'))
+    if setup_trace:
+        points.extend(Trace(va + state['slide'], name) for name, va in {
+            'setup_transition': 0x1c50ad8c0, 'setup_activate': 0x1c50adc60,
+            'rbs_setup_request': 0x1f52e4f68, 'rbs_setup_execute': 0x1f52bfef0,
+            'rbs_setup_finish': 0x1f52e498c, 'rbs_setup_result': 0x1f529f504}.items())
     while True:
         gdb.execute('continue')
         if state.pop('rewrite_usage', False):
