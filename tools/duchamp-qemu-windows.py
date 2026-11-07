@@ -244,9 +244,11 @@ def prepare_boot(runner, root, previous, out):
     virtual_adt.write_bytes(runner.virtual_tree(adt.read_bytes()))
     payload, _ = mkpayload.build(kernel, virtual_adt, cmdline)
     plan = runner.layout(payload, root.stat().st_size, 128 << 20)
+    display_hz = 120
+    payload = runner.configure_display_timer(payload, plan, display_hz)
     state = {k: v for k, v in plan.items() if k not in ('adt', 'cmdline')}
     state.update(cmdline=cmdline, qemu_only=True, physical_storage=False,
-                 kernel_sha256=runner.KERNEL_PIN, native_windows_qemu=True)
+                 kernel_sha256=runner.KERNEL_PIN, native_windows_qemu=True, display_hz=display_hz)
     return payload, plan, state, runner.pack_boot_args(plan, FB), add_setup_assets
 
 

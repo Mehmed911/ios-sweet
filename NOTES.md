@@ -1,3 +1,10 @@
+ACTIVE HANDOFF — 120 Hz guest display timer for fresh Windows QEMU sessions (2026-11-08):
+
+- The pinned AppleCLCD kernel used 16,667 microseconds at both its first timer arm and its recurring arm. The native Windows Setup loader now verifies both MOV/BLR sequences and patches a fresh RAM payload to 8,333 microseconds. The source kernel and non-opt-in Linux tests keep their original timing.
+- Separate QEMU kernel probes captured twelve rearm calls at 16,667 and 8,333 microseconds. At a 62.5 MHz guest counter, median observed callback gaps were 18.525 ms and 10.070 ms under the breakpoint probe. This verifies timer configuration and faster guest callbacks, not 120 displayed frames per second. Also verified both instruction bytes in the exact Windows Setup payload preparation path.
+- The user's existing Windows PID 20704 session still had working input and prior interactions. Its loaded 60 Hz kernel was left in place to preserve Setup progress.
+
+
 ACTIVE HANDOFF — Duchamp Setup on native Windows QEMU (2026-11-08):
 
 - Launched the pinned 20F66 RAM-root replay in C:\Program Files\qemu\qemu-system-aarch64.exe 10.2.50. Windows QEMU PID 20704 was live at handoff. Ubuntu WSL prepared the verified font/HID overlay and ran the existing GDB helpers. The earlier WSL emulator session was not restarted.

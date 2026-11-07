@@ -27,6 +27,7 @@ PHYS_BASE = 0x1c0000000
 WINDOW = 4 << 30
 PAGE = 0x4000
 STUB = 0x40200000
+DISPLAY_TIMER_SITES = (0xfffffe0007a4d878, 0xfffffe0007a4dae4)
 
 
 def require(ok, message):
@@ -103,6 +104,28 @@ def layout(payload, root_bytes, root_growth=0):
         cmdline=payload[0x48:0x48 + 608])
 
 
+def configure_display_timer(payload, plan, refresh_hz):
+    require(refresh_hz in (60, 120), 'supported guest display rates are 60 and 120 Hz')
+    if refresh_hz == 60:
+        return payload
+    # AppleCLCD::start and vsyncFired in KERNEL_PIN both load w1 before the
+    # same setTimeoutUS virtual call. The rearm site covers both power paths.
+    old = struct.pack('<2I', 0x52882361, 0xd63f0100)  # mov w1, #16667; blr x8
+    period_us = round(1_000_000 / refresh_hz)
+    replacement = struct.pack('<I', 0x52800001 | (period_us << 5))
+    delta = plan['phys_base'] - plan['virt_base']
+    updated = bytearray(payload)
+    for va in DISPLAY_TIMER_SITES:
+        pa = va + delta
+        matches = [offset + pa - start for start, _, offset, size in plan['segments']
+                   if start <= pa and pa + len(old) <= start + size]
+        require(len(matches) == 1 and payload[matches[0]:matches[0] + len(old)] == old,
+                'pinned guest display timer instruction differs at ' + hex(va))
+        offset = matches[0]
+        updated[offset:offset + len(replacement)] = replacement
+    return bytes(updated)
+
+
 def pack_boot_args(plan, fb):
     ba = struct.pack('<HH4x4Q6QI4xQI', 2, 2, plan['virt_base'], PHYS_BASE, WINDOW, plan['top'],
         fb['base'], 1, fb['stride'], fb['width'], fb['height'], 32, 0,
@@ -141,7 +164,7 @@ def monitor(endpoint, execute, arguments=None):
 
 
 def run_vm(kernel, base_adt, root, out, seconds, stop_markers, cmdline=None, debugger_script=None,
-           save_guest_root=True):
+           save_guest_root=True, display_hz=60):
     kernel, base_adt, root, out = (Path(p).resolve() for p in (kernel, base_adt, root, out))
     require(os.name == 'posix' and not str(out).startswith('/mnt/'), 'guest RAM output must use the native Linux disk')
     require(not out.exists(), 'preserve existing run directory')
@@ -160,8 +183,9 @@ def run_vm(kernel, base_adt, root, out, seconds, stop_markers, cmdline=None, deb
         'launchdsuffix=sweet launchd_log_serial=1')
     require('rd=md0' in cmdline.split() and not any(x.startswith('sweet-qemu-ufs=') for x in cmdline.split()), 'RAM root only')
     payload, _ = mkpayload.build(kernel, virtual_adt, cmdline)
-    (out / 'kernel-only-payload.bin').write_bytes(payload)
     plan = layout(payload, root.stat().st_size)
+    payload = configure_display_timer(payload, plan, display_hz)
+    (out / 'kernel-only-payload.bin').write_bytes(payload)
     fb = dict(base=0xfcc2f000, width=1220, height=2712, stride=4992)
     ba = pack_boot_args(plan, fb)
     ram_path = out / 'guest-ram.bin'
@@ -179,7 +203,8 @@ def run_vm(kernel, base_adt, root, out, seconds, stop_markers, cmdline=None, deb
         ram.write(struct.pack('<4I2Q', 0x58000080, 0x580000a1, 0xd61f0020, 0xd503201f, plan['boot_pa'], plan['entry_pa']))
     serializable = {k: v for k, v in plan.items() if k not in ('adt', 'cmdline')}
     serializable.update(root_sha256=source_root_pin, source_adt_sha256=ADT_PIN, kernel_sha256=KERNEL_PIN,
-        cmdline=cmdline, qemu_only=True, physical_storage=False, large_ram_not_phone_layout=True)
+        cmdline=cmdline, qemu_only=True, physical_storage=False, large_ram_not_phone_layout=True,
+        display_hz=display_hz)
     (out / 'layout.json').write_text(json.dumps(serializable, indent=2) + '\n')
     spec = importlib.util.spec_from_file_location('service_ram_screen', REPO / 'tools/qemu-sweet.py')
     screen_tool = importlib.util.module_from_spec(spec); spec.loader.exec_module(screen_tool)

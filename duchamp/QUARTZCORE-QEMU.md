@@ -439,3 +439,10 @@ Windows worker stages bytes into the paused emulator's RAM and exposes
 its scanout to those helpers over loopback. The Setup VM uses a RAM root
 and its Windows QEMU process does not attach a guest drive. Use
 `-InstallShortcut -WindowsNative` for a separate desktop shortcut.
+
+Fresh native Windows sessions target 120 Hz for the guest AppleCLCD
+vsync timer. The QEMU loader verifies the pinned timer instructions
+and sets both the initial and recurring delays to 8,333 microseconds
+in the new RAM payload. Reopening the viewer of an existing session
+preserves that session's current timer. Guest timer frequency and
+the displayed frame rate are measured separately.
