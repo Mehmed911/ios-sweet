@@ -409,3 +409,12 @@ To switch an already running session to the faster viewer, use
 on a free loopback port and open the new window. The viewer caches
 unchanged scanout frames and keeps pending pointer moves bounded.
 The VM and its guest timer continue in the existing session.
+
+The updated interactive debugger schedules digitizer checks every
+16 guest milliseconds while idle and 8 while pressed. In a session
+started with this debugger, an atomic replacement of
+`live-touch-period.json` in the run directory changes the next
+timer interval without restarting QEMU. Write a JSON array
+`[idle_ms, active_ms]` with integers and
+`6 <= active_ms <= idle_ms <= 60`. An invalid change keeps the last
+accepted periods. The trace records accepted and rejected changes.

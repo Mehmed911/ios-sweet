@@ -1,3 +1,9 @@
+ACTIVE HANDOFF — guest touchscreen timer tuning prepared (2026-11-07):
+
+- The prior live-v1 QEMU session had already ended when the user requested faster guest touch without a restart. Its runner returned successfully after 866.719 host seconds, and neither the VM nor its tmpfs RAM remained. The shutdown reason could not be recovered. The existing session was not relaunched.
+- The interactive QEMU debugger now requests 16 ms idle and 8 ms pressed timer periods, down from 60 and 25. It validates each pinned instruction once and supports live adjustment via an atomic live-touch-period.json update. The helper passed tests for defaults, live updates, invalid settings, reset and opcode guards. The six RAM loader and seven UI readiness tests passed. No guest timing or live responsiveness was measured with this revision.
+
+
 ACTIVE HANDOFF — responsive desktop viewer attached to live QEMU (2026-11-07):
 
 - The existing live-v1 VM stayed up while the user reported sluggish touch. The original viewer polled after 180 ms and rebuilt unchanged JPEGs. Idle guest input also measured 53 timer stops in 4 seconds. The debugger and guest timer were left running as loaded.

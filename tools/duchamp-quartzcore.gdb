@@ -20,6 +20,7 @@ TOUCH_TIMER = 0xfffffe0007a51038
 TOUCH_TIMER_RESUME = 0xfffffe0007a510b0
 TOUCH_TIMER_DELAY = 0xfffffe0007a510f4
 TOUCH_SEND = 0xfffffe0007a5191c
+LIVE_TOUCH_PERIOD = (16, 8)  # idle and pressed, in guest milliseconds
 # Finger starts within the digitizer's bottom-edge region.
 SWIPE_Y = (2380, 2350, 2290, 2180, 2020, 1810, 1580, 1350, 1180, 1180)
 # Center of the first visible language row in the pinned Setup display.
@@ -270,6 +271,43 @@ def next_live_touch():
     return phase != 'up', x, y, 'desktop_' + phase
 
 
+def live_touch_delay():
+    # A local controller can tune the QEMU timer without reattaching GDB.
+    path = 'live-touch-period.json'
+    try:
+        info = os.stat(path)
+        version = (info.st_ino, info.st_mtime_ns)
+    except FileNotFoundError:
+        version = None
+    if version != state.get('touch_period_version'):
+        state['touch_period_version'] = version
+        if version is None:
+            state['touch_period'] = LIVE_TOUCH_PERIOD
+        else:
+            try:
+                with open(path, 'rb') as settings:
+                    raw = settings.read(129)
+                if len(raw) > 128:
+                    raise ValueError('touch timing file is too large')
+                idle, active = json.loads(raw)
+                if type(active) is not int or type(idle) is not int or not 6 <= active <= idle <= 60:
+                    raise ValueError('expected 6 <= active <= idle <= 60')
+                state['touch_period'] = (idle, active)
+                emit('qemu_touch_period', 0, 'kernel', idle_ms=idle, active_ms=active)
+            except (OSError, ValueError, TypeError):
+                emit('qemu_touch_period_rejected', 0, 'kernel')
+    idle, active = state.get('touch_period', LIVE_TOUCH_PERIOD)
+    return active if state.get('live_touch_down') else idle
+
+
+def check_touch_site(address, opcode):
+    checked = state.setdefault('checked_touch_sites', set())
+    if address not in checked:
+        if opcode_at(address) != opcode:
+            raise ValueError('unexpected QEMU HID instruction at ' + hex(address))
+        checked.add(address)
+
+
 def setup_pixels_ready(source):
     # Sample the central welcome content and its background.
     samples = [source[y * SOFTWARE_STRIDE + x * 4]
@@ -352,19 +390,20 @@ class Trace(gdb.Breakpoint):
         kind = self.kind
         try:
             if kind == 'touch_timer':
-                if opcode_at(TOUCH_TIMER) != 'de030094' or reg('x1') != 12 or reg('x2') != 0x40:
+                check_touch_site(TOUCH_TIMER, 'de030094')
+                if reg('x1') != 12 or reg('x2') != 0x40:
                     raise ValueError('unexpected QEMU HID timer call')
                 state['advance_touch'] = True
                 return True
             if kind == 'touch_delay':
-                if opcode_at(TOUCH_TIMER_DELAY) != '680240f9':
-                    raise ValueError('unexpected QEMU HID timer delay site')
+                check_touch_site(TOUCH_TIMER_DELAY, '680240f9')
                 if state.get('setup_blit'):
                     state['short_touch_delay'] = True
                     return True
                 return False
             if kind == 'touch_dispatch':
-                if opcode_at(reg('pc')) != '00013fd6' or not reg('x1'):
+                check_touch_site(reg('pc'), '00013fd6')
+                if not reg('x1'):
                     raise ValueError('unexpected digitizer dispatch')
                 clients = uint(reg('x0') + 0xa0)
                 emit(kind, 0, 'kernel', step=state.get('live_touch_step', state['swipe_step']), event_va=hex(reg('x1')),
@@ -805,8 +844,7 @@ try:
             if live:
                 # The original test callback stops after 60 samples. Keep its
                 # diagnostic timer available only inside this pinned QEMU run.
-                if opcode_at(TOUCH_TIMER_RESUME) != '88b640b9':
-                    raise RuntimeError('unexpected QEMU HID timer counter')
+                check_touch_site(TOUCH_TIMER_RESUME, '88b640b9')
                 counter = reg('x20') + 0xb4
                 if uint(counter, 4) >= 50:
                     gdb.selected_inferior().write_memory(counter, bytes(4))
@@ -830,7 +868,8 @@ try:
                     emit('setup_language_frame_timeout', 0, 'kernel')
                     break
                 continue
-            if opcode_at(TOUCH_SEND) != 'e80300aa' or not uint(0xfffffe00081029f0):
+            check_touch_site(TOUCH_SEND, 'e80300aa')
+            if not uint(0xfffffe00081029f0):
                 raise RuntimeError('pinned QEMU digitizer is unavailable')
             for register, value in zip(('x0', 'x1', 'x2', 'x3', 'x30'), (0, int(down), x, y, TOUCH_TIMER_RESUME)):
                 gdb.execute('set $%s = %#x' % (register, value), to_string=True)
@@ -852,7 +891,7 @@ try:
                 elif step == len(SWIPE_Y) + 1:
                     delay = 80
                 elif step == len(SWIPE_Y) + 2:
-                    delay = (25 if state.get('live_touch_down') else 60) if setup_live else 35000
+                    delay = live_touch_delay() if setup_live else 35000
             elif step == len(SWIPE_Y):
                 delay = 35000
             gdb.execute('set $x1 = ' + str(delay), to_string=True)
