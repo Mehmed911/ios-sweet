@@ -15,11 +15,13 @@ RESOURCES_PIN = '9ce1d6f3dcfdca12fe7258e3a7dd65f2d74b578c27e92950d01372704925373
 NLP_PIN = '657d77ee3088b3a42c75f00606f7aee8900c395d334e3f1492e662c27d44638a'
 ARTWORK_PIN = '94536a8c82130f7cc51d51231dbcee13c1184b17eeb70f0a74ab1e5e9ec5369d'
 ADDRESS_BOOK_PIN = '3604a54ea85ffaa6006f53816f6fccc13e1ca37f1e55f936a104fceeb1296356'
+CORE_EMOJI_PIN = 'bcbc16a716e1f85d37d78ccb65023f04188280aeacbe10cd6506880b0cc28d81'
 FRAMEWORK = Path('System/Library/PrivateFrameworks/UIKitCore.framework')
 CORE_NLP = Path('System/Library/PrivateFrameworks/CoreNLP.framework')
 ARTWORK = FRAMEWORK / 'Artwork.bundle'
 COVER_SHEET = FRAMEWORK.with_name('CoverSheet.framework')
 ADDRESS_BOOK = FRAMEWORK.with_name('AddressBookLegacy.framework')
+CORE_EMOJI = FRAMEWORK.with_name('CoreEmoji.framework')
 JOB = '/System/Library/LaunchDaemons/com.apple.backboardd.plist'
 ATTENTION_SERVICE = 'com.apple.AttentionAwareness'
 
@@ -42,7 +44,8 @@ def pin_files(root, paths, expected):
     return files, receipt
 
 
-def prepare(base, resources, out, language_resources=None, artwork_resources=None, address_book_resources=None):
+def prepare(base, resources, out, language_resources=None, artwork_resources=None, address_book_resources=None,
+            emoji_resources=None):
     helper = REPO / 'work/ui-surface-qemu-v3/evidence/hfsplus'
     require(sha(base) == BASE_PIN, 'expected the pinned V6 QEMU RAM root')
     require(sha(helper) == HFS_PIN, 'HFS helper pin mismatch')
@@ -70,6 +73,12 @@ def prepare(base, resources, out, language_resources=None, artwork_resources=Non
         address_book_files, address_book_receipt = pin_files(address_book_resources, paths, ADDRESS_BOOK_PIN)
         files.update(address_book_files)
         receipt.update(address_book_receipt)
+    if emoji_resources:
+        paths = sorted(path for path in (emoji_resources / CORE_EMOJI).rglob('*')
+                       if path.is_file() and '_CodeSignature' not in path.parts)
+        emoji_files, emoji_receipt = pin_files(emoji_resources, paths, CORE_EMOJI_PIN)
+        files.update(emoji_files)
+        receipt.update(emoji_receipt)
     out.mkdir(parents=True, exist_ok=False)
     root = out / 'root.hfs'
     subprocess.run(['cp', '--sparse=always', str(base), str(root)], check=True)
@@ -118,10 +127,11 @@ def main():
     parser.add_argument('--language-resources', type=Path, help='local tree of pinned CoreNLP and langid resources')
     parser.add_argument('--artwork-resources', type=Path, help='local tree of pinned UIKitCore artwork and CoverSheet resources')
     parser.add_argument('--address-book-resources', type=Path, help='local tree of pinned AddressBookLegacy resources')
+    parser.add_argument('--emoji-resources', type=Path, help='local tree of pinned CoreEmoji resources')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()
     prepare(args.base_root.resolve(), args.resources.resolve(), args.output.resolve(),
-        args.language_resources, args.artwork_resources, args.address_book_resources)
+        args.language_resources, args.artwork_resources, args.address_book_resources, args.emoji_resources)
 
 
 if __name__ == '__main__':

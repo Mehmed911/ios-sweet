@@ -103,10 +103,39 @@ original SpringBoard process (PID 34).
 The 270.293-second replay ended with display power off, two clear swaps,
 no eligible layer writes, and a blank physical framebuffer. The last
 swap still had mask `0x80000007` and four zero surface IDs. There was no
-`layer_surface_id` event or native scanout capture. Native IOSurface
-allocation is verified. The first SpringBoard frame in scanout is still
-pending. Extraction of CoreEmoji hit a host I/O error with the Windows
-drive full, so there is no CoreEmoji boot result.
+`layer_surface_id` event or native scanout capture in that run.
+The initial CoreEmoji extraction hit a host I/O error with the Windows
+drive full.
+
+## CoreEmoji replay and verified scanout
+
+Seven previous QEMU RAM-root dumps were compressed in place on NTFS.
+Each file's SHA-256 matched before and after compression. The original
+20F66 system image was then hashed again. The new isolated guest root
+included 557 original CoreEmoji resource files (196,082,409 bytes).
+Every installed file was read back from HFS. The original base root and
+the prepared input root retained their hashes.
+
+SpringBoard PID 34 stayed alive through the 315.202-second replay and
+made four observed QuartzCore context commits. BackBoard PID 25 created
+IOSurface 5 (1220×2712 BGRA, 5120-byte source stride). The native trace
+correlated its non-null `SwapSetLayer` with layer 0 and ID 5, then
+`SwapEnd` 17, mask `0x1`, and the same record at AppleCLCD present.
+The debugger sampled five rows at the pinned kernel copy call and read
+them back at physical address `0xfcc2f000` after present. All five
+matched their source bytes, and four differed from the prior scanout.
+
+Every active pixel of that first frame was black. The final QMP image
+showed a black screen with launchd console text. A visible SpringBoard
+interface remains unverified. The first scanout image SHA-256 is
+`86f6c313ffd935db24829f42ba67d894183a397467babf09a6f330ec3bf91af6`.
+The separate synthetic control matched all 2048 known BGRA pixels and
+all five sampled rows. The verifier rejected a changed surface ID and
+a one-byte change to the captured native frame.
+
+The private replay evidence is in `work/quartzcore-emoji-qemu-20261107`.
+Its manifest SHA-256 is
+`4602731ada509574f3e94ec70076a874fb7ff3380c1f5d42077953ab35ba23ec`.
 
 ## Local replay
 
@@ -116,6 +145,7 @@ Supply the matching CoreNLP and langid tree with `--language-resources`.
 Supply the matching UIKitCore Artwork and CoverSheet tree with
 `--artwork-resources`.
 Supply the matching AddressBookLegacy tree with `--address-book-resources`.
+Supply the matching CoreEmoji tree with `--emoji-resources`.
 The tools expect local extractions of the original 20F66 system image.
 They do not contain or download Apple files.
 
@@ -134,8 +164,8 @@ They change live QEMU registers for one diagnostic event. Use the
 read-only mode for verification of the normal rendering path.
 
 Private evidence and the file-hash manifest are under
-`work/quartzcore-qemu-20261107`. The first eligible present, if reached,
-is captured immediately after the native kernel call returns. A genuine
-SpringBoard frame requires a SpringBoard scene commit, a non-null surface
-from backboardd, matching SwapEnd and present IDs, and corresponding
-pixels in the physical framebuffer dump.
+`work/quartzcore-qemu-20261107`. The first eligible present is captured immediately after the native kernel
+call returns. Run `tools/verify-duchamp-native-frame.py RUN_DIRECTORY`
+to check the layer ID, SwapEnd record and bytes. The report tracks whether
+the active framebuffer contains any nonblack RGB pixels separately from
+transfer verification.

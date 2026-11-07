@@ -1,3 +1,11 @@
+ACTIVE HANDOFF — verified native compositor scanout in QEMU (2026-11-07):
+
+- Reclaimed host space by compressing seven prior QEMU RAM-root dumps in place. All seven SHA-256 values stayed identical. Rehashed the 20F66 image (64354ba3475d3c34d6fc531f75585a7b24af0fdb7a3a8a2bdf95c7f351a3f290), installed and round-tripped 557 CoreEmoji resources in a separate root (ae2c474570e5be596ecdae81a153d7f608611ec176d5696cbe0e4f09f162ed63).
+- 315.202-second replay with CI 41543710742 kernel and unmodified native 20F66 cache. SpringBoard PID 34 was alive at stop with four traced context commits. BackBoard PID 25 submitted layer 0 IOSurface 5 in SwapEnd 17. The ID and five rows matched AppleCLCD's physical scanout at 0xfcc2f000. Four rows changed from the prior scanout.
+- Native transfer passes. All active RGB pixels of the first native frame were black. The final QMP frame only showed launchd console text. The separate synthetic control matched 2048/2048 pixels and five traced rows. No physical device was tested.
+- Evidence: `work/quartzcore-emoji-qemu-20261107/verification.json` SHA-256 4602731ada509574f3e94ec70076a874fb7ff3380c1f5d42077953ab35ba23ec. See `duchamp/QUARTZCORE-QEMU.md` and `tools/verify-duchamp-native-frame.py`.
+- Next gate: a visible native SpringBoard/Setup frame. The staged QEMU root lacks `/Applications/Setup.app`. Its absence is an observation; the reason the compositor emits black has not been proved.
+
 ACTIVE HANDOFF — native SpringBoard IOSurface creation in QEMU (2026-11-07):
 
 - Branch `duchamp-bootstrap`, QEMU only. Same CI 41543710742 kernel and original 20F66 shared cache. The native baseline calls `set_all_layers_to_null(true)` from `set_enabled_(false)`, sends NULL through SwapSetLayer, and powers off. AppleCLCD previously verified the independent synthetic 2048-pixel fixture.

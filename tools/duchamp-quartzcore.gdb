@@ -10,6 +10,9 @@ from collections import Counter
 
 CACHE_BASE = 0x180000000
 KERNEL_SHA256 = 'e465723a540844817a5b9cb36c14984d660f9a8e41f6638240527b469189182b'
+FRAMEBUFFER_OFFSET = 0xfcc2f000 - 0x40000000
+FRAMEBUFFER_STRIDE = 4992
+FRAMEBUFFER_HEIGHT = 2712
 USER_SITES = {
     'render_display': 0x1882d90dc,
     'transaction_commit': 0x1882d5148,
@@ -75,6 +78,15 @@ def emit(kind, pid, name, **fields):
         log.write(json.dumps(event) + '\n')
     gdb.write('QUARTZCORE ' + json.dumps(event) + '\n')
 
+def framebuffer():
+    with open('guest-ram.bin', 'rb') as ram:
+        ram.seek(FRAMEBUFFER_OFFSET)
+        pixels = ram.read(FRAMEBUFFER_STRIDE * FRAMEBUFFER_HEIGHT)
+    if len(pixels) != FRAMEBUFFER_STRIDE * FRAMEBUFFER_HEIGHT:
+        raise ValueError('short physical framebuffer')
+    return pixels
+
+
 def user_stack():
     thread = reg(registers['TPIDR_EL1'])
     saved = uint(thread + 0x110)
@@ -133,7 +145,7 @@ class Trace(gdb.Breakpoint):
                 if state.get('slide', slide) != slide:
                     raise ValueError('SpringBoard has a different cache slide')
                 return False
-            if name not in ('backboardd', 'SpringBoard') and kind not in ('present', 'present_done'):
+            if name not in ('backboardd', 'SpringBoard') and kind not in ('present', 'present_done', 'copy_rows'):
                 return False
             if kind == 'springboard_ipc' and name != 'SpringBoard':
                 return False
@@ -153,16 +165,49 @@ class Trace(gdb.Breakpoint):
                               surfaces=surfaces, mask=hex(mask), vsync=uint(reg('x0') + 0x98))
                 if kind == 'present' and any(surface and mask & (1 << i) for i, surface in enumerate(surfaces)):
                     state['nonempty_present'] = fields.copy()
+                    state['frame_before'] = framebuffer()
+                    state['install_copy_site'] = True
+            elif kind == 'copy_rows':
+                # At the pinned AppleCLCD memmove call, x25 is the layer
+                # and x20 is the row. The first hit describes the clipped copy.
+                if opcode_at(reg('pc')) != 'e8ba0394' or reg('x20') != 0:
+                    raise ValueError('unexpected AppleCLCD row copy site')
+                layer, width, height = reg('x25'), reg('x2'), reg('x21')
+                surface = state['nonempty_present']['surfaces'][layer]
+                fb = uint(reg('x29') - 0x70)
+                start = reg('x0') - uint(fb + 0xc8)
+                stride = reg('x9') & 0xffffffff
+                if (not surface or not 0 < height <= FRAMEBUFFER_HEIGHT or not 0 < width <= stride
+                        or start < 0 or start % FRAMEBUFFER_STRIDE + width > FRAMEBUFFER_STRIDE
+                        or start + (height - 1) * FRAMEBUFFER_STRIDE + width > len(state['frame_before'])):
+                    raise ValueError('unexpected AppleCLCD layer bounds')
+                rows = sorted({height * fraction // 4 for fraction in range(4)} | {height - 1})
+                state['sample'] = (layer, surface, width, [
+                    (row, start + row * FRAMEBUFFER_STRIDE, read(reg('x1') + row * stride, width))
+                    for row in rows])
+                state['disable_site'] = self
+                return True
             elif kind == 'present_done':
                 if 'nonempty_present' not in state:
                     return False
-                with open('guest-ram.bin', 'rb') as ram, open('native-frame.raw', 'xb') as frame:
-                    ram.seek(0xfcc2f000 - 0x40000000)
-                    pixels = ram.read(4992 * 2712)
-                    if len(pixels) != 4992 * 2712:
-                        raise ValueError('short physical framebuffer')
+                pixels, before = framebuffer(), state['frame_before']
+                sample = state.get('sample')
+                if sample:
+                    layer, surface, width, expected_rows = sample
+                    rows = []
+                    for row, offset, expected in expected_rows:
+                        before_row = before[offset:offset + width]
+                        actual = pixels[offset:offset + width]
+                        rows.append(dict(row=row, offset=offset, bytes=width,
+                            source_sha256=hashlib.sha256(expected).hexdigest(),
+                            physical_sha256=hashlib.sha256(actual).hexdigest(),
+                            matches=actual == expected, changed=actual != before_row))
+                    emit('layer_pixels', pid, name, layer=layer, surface_id=surface, rows=rows,
+                         swap_id=state['nonempty_present']['swap_id'])
+                with open('native-frame.raw', 'xb') as frame:
                     frame.write(pixels)
-                emit(kind, pid, name, sha256=hashlib.sha256(pixels).hexdigest(), **state['nonempty_present'])
+                emit(kind, pid, name, sha256=hashlib.sha256(pixels).hexdigest(),
+                     before_sha256=hashlib.sha256(before).hexdigest(), **state['nonempty_present'])
                 return True
             elif kind == 'springboard_ipc':
                 fields = user_stack()
@@ -178,6 +223,9 @@ class Trace(gdb.Breakpoint):
                 pc, lr = reg('pc'), reg('x30')
                 fields = dict(pc=hex(pc), lr=hex(lr), opcode=opcode_at(pc),
                               args=[hex(reg('x' + str(i))) for i in range(5)])
+                if kind == 'layer_surface_id':
+                    fields.update(layer=reg('x24'), surface_id=reg('x0') & 0xffffffff,
+                                  surface=hex(reg('x21')), connection=hex(reg('x20')))
             # Layer clears can exhaust the sample cap before the first real frame.
             has_surface = ((kind in ('swap_set_layer', 'kern_swap_set_layer') and reg('x2'))
                            or (kind == 'layer_surface_id' and reg('x0'))
@@ -187,7 +235,8 @@ class Trace(gdb.Breakpoint):
             sample_once = kind in ('vsync_callback', 'timer_callback', 'springboard_ipc')
             if sample_once and hits[kind, name] >= 4:
                 state['disable_site'] = self
-            return state.get('install_ipc_site', False) or sample_once and hits[kind, name] >= 4
+            return (state.get('install_ipc_site', False) or state.get('install_copy_site', False)
+                    or sample_once and hits[kind, name] >= 4)
         except Exception as error:
             state['error'] = str(error)
             gdb.write('QUARTZCORE_TRACE_ERROR ' + str(error) + '\n')
@@ -230,6 +279,8 @@ try:
         elif state.pop('install_ipc_site', False):
             state['ipc_site'] = Trace(0xfffffe0007314af8, 'springboard_ipc')
             points.append(state['ipc_site'])
+        elif state.pop('install_copy_site', False):
+            points.append(Trace(0xfffffe0007a4df10, 'copy_rows'))
         elif 'disable_site' in state:
             state.pop('disable_site').enabled = False
         else:
