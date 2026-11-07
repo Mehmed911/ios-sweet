@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -18,7 +19,7 @@ FRAMEBUFFER_OFFSET = 0xFCC2F000 - 0x40000000
 PAGE = """<!doctype html>
 <html lang="ar" dir="rtl"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Duchamp QEMU</title>
+<title>Duchamp QEMU Fast</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#15191e;color:#eef2f6;font:15px system-ui}
 main{height:100dvh;display:grid;grid-template-rows:auto minmax(0,1fr) auto;justify-items:center;gap:10px;padding:12px}
@@ -30,14 +31,15 @@ img.ready{cursor:pointer}button{background:#2a3743;color:white;border:0;border-r
 <img id="display" alt="شاشة المحاكي" draggable="false"><footer><button id="stop">إيقاف المحاكي</button></footer></main>
 <script>
 const display = document.getElementById('display'), status = document.getElementById('status');
-let ready = false, pointer = null, lastMove = 0, lastUrl, sending = Promise.resolve();
+let ready = false, pointer = null, lastMove = 0, lastUrl, frameVersion = '', sending = Promise.resolve();
 async function refresh() {
   try {
-    const response = await fetch('/frame', {cache:'no-store'});
+    const response = await fetch('/frame?after='+frameVersion, {cache:'no-store'});
     ready = response.headers.get('X-Guest-Ready') === '1';
     display.classList.toggle('ready', ready);
     status.textContent = ready ? 'انقر أو اسحب داخل الشاشة' : 'جارٍ إقلاع iOS وتحميل الإعداد…';
     if (response.status === 200) {
+      frameVersion = response.headers.get('X-Frame-Version') || '';
       const url = URL.createObjectURL(await response.blob());
       display.src = url;
       if (lastUrl) URL.revokeObjectURL(lastUrl);
@@ -47,7 +49,7 @@ async function refresh() {
     ready = false;
     status.textContent = 'جلسة المحاكي متوقفة';
   }
-  setTimeout(refresh, 180);
+  setTimeout(refresh, ready ? 8 : 160);
 }
 function post(path, payload) {
   sending = sending.catch(() => {}).then(() => fetch(path, {
@@ -68,7 +70,7 @@ display.addEventListener('pointerdown', event => {
   display.setPointerCapture(pointer); touch(event, 'down');
 });
 display.addEventListener('pointermove', event => {
-  if (pointer !== event.pointerId || event.timeStamp-lastMove < 34) return;
+  if (pointer !== event.pointerId || event.timeStamp-lastMove < 32) return;
   lastMove = event.timeStamp; touch(event, 'move');
 });
 for (const name of ['pointerup','pointercancel','lostpointercapture']) display.addEventListener(name, event => {
@@ -92,21 +94,70 @@ def read_frame(run):
             return b''
 
 
+def consumed_touches(run):
+    try:
+        with (run / 'quartzcore-events.jsonl').open('rb') as trace:
+            size = trace.seek(0, os.SEEK_END)
+            tail = os.pread(trace.fileno(), min(size, 65536), max(0, size - 65536))
+    except FileNotFoundError:
+        return 0
+    for line in reversed(tail.splitlines()):
+        if b'"gesture": "desktop_' not in line:
+            continue
+        try:
+            return max(0, json.loads(line)['step'] - 12)
+        except (KeyError, ValueError):
+            continue
+    return 0
+
+
 def make_handler(run, port):
     lock = threading.Lock()
-    pointer_down = False
+    frame_lock = threading.Lock()
+    journal = run / 'live-touch.jsonl'
+    touch_ack = 0
+    frame_version = ''
+    jpeg = b''
     host = f'127.0.0.1:{port}'
+
+    def version():
+        try:
+            return str((run / 'live-frame.raw').stat().st_mtime_ns)
+        except FileNotFoundError:
+            return ''
+
+    def image(after):
+        nonlocal frame_version, jpeg
+        current = version()
+        deadline = time.monotonic() + 0.35
+        while current and current == after and time.monotonic() < deadline:
+            time.sleep(0.009)
+            current = version()
+        if current and current == after:
+            return 204, b'', current
+        with frame_lock:
+            if current and current == frame_version:
+                return 200, jpeg, current
+            raw = read_frame(run)
+            if len(raw) != STRIDE * HEIGHT:
+                return 204, b'', ''
+            frame = Image.frombytes('RGB', (WIDTH, HEIGHT), raw, 'raw', 'BGRX', STRIDE, 1)
+            result = io.BytesIO()
+            frame.resize((WIDTH // 2, HEIGHT // 2), Image.Resampling.BILINEAR).save(result, 'JPEG', quality=83)
+            frame_version, jpeg = current, result.getvalue()
+            return 200, jpeg, current
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
             pass
 
-        def send_body(self, status, mime, body=b'', ready=False):
+        def send_body(self, status, mime, body=b'', ready=False, version=''):
             self.send_response(status)
             self.send_header('Content-Type', mime)
             self.send_header('Cache-Control', 'no-store')
             self.send_header('Content-Length', str(len(body)))
             self.send_header('X-Guest-Ready', str(int(ready)))
+            self.send_header('X-Frame-Version', version)
             self.end_headers()
             self.wfile.write(body)
 
@@ -116,20 +167,15 @@ def make_handler(run, port):
                 return
             if self.path == '/':
                 self.send_body(200, 'text/html; charset=utf-8', PAGE.encode())
-            elif self.path == '/frame':
-                raw = read_frame(run)
-                if len(raw) != STRIDE * HEIGHT:
-                    self.send_body(204, 'image/jpeg')
-                    return
-                frame = Image.frombytes('RGB', (WIDTH, HEIGHT), raw, 'raw', 'BGRX', STRIDE, 1)
-                result = io.BytesIO()
-                frame.resize((WIDTH // 2, HEIGHT // 2)).save(result, 'JPEG', quality=83)
-                self.send_body(200, 'image/jpeg', result.getvalue(), (run / 'live-ready').is_file())
+            elif self.path == '/frame' or self.path.startswith('/frame?after='):
+                after = self.path.removeprefix('/frame?after=')
+                status, data, current = image(after)
+                self.send_body(status, 'image/jpeg', data, (run / 'live-ready').is_file(), current)
             else:
                 self.send_error(404)
 
         def do_POST(self):
-            nonlocal pointer_down
+            nonlocal touch_ack
             if (self.headers.get('Host') != host or self.headers.get('Origin') != 'http://' + host
                     or self.headers.get('X-Guest-Input') != '1'):
                 self.send_error(403)
@@ -147,11 +193,21 @@ def make_handler(run, port):
                             or not (0 <= x < 1080 and 0 <= y < 2400)):
                         raise ValueError
                     with lock:
+                        lines = journal.read_bytes().splitlines() if journal.exists() else []
+                        last = json.loads(lines[-1]) if lines else ['up', x, y]
+                        pointer_down = last[0] != 'up'
                         if (phase == 'down') == pointer_down:
                             raise ValueError
-                        with (run / 'live-touch.jsonl').open('ab') as queue:
-                            queue.write((json.dumps(payload) + '\n').encode())
-                        pointer_down = phase != 'up'
+                        if phase == 'move':
+                            touch_ack = max(touch_ack, consumed_touches(run))
+                            if len(lines) - touch_ack >= 2:
+                                self.send_body(204, 'text/plain')
+                                return
+                        events = [payload]
+                        if phase == 'up' and max(abs(last[1] - x), abs(last[2] - y)) >= 3:
+                            events.insert(0, ['move', x, y])
+                        with journal.open('ab') as queue:
+                            queue.write(''.join(json.dumps(event) + '\n' for event in events).encode())
                 else:
                     self.send_error(409)
                     return
@@ -166,15 +222,26 @@ def make_handler(run, port):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port', required=True, type=int)
+    parser.add_argument('--attach', action='store_true', help='view an existing QEMU session without restarting it')
     parser.add_argument('run', type=Path)
     parser.add_argument('command', nargs=argparse.REMAINDER)
     args = parser.parse_args()
-    if not args.command or args.run.exists():
+    if args.attach:
+        if args.command or not (args.run / 'live-ready').is_file() or (args.run / 'result.json').exists():
+            parser.error('attach requires a running interactive QEMU session')
+        layout = json.loads((args.run / 'layout.json').read_text())
+        if not layout['qemu_only'] or layout['physical_storage']:
+            parser.error('attach requires the QEMU RAM-only layout')
+    elif not args.command or args.run.exists():
         parser.error('a fresh run directory and its QEMU command are required')
     with ThreadingHTTPServer(('127.0.0.1', args.port), make_handler(args.run, args.port)) as server:
         worker = threading.Thread(target=server.serve_forever, daemon=True)
         worker.start()
         try:
+            if args.attach:
+                while not (args.run / 'result.json').exists() and (args.run / 'guest-ram.bin').is_file():
+                    time.sleep(0.4)
+                return 0
             return subprocess.run(args.command, check=False).returncode
         finally:
             server.shutdown()

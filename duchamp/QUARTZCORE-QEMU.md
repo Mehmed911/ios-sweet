@@ -403,3 +403,9 @@ for the country screen. Mouse presses and drags go through the
 guest's existing touchscreen. The viewer shows the latest complete
 physical scanout after present, with the live boot framebuffer
 available before Setup renders. Use the stop button to end the VM.
+
+To switch an already running session to the faster viewer, use
+`tools/duchamp-qemu-display.py --attach --port PORT RUN_DIRECTORY`
+on a free loopback port and open the new window. The viewer caches
+unchanged scanout frames and keeps pending pointer moves bounded.
+The VM and its guest timer continue in the existing session.

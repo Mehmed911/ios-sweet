@@ -1,3 +1,10 @@
+ACTIVE HANDOFF — responsive desktop viewer attached to live QEMU (2026-11-07):
+
+- The existing live-v1 VM stayed up while the user reported sluggish touch. The original viewer polled after 180 ms and rebuilt unchanged JPEGs. Idle guest input also measured 53 timer stops in 4 seconds. The debugger and guest timer were left running as loaded.
+- Added the loopback attach mode, cached unchanged frames, waited on a new scanout generation, and bounded queued pointer moves while preserving down, final position and release. The alternate viewer is open as Duchamp QEMU Fast on port 18291 on the same VM. Windows warm GET samples dropped from roughly 39–43 ms to 4–7 ms. This measures the viewer, not guest touch-to-render latency.
+- Local HTTP tests passed for replacement frames, origin and coordinate checks, and move coalescing. The original VM and the user's current Setup state were preserved.
+
+
 ACTIVE HANDOFF — interactive Duchamp QEMU desktop window (2026-11-07):
 
 - Opened a dedicated Duchamp QEMU desktop window on Windows loopback port 18290. The local viewer served the guest framebuffer and switched to the complete physical scanout at present. Its mouse input goes through SweetHIDTouch and BackBoard. The same pinned 20F66 region replay automatically reached the country screen before enabling desktop input.
