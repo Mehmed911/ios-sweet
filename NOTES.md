@@ -1,3 +1,9 @@
+ACTIVE HANDOFF — 120 Hz applied in the Windows Setup session (2026-11-08):
+
+- With the user's approval, stopped the previous 60 Hz test and relaunched native QEMU from e618302. PID 2540 loaded both 8,333-microsecond AppleCLCD timer instructions, independently verified by reading their bytes from the running process. The run is setup-run-desktop-20261107-221715-3744.
+- Setup connected to BackBoard on port 5635 with status 0. The country picker was visible in the live framebuffer at SwapEnd 840 and input-ready was set. Desktop press and release reached the guest queue at steps 13 and 14. The window was left open. Presented FPS was not measured.
+
+
 ACTIVE HANDOFF — 120 Hz guest display timer for fresh Windows QEMU sessions (2026-11-08):
 
 - The pinned AppleCLCD kernel used 16,667 microseconds at both its first timer arm and its recurring arm. The native Windows Setup loader now verifies both MOV/BLR sequences and patches a fresh RAM payload to 8,333 microseconds. The source kernel and non-opt-in Linux tests keep their original timing.
