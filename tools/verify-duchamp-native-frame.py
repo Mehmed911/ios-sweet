@@ -14,6 +14,24 @@ def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def software_pixels_match(run, blit, frame, surface):
+    source = (run / 'setup-software-source.raw').read_bytes()
+    source_width, source_height, source_stride = 1125, 2436, 4608
+    width = ACTIVE_ROW_BYTES // 4
+    if (blit['surface_id'] != surface or len(source) != source_height * source_stride
+            or sha(source) != blit['source_sha256'] or len(frame) != STRIDE * HEIGHT):
+        return False
+    source_offsets = [4 * (x * source_width // width) for x in range(width)]
+    scanout_source = hashlib.sha256()
+    for y in range(HEIGHT):
+        start = (y * source_height // HEIGHT) * source_stride
+        expected = b''.join(source[start + x:start + x + 4] for x in source_offsets)
+        if frame[y * STRIDE:y * STRIDE + ACTIVE_ROW_BYTES] != expected:
+            return False
+        scanout_source.update(expected + bytes(5120 - ACTIVE_ROW_BYTES))
+    return scanout_source.hexdigest() == blit['scanout_source_sha256']
+
+
 def verify(run, swap_id=None):
     layout = json.loads((run / 'layout.json').read_text())
     if not layout['qemu_only'] or layout['physical_storage']:
@@ -73,6 +91,9 @@ def verify(run, swap_id=None):
         scanout_hash=len(frame) == STRIDE * HEIGHT and sha(frame) == present['sha256'],
         source_rows=bool(rows) and matched == len(rows),
         changed_rows=any(row['changed'] for row in rows) and present['before_sha256'] != present['sha256'])
+    blit = next((e for e in reversed(prior) if e['event'] == 'setup_sw_blit' and same_swap(e)), None)
+    if blit is not None:
+        checks['software_source_pixels'] = software_pixels_match(run, blit, frame, surface)
     return dict(verified=all(checks.values()), checks=checks, swap_id=present['swap_id'],
         surface_id=surface, layer=layer, matched_rows=matched, sampled_rows=len(rows),
         active_rgb_nonblack=rgb_nonblack, capture=capture, setup_pid=present.get('setup_pid'), **observed)

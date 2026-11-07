@@ -1,3 +1,10 @@
+ACTIVE HANDOFF — visible 20F66 Setup Hello in QEMU (2026-11-07):
+
+- SpringBoard PID 34 launched Setup PID 37 in user/501 with the QEMU-only iOSUser session correction. Setup received BackBoard display port 5891 and a successful native screen reply. The app-specific watchdog allowance was measured at 120 seconds in the prior replay.
+- The manual replay answered the proximity resume check with false. Setup then committed three contexts. QuartzCore drew the native Hello screen in a 1125×2436 software buffer. The original 1220×2712 output IOSurface remained black until the one-frame diagnostic copied the scaled native pixels to it.
+- Verified SwapSetLayer and SwapEnd 215 select IOSurface 5, layer 0. All five sampled rows and all 3,308,640 active BGRA pixels match the native software source after scaling. The physical framebuffer PNG shows Hello. The test was a one-frame software scanout in QEMU.
+- Evidence: `work/quartzcore-setup-qemu-20261107/physical-hello/verification.json` SHA-256 d87d314412d2ca9f8e13bd668e0fa7f4bc26def58abf421cb8e77e040c57f104. See `duchamp/QUARTZCORE-QEMU.md`.
+
 ACTIVE HANDOFF — 20F66 Setup launch in QEMU (2026-11-07):
 
 - Added 645 pinned original Setup.app and framework files and 82 native RunningBoard/FrontBoard policy files to a separate HFS RAM root. Each file passed a byte-for-byte readback. Setup's 95 linked install names are present in the matching dyld cache.

@@ -213,6 +213,78 @@ present in this run. The console framebuffer records the refusal.
 Private evidence is in
 `work/quartzcore-setup-qemu-20261107/session-rejection`.
 
+The first session correction traced the incoming job pointer, then
+missed the native check because launchd copied the job dictionary.
+Tracing the normalized dictionary allowed the native validator to
+accept the system session. The original Setup executable then ran as
+PID 38 and mapped the matching shared cache. Its bootstrap lookup for
+`com.apple.backboard.display.services` failed in `system`. The native
+BackBoard job advertised that service in `user/501`. A Setup frame
+was still unobserved in that run. RunningBoard later killed PID 38
+with a process-launch watchdog violation. The saved log reports a
+20-second allowance and reason `0x8BADF00D`.
+
+The system-session replay evidence is in
+`work/quartzcore-setup-qemu-20261107/session-system-exec`.
+
+With the user-domain correction, launchd accepted `iOSUser` and
+executed Setup as UID 501. The first replay hit the default 20-second
+scene-create watchdog. An isolated HFS copy added the native
+FrontBoard preference `FBLaunchWatchdogExceptions` for
+`com.apple.purplebuddy` only, with value 100. FrontBoard reported a
+120-second allowance for this app. The readback was owned by UID 501,
+GID 501, with mode 0600. Setup PID 38 still expired during scene
+creation. Its main-thread stack reached an infinite semaphore wait in
+`ProximitySetupController` while waiting for `hasConnection:`.
+
+The watchdog replay verified all five sampled rows for IOSurface 5
+in SwapEnd 5. Its active pixels were black, and the trace contained
+no Setup context commit. The framebuffer and watchdog evidence are
+in `work/quartzcore-setup-qemu-20261107/session-watchdog`.
+
+The manual-setup replay retained the 120-second Setup allowance and
+accepted `iOSUser` for the job launched by SpringBoard PID 34.
+Setup PID 37 obtained BackBoard display port 4611. The native
+main-screen request returned status 0 and dimensions 1125×2436.
+After the optional proximity resume check returned false, Setup
+committed three QuartzCore contexts.
+
+BackBoard submitted IOSurface 5 in six captured swaps after those
+commits. The active pixels of all six captures were black. In a
+separate diagnostic on the same guest, the debugger redirected a
+null Metal result into QuartzCore's software-context constructor.
+Three more swaps also presented black pixels from IOSurface 5.
+These captures establish the framebuffer transfer. They contain
+no visible Setup interface.
+
+A read-only trace of the software renderer then observed
+`SWContext::set_destination` and `SWContext::draw_elements`. The
+1125×2436 destination at a 4608-byte stride contained the native
+Hello screen when read from BackBoard's memory. The display still
+selected a separate 1220×2712 surface with a 5120-byte stride.
+
+The one-frame software scanout replay captured the native
+1125×2436 pixels after drawing and scaled them to 1220×2712. The
+debugger copied those bytes to the IOSurface already selected by
+native SwapEnd, immediately before AppleCLCD read its first row.
+The debugger then captured the physical framebuffer after present.
+The Hello screen is visible in that capture.
+
+SpringBoard PID 34 launched Setup PID 37 in `user/501`. Setup
+received BackBoard display port 5891 and a successful native screen
+reply. `SwapSetLayer` and `SwapEnd` 215 both identify IOSurface 5,
+layer 0. Five sampled rows and all 3,308,640 active BGRA pixels
+matched the scaled software source. The console-text decoder
+reported incomplete decode on the graphical frame. The raw pixel
+verifier and visual inspection confirmed the frame.
+
+The evidence and both raw buffers are in
+`work/quartzcore-setup-qemu-20261107/physical-hello`. The physical
+PNG SHA-256 is
+`9a9d229e82e0577cdc235b92530c1db62d0626ed31d3f2476e5357112461f010`.
+The verification manifest SHA-256 is
+`d87d314412d2ca9f8e13bd668e0fa7f4bc26def58abf421cb8e77e040c57f104`.
+
 ## Local replay
 
 Use `prepare-duchamp-quartzcore-root.py` to create a fresh copy with the
@@ -250,3 +322,27 @@ For a Setup replay, set `SWEET_QEMU_SETUP_TRACE=1` for the QEMU runner.
 The debugger records SpringBoard's Setup transition and activation
 calls, follows Setup's native cache and context commits, and captures
 later swaps. Use `--swap-id` to verify one numbered capture.
+
+To test the session correction, set `SWEET_QEMU_SETUP_SESSION=1` with
+the Setup trace. The debugger checks the running PID 1 image and the
+exact legacy Setup job label. It selects the existing `user/501`
+domain, follows the submitted and normalized job pointers, and supplies
+the existing `iOSUser` name when the session argument is absent.
+The native validator and the job submission report their results
+separately. The experiment changes only live QEMU registers.
+
+`SWEET_QEMU_SETUP_WITHOUT_PROXIMITY=1` runs a separate manual-setup
+experiment. It checks the code at the expected Setup offset and
+returns false from its proximity resume check inside QEMU. This mode
+arms the scanout trace after the first Setup context commit to limit
+debugger stops during launch. The display trace records Setup's
+BackBoard Mach port and the native main-screen service reply
+separately from any verified scanout.
+
+For the one-frame scanout experiment, enable
+`SWEET_QEMU_SETUP_SOFTWARE_SCANOUT=1` alongside the Setup trace,
+session correction, manual setup and software renderer switches.
+The experiment uses nearest-neighbor scaling in QEMU. Verify the
+captured swap with the frame checker. When the software blit is in
+the trace, it also checks every active framebuffer pixel against
+the saved native software buffer.
