@@ -418,3 +418,10 @@ timer interval without restarting QEMU. Write a JSON array
 `[idle_ms, active_ms]` with integers and
 `6 <= active_ms <= idle_ms <= 60`. An invalid change keeps the last
 accepted periods. The trace records accepted and rejected changes.
+
+On Windows, run `tools/start-duchamp-qemu-desktop.ps1 -InstallShortcut`
+to create the Duchamp QEMU desktop shortcut. It opens the viewer in
+an Edge app window and uses the existing Ubuntu WSL replay fixtures.
+Opening the shortcut again reuses the running test. Wait for the
+country screen before interacting with Setup. Each fresh run has a
+one-hour time limit.

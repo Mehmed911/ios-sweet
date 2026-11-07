@@ -1,3 +1,10 @@
+ACTIVE HANDOFF — Windows desktop QEMU launcher (2026-11-08):
+
+- The Duchamp QEMU desktop shortcut opens the existing Ubuntu replay in a dedicated Windows window. It reuses a live session and starts a fresh RAM-backed test otherwise. The local Ubuntu fixtures stay outside Git.
+- The first shortcut launch reached the native Setup country screen at SwapEnd 497 and 570. The loopback viewer reported input ready. The guest digitizer reached 111 checks in 4.001 host seconds while idle. The trace later recorded desktop input reaching BackBoard. No phone access.
+- Native Windows QEMU 10.2.50 was already installed. Added its directory to the Windows user PATH and verified a separate ARM64 virt smoke test reached QMP prelaunch and exited cleanly. The Duchamp replay uses its existing Ubuntu toolchain.
+
+
 ACTIVE HANDOFF — guest touchscreen timer tuning prepared (2026-11-07):
 
 - The prior live-v1 QEMU session had already ended when the user requested faster guest touch without a restart. Its runner returned successfully after 866.719 host seconds, and neither the VM nor its tmpfs RAM remained. The shutdown reason could not be recovered. The existing session was not relaunched.
