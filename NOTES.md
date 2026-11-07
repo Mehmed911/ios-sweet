@@ -1,3 +1,10 @@
+ACTIVE HANDOFF — touch queue verified in the running Windows Setup session (2026-11-08):
+
+- In native QEMU PID 2540, BackBoard opened the HID service with the verified 20F66 IOHIDEventServicePlugin. The desktop viewer input path sent a controlled down, six moves, and up at steps 19–26. Every sample reached the dispatch and enqueue trace sites with one attached client.
+- Confirmed the live guest queue counters with read-only Windows process memory and the pinned XNU page tables and object layouts. The digitizer client had 26 enqueue attempts, zero drops, and matching queue head and tail of 6240 in a 16,384-byte ring. The consumer drained the queue.
+- The controlled drag did not change the visible country list or cause a new Setup presentation. The cached viewer frame stayed at generation 1794090289222650965 while the actual scanout contained console text. Some earlier desktop taps were followed by presentation; the cause after queue consumption is still open. The live guest was preserved.
+
+
 ACTIVE HANDOFF — 120 Hz applied in the Windows Setup session (2026-11-08):
 
 - With the user's approval, stopped the previous 60 Hz test and relaunched native QEMU from e618302. PID 2540 loaded both 8,333-microsecond AppleCLCD timer instructions, independently verified by reading their bytes from the running process. The run is setup-run-desktop-20261107-221715-3744.
