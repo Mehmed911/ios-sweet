@@ -1,3 +1,11 @@
+ACTIVE HANDOFF — 20F66 Setup fonts and country selection in QEMU (2026-11-07):
+
+- The previous RAM root was missing the original script fallback fonts. Extracted 30 original 20F66 font files (136767248 bytes), checked representative autonym codepoints against their Unicode cmap tables, and pinned manifest cc4979a574aad865c70407cc2a8a30cfdc3ae35c47ecd9f6768e446f69336d46. The private runner grew only the temporary HFS RAM copy by 128 MiB and verified both volume headers and byte-for-byte file readback. The base image hash was unchanged.
+- Region-v1 used the existing CI 41543710742 kernel, original 20F66 cache, QEMU software scanout and HID bundle. Setup PID 37 in user/501 received a successful display reply on port 6403. BackBoard received ten swipe events and two tap events. Native Setup selected row 0, visibly English in the language capture, then ran BuddyLocaleController viewWillAppear: and built country rows.
+- The 352.966-second run ended without an observed XNU panic and recorded 16 refreshes. SwapEnd 631 shows the previously missing labels in Chinese, Japanese, Korean, Arabic and Thai. SwapEnd 793 shows Select Your Country or Region. Both use IOSurface 5, layer 0, and independently match all 3,308,640 active BGRA pixels and five sampled rows. The other two saved frames also pass the frame verifier.
+- Proof: `work/quartzcore-setup-qemu-20261107/region-v1/verification.json` SHA-256 60cf77038bbadd985b6aca71caaaef9958a9382606fc2f7fe9d5b13046343475. Language PNG `native-frame-00000277.png` SHA-256 b26db29541857e65cf76a8693255ce994b620374d4d82175e6b7b4adfd857665. Country PNG `native-frame-00000319.png` SHA-256 a13f3ec74654e6ead622c08c1050021f3db2fb7c53031ead2b2a209d8bd67c39. The directory retains both raw inputs compressed and the event trace. Test scope QEMU only.
+
+
 ACTIVE HANDOFF — native 20F66 Setup language picker after a QEMU swipe (2026-11-07):
 
 - Added opt-in continuous QuartzCore software scanout and a bounded bottom-edge swipe through the existing SweetHIDTouch path. The same CI 41543710742 kernel, manual Setup mode, and user/501 session were used. The original arm64 20F66 IOHIDEventServicePlugin bundle was installed and byte-verified in the temporary QEMU RAM volume. The original root hash was unchanged.

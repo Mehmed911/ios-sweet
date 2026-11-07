@@ -22,6 +22,8 @@ TOUCH_TIMER_DELAY = 0xfffffe0007a510f4
 TOUCH_SEND = 0xfffffe0007a5191c
 # Finger starts within the digitizer's bottom-edge region.
 SWIPE_Y = (2380, 2350, 2290, 2180, 2020, 1810, 1580, 1350, 1180, 1180)
+# Center of the first visible language row in the pinned Setup display.
+ENGLISH_TAP_Y = 530
 USER_SITES = {
     'render_display': 0x1882d90dc,
     'transaction_commit': 0x1882d5148,
@@ -55,10 +57,12 @@ setup_session = os.environ.get('SWEET_QEMU_SETUP_SESSION') == '1'
 setup_without_proximity = os.environ.get('SWEET_QEMU_SETUP_WITHOUT_PROXIMITY') == '1'
 setup_software_scanout = os.environ.get('SWEET_QEMU_SETUP_SOFTWARE_SCANOUT') == '1'
 setup_swipe = os.environ.get('SWEET_QEMU_SETUP_SWIPE') == '1'
+setup_region = os.environ.get('SWEET_QEMU_SETUP_REGION') == '1'
 setup_submissions = {}
 ui_processes = ('backboardd', 'SpringBoard', 'Setup') if setup_trace else ('backboardd', 'SpringBoard')
 setup_capture_delays = (0, 60, 120, 180, 240, 300)
 swipe_capture_delays = (45, 120, 240, 480, 720)
+region_capture_delays = (60, 180, 360, 540)
 registers = {r.name.upper(): r.name for r in gdb.newest_frame().architecture().registers()}
 
 def reg(name):
@@ -250,6 +254,35 @@ def setup_pixels_ready(source):
         pixel < 200 for pixel in samples) >= 20
 
 
+def language_table_visible(source):
+    # Native table labels sit near the left edge, on a flat row background.
+    # Sample several rows so a transition or the Hello artwork cannot arm a tap.
+    row_counts = []
+    for center in (540, 661, 782, 903, 1024):
+        contrast = 0
+        for y in range(center - 22, center + 23, 2):
+            row = y * SOFTWARE_STRIDE
+            background = source[row + 400 * 4]
+            if background > 64:
+                contrast += sum(source[row + x * 4] < background - 36 for x in range(14, 150, 2))
+        row_counts.append(contrast)
+    return row_counts[0] >= 24 and sum(count >= 24 for count in row_counts) >= 3
+
+
+def region_capture_phase(vsync):
+    if not state.get('swipe_captures'):
+        return 'hello'
+    if state.get('swipe_step', 0) == len(SWIPE_Y):
+        if (not state.get('language_frame') and state.get('language_cells')
+                and language_table_visible(state['last_software_frame'])):
+            return 'language'
+    if state.get('swipe_step', 0) == len(SWIPE_Y) + 2 and state.get('region_cells'):
+        count = state.get('region_captures', 0)
+        if count < len(region_capture_delays) and vsync >= state.get('next_region_capture', 0):
+            return 'region'
+    return None
+
+
 def scale_software_frame(source, width, height, stride):
     columns = [(x * SOFTWARE_WIDTH // width) * 4 for x in range(width)]
     runs = []
@@ -332,10 +365,21 @@ class Trace(gdb.Breakpoint):
                     return True
                 return False
             pid, name = process()
-            if kind.startswith('setup_language_'):
+            if kind.startswith(('setup_language_', 'setup_region_')):
                 if name == 'Setup' and pid == state.get('setup_pid') and hits[kind, name] < 8:
                     hits[kind, name] += 1
-                    emit(kind, pid, name, pc=hex(reg('pc')), after_swipe=state.get('swipe_step') == len(SWIPE_Y))
+                    step = state.get('swipe_step', 0)
+                    fields = dict(pc=hex(reg('pc')), after_swipe=step >= len(SWIPE_Y), touch_step=step)
+                    if kind == 'setup_language_cell':
+                        state['language_cells'] = True
+                    elif kind == 'setup_language_selected_row':
+                        fields['row'] = reg('x0')
+                    elif kind == 'setup_language_choice':
+                        fields['code'] = string_hint(reg('x2'), lambda s: 2 <= len(s) <= 10
+                                                     and all(c.isalpha() or c in '_-' for c in s))
+                    elif kind == 'setup_region_cell':
+                        state['region_cells'] = True
+                    emit(kind, pid, name, **fields)
                 return False
             if kind in ('hid_service_candidate', 'hid_service_result', 'hid_service_open'):
                 if name == 'backboardd' and (kind != 'hid_service_open' or reg('x2') == 0x65737563):
@@ -506,7 +550,18 @@ class Trace(gdb.Breakpoint):
                         return False
                     emit('setup_refresh', pid, name, **blit, vsync=present['vsync'])
                     count = state.get('swipe_captures', 0)
-                    if (count >= len(swipe_capture_delays) or count and
+                    if setup_region:
+                        phase = region_capture_phase(present['vsync'])
+                        if not phase:
+                            return False
+                        present['setup_phase'] = phase
+                        if phase == 'language':
+                            state['language_frame'] = present['swap_id']
+                        elif phase == 'region':
+                            region_count = state.get('region_captures', 0)
+                            state['region_captures'] = region_count + 1
+                            state['next_region_capture'] = present['vsync'] + region_capture_delays[region_count]
+                    elif (count >= len(swipe_capture_delays) or count and
                             (state.get('swipe_step') != len(SWIPE_Y)
                              or present['vsync'] < state.get('next_setup_capture', 0))):
                         return False
@@ -515,7 +570,8 @@ class Trace(gdb.Breakpoint):
                         source.write(state['last_software_frame'])
                     emit('setup_sw_blit', pid, name, **blit, source_capture=source_name)
                     state['swipe_captures'] = count + 1
-                    state['next_setup_capture'] = present['vsync'] + swipe_capture_delays[count]
+                    if not setup_region:
+                        state['next_setup_capture'] = present['vsync'] + swipe_capture_delays[count]
                     present['swipe_step'] = state.get('swipe_step', 0)
                 pixels = framebuffer()
                 if sample:
@@ -622,6 +678,8 @@ try:
         raise RuntimeError('Setup software scanout requires the manual Setup and software renderer experiments')
     if setup_swipe and (not setup_software_scanout or 'sweethidtest=15' not in layout['cmdline'].split()):
         raise RuntimeError('Setup swipe requires software scanout and its bounded QEMU HID timer')
+    if setup_region and (not setup_swipe or not layout.get('setup_fonts') or not layout.get('hid_plugin')):
+        raise RuntimeError('Setup region replay requires the QEMU swipe, fonts and HID plugin')
     cache = Trace(0xfffffe0007885ee0, 'shared_cache')
     points.append(cache)
     gdb.execute('continue')
@@ -685,6 +743,12 @@ try:
                         0x37b28: 'setup_language_init', 0x37d3c: 'setup_language_did_load',
                         0x37e58: 'setup_language_will_appear', 0x383f0: 'setup_language_number_of_rows',
                     }.items())
+                    if setup_region:
+                        points.extend(Trace(base + offset, kind) for offset, kind in {
+                            0x38424: 'setup_language_cell', 0x386a8: 'setup_language_selected_row',
+                            0x38118: 'setup_language_choice', 0x390ac: 'setup_region_will_appear',
+                            0x39a50: 'setup_region_number_of_rows', 0x39aec: 'setup_region_cell',
+                        }.items())
         elif 'return_setup_no_peer' in state:
             gdb.execute('set $x0 = 0', to_string=True)
             gdb.execute('set $pc = ' + hex(state.pop('return_setup_no_peer')), to_string=True)
@@ -699,25 +763,45 @@ try:
             emit('qemu_power_key', 0, 'kernel', down=state['wake_pressed'])
         elif state.pop('advance_touch', False):
             step = state.get('swipe_step', 0)
-            if step == len(SWIPE_Y):
-                gdb.execute('set $pc = ' + hex(TOUCH_TIMER_RESUME), to_string=True)
-                emit('setup_swipe_window_complete', 0, 'kernel', captures=state['swipe_captures'])
+            # Skip the timer's ordinary Home event even when there is no
+            # gesture pending or the observation window has ended.
+            gdb.execute('set $pc = ' + hex(TOUCH_TIMER_RESUME), to_string=True)
+            if step == len(SWIPE_Y) + (2 if setup_region else 0):
+                emit('setup_swipe_window_complete', 0, 'kernel', captures=state['swipe_captures'],
+                     region_captures=state.get('region_captures', 0))
                 break
-            if state.get('swipe_captures'):
-                if opcode_at(TOUCH_SEND) != 'e80300aa' or not uint(0xfffffe00081029f0):
-                    raise RuntimeError('pinned QEMU digitizer is unavailable')
-                down, x, y = int(step < len(SWIPE_Y) - 1), 540, SWIPE_Y[step]
-                for register, value in zip(('x0', 'x1', 'x2', 'x3', 'x30'),
-                                           (0, down, x, y, TOUCH_TIMER_RESUME)):
-                    gdb.execute('set $%s = %#x' % (register, value), to_string=True)
-                gdb.execute('set $pc = ' + hex(TOUCH_SEND), to_string=True)
-                state['swipe_step'] = step + 1
-                emit('qemu_touch', 0, 'kernel', step=step + 1, down=bool(down), x=x, y=y)
+            if not state.get('swipe_captures'):
+                continue
+            if step < len(SWIPE_Y):
+                down, y, gesture = step < len(SWIPE_Y) - 1, SWIPE_Y[step], 'swipe'
+            elif state.get('language_frame'):
+                down, y, gesture = step == len(SWIPE_Y), ENGLISH_TAP_Y, 'english_tap'
             else:
-                # Skip the periodic Home event in this QEMU experiment.
-                gdb.execute('set $pc = ' + hex(TOUCH_TIMER_RESUME), to_string=True)
+                state['language_waits'] = state.get('language_waits', 0) + 1
+                if state['language_waits'] == 13:
+                    emit('setup_language_frame_timeout', 0, 'kernel')
+                    break
+                continue
+            if opcode_at(TOUCH_SEND) != 'e80300aa' or not uint(0xfffffe00081029f0):
+                raise RuntimeError('pinned QEMU digitizer is unavailable')
+            x = 540
+            for register, value in zip(('x0', 'x1', 'x2', 'x3', 'x30'), (0, int(down), x, y, TOUCH_TIMER_RESUME)):
+                gdb.execute('set $%s = %#x' % (register, value), to_string=True)
+            gdb.execute('set $pc = ' + hex(TOUCH_SEND), to_string=True)
+            state['swipe_step'] = step + 1
+            emit('qemu_touch', 0, 'kernel', step=step + 1, down=down, x=x, y=y, gesture=gesture)
         elif state.pop('short_touch_delay', False):
-            delay = 35000 if state.get('swipe_step') == len(SWIPE_Y) else 25
+            step = state.get('swipe_step', 0)
+            delay = 25
+            if setup_region:
+                if step == len(SWIPE_Y):
+                    delay = 2500
+                elif step == len(SWIPE_Y) + 1:
+                    delay = 80
+                elif step == len(SWIPE_Y) + 2:
+                    delay = 35000
+            elif step == len(SWIPE_Y):
+                delay = 35000
             gdb.execute('set $x1 = ' + str(delay), to_string=True)
         elif state.pop('redirect_renderer', False):
             # EAGLServer::renderer expects an OGL::Context at its common

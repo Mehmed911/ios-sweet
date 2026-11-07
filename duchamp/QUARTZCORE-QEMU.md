@@ -373,3 +373,24 @@ matched every active pixel at 1220×2712. The image is dim and some
 language labels show missing glyphs. The evidence directory
 `work/quartzcore-setup-qemu-20261107/gesture-v4` retains the trace and
 the compressed raw software and framebuffer buffers.
+
+The local Setup replay can restore the matching 20F66 fallback fonts
+with `SWEET_QEMU_SETUP_FONTS`. Use `tools/extract-duchamp-setup-fonts.py` on
+the original system image's `System/Library/Fonts` directory. The
+replay pins the manifest, grows only the temporary HFS RAM copy by
+128 MiB, and hashes all installed files again after reading them
+back. The existing 3 GiB base image is retained.
+
+Add `SWEET_QEMU_SETUP_REGION=1` to the swipe replay with the fonts
+and HID bundle installed. After the native language table draws
+its rows, the debugger saves the language frame and feeds a tap
+through SweetHIDTouch at the first row. The trace records the
+selected index and native locale controller. Subsequent captures
+record the region phase and use the same per-swap pixel verifier.
+
+In region-v1 the language list at SwapEnd 631 shows the restored
+Chinese, Japanese, Korean, Arabic and Thai labels. Setup accepted
+row 0, labeled English, and displayed Select Your Country or Region
+at SwapEnd 793. Both captures verify against IOSurface 5, layer 0.
+The PNGs, per-swap raw buffers and trace are in
+`work/quartzcore-setup-qemu-20261107/region-v1`.
