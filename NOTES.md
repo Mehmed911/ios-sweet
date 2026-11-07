@@ -1,3 +1,10 @@
+ACTIVE HANDOFF — live Windows Setup navigation recovered (2026-11-08):
+
+- Preserved native QEMU PID 2540 and Setup PID 37 in run `setup-run-desktop-20261107-221715-3744`. The frozen source buffer matched SwapEnd 908. The first 42 HID submissions reached the BackBoard client with zero drops and an empty ring.
+- Setup's main thread was blocked in dispatch_sync while the skip-keys block waited indefinitely for the missing com.apple.dmd service. The first one-shot signal exposed a second wait at the same call site. In guest RAM only, used the 20F66 CoreFoundation empty NSArray for BuddyDeviceManagementSupport._skipKeys, balanced the matching libdispatch counter and signaled the verified XNU semaphore. Restored and read back the original HID callback. Set the existing console mute flag so diagnostic text no longer paints over the GUI.
+- IOSurface 5 resumed scanout at SwapEnd 935 with changed pixels and matching row samples. A diagnostic mouse drag at steps 47–53 reached BackBoard while the country rows remained fixed. Setup later applied the user's earlier mouse selection. Verified BuddyProximitySetupController owned the active view and saw Quick Start in live scanout. Subsequent user clicks reached Written and Spoken Languages in the same session. Left the user's navigation intact, so country-list scrolling after recovery was not verified.
+- The live repair was scoped to this disposable RAM guest. A reproducible fix for future boots is still pending. No QEMU restart or phone access.
+
 ACTIVE HANDOFF — touch queue verified in the running Windows Setup session (2026-11-08):
 
 - In native QEMU PID 2540, BackBoard opened the HID service with the verified 20F66 IOHIDEventServicePlugin. The desktop viewer input path sent a controlled down, six moves, and up at steps 19–26. Every sample reached the dispatch and enqueue trace sites with one attached client.
