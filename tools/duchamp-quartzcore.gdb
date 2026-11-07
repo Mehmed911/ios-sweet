@@ -58,6 +58,7 @@ setup_without_proximity = os.environ.get('SWEET_QEMU_SETUP_WITHOUT_PROXIMITY') =
 setup_software_scanout = os.environ.get('SWEET_QEMU_SETUP_SOFTWARE_SCANOUT') == '1'
 setup_swipe = os.environ.get('SWEET_QEMU_SETUP_SWIPE') == '1'
 setup_region = os.environ.get('SWEET_QEMU_SETUP_REGION') == '1'
+setup_live = os.environ.get('SWEET_QEMU_SETUP_INTERACTIVE') == '1'
 setup_submissions = {}
 ui_processes = ('backboardd', 'SpringBoard', 'Setup') if setup_trace else ('backboardd', 'SpringBoard')
 setup_capture_delays = (0, 60, 120, 180, 240, 300)
@@ -246,6 +247,29 @@ def framebuffer():
     return pixels
 
 
+def publish_live_scanout():
+    with open('live-frame.tmp', 'wb') as frame:
+        frame.write(framebuffer())
+    os.replace('live-frame.tmp', 'live-frame.raw')
+
+
+def next_live_touch():
+    if 'touch_input' not in state:
+        try:
+            state['touch_input'] = open('live-touch.jsonl', 'rb')
+        except FileNotFoundError:
+            return None
+    line = state['touch_input'].readline(256)
+    if not line:
+        return None
+    phase, x, y = json.loads(line)
+    if phase not in ('down', 'move', 'up') or type(x) is not int or type(y) is not int:
+        raise ValueError('invalid desktop touch event')
+    if not (0 <= x < 1080 and 0 <= y < 2400):
+        raise ValueError('desktop touch outside digitizer')
+    return phase != 'up', x, y, 'desktop_' + phase
+
+
 def setup_pixels_ready(source):
     # Sample the central welcome content and its background.
     samples = [source[y * SOFTWARE_STRIDE + x * 4]
@@ -343,12 +367,12 @@ class Trace(gdb.Breakpoint):
                 if opcode_at(reg('pc')) != '00013fd6' or not reg('x1'):
                     raise ValueError('unexpected digitizer dispatch')
                 clients = uint(reg('x0') + 0xa0)
-                emit(kind, 0, 'kernel', step=state['swipe_step'], event_va=hex(reg('x1')),
+                emit(kind, 0, 'kernel', step=state.get('live_touch_step', state['swipe_step']), event_va=hex(reg('x1')),
                      clients=uint(clients + 0x14, 4) if clients else 0)
                 return False
             if kind == 'touch_enqueue':
                 if state.get('swipe_step'):
-                    emit(kind, 0, 'kernel', step=state['swipe_step'], event_va=hex(reg('x1')))
+                    emit(kind, 0, 'kernel', step=state.get('live_touch_step', state['swipe_step']), event_va=hex(reg('x1')))
                 return False
             if kind == 'timer_key':
                 down = reg('x3') & 0xff
@@ -549,6 +573,8 @@ class Trace(gdb.Breakpoint):
                     if not blit or not sample:
                         return False
                     emit('setup_refresh', pid, name, **blit, vsync=present['vsync'])
+                    if setup_live:
+                        publish_live_scanout()
                     count = state.get('swipe_captures', 0)
                     if setup_region:
                         phase = region_capture_phase(present['vsync'])
@@ -594,6 +620,10 @@ class Trace(gdb.Breakpoint):
                     frame.write(pixels)
                 emit(kind, pid, name, capture=capture, sha256=hashlib.sha256(pixels).hexdigest(),
                      before_sha256=hashlib.sha256(before).hexdigest(), **present)
+                if setup_live and present.get('setup_phase') == 'region' and not state.get('live_ready'):
+                    state['live_ready'] = True
+                    with open('live-ready', 'x') as ready:
+                        ready.write(str(present['swap_id']) + '\n')
                 if not setup_trace:
                     return True
                 if setup_swipe:
@@ -680,6 +710,8 @@ try:
         raise RuntimeError('Setup swipe requires software scanout and its bounded QEMU HID timer')
     if setup_region and (not setup_swipe or not layout.get('setup_fonts') or not layout.get('hid_plugin')):
         raise RuntimeError('Setup region replay requires the QEMU swipe, fonts and HID plugin')
+    if setup_live and not setup_region:
+        raise RuntimeError('Interactive Setup requires the QEMU region replay')
     cache = Trace(0xfffffe0007885ee0, 'shared_cache')
     points.append(cache)
     gdb.execute('continue')
@@ -763,19 +795,35 @@ try:
             emit('qemu_power_key', 0, 'kernel', down=state['wake_pressed'])
         elif state.pop('advance_touch', False):
             step = state.get('swipe_step', 0)
+            live = setup_live and step == len(SWIPE_Y) + 2
             # Skip the timer's ordinary Home event even when there is no
             # gesture pending or the observation window has ended.
             gdb.execute('set $pc = ' + hex(TOUCH_TIMER_RESUME), to_string=True)
-            if step == len(SWIPE_Y) + (2 if setup_region else 0):
+            if setup_live and os.path.exists('live-stop'):
+                emit('setup_desktop_stopped', 0, 'kernel')
+                break
+            if live:
+                # The original test callback stops after 60 samples. Keep its
+                # diagnostic timer available only inside this pinned QEMU run.
+                if opcode_at(TOUCH_TIMER_RESUME) != '88b640b9':
+                    raise RuntimeError('unexpected QEMU HID timer counter')
+                counter = reg('x20') + 0xb4
+                if uint(counter, 4) >= 50:
+                    gdb.selected_inferior().write_memory(counter, bytes(4))
+                touch = next_live_touch() if state.get('live_ready') else None
+                if not touch:
+                    continue
+                down, x, y, gesture = touch
+            elif step == len(SWIPE_Y) + (2 if setup_region else 0):
                 emit('setup_swipe_window_complete', 0, 'kernel', captures=state['swipe_captures'],
                      region_captures=state.get('region_captures', 0))
                 break
-            if not state.get('swipe_captures'):
+            elif not state.get('swipe_captures'):
                 continue
-            if step < len(SWIPE_Y):
-                down, y, gesture = step < len(SWIPE_Y) - 1, SWIPE_Y[step], 'swipe'
+            elif step < len(SWIPE_Y):
+                down, x, y, gesture = step < len(SWIPE_Y) - 1, 540, SWIPE_Y[step], 'swipe'
             elif state.get('language_frame'):
-                down, y, gesture = step == len(SWIPE_Y), ENGLISH_TAP_Y, 'english_tap'
+                down, x, y, gesture = step == len(SWIPE_Y), 540, ENGLISH_TAP_Y, 'english_tap'
             else:
                 state['language_waits'] = state.get('language_waits', 0) + 1
                 if state['language_waits'] == 13:
@@ -784,12 +832,17 @@ try:
                 continue
             if opcode_at(TOUCH_SEND) != 'e80300aa' or not uint(0xfffffe00081029f0):
                 raise RuntimeError('pinned QEMU digitizer is unavailable')
-            x = 540
             for register, value in zip(('x0', 'x1', 'x2', 'x3', 'x30'), (0, int(down), x, y, TOUCH_TIMER_RESUME)):
                 gdb.execute('set $%s = %#x' % (register, value), to_string=True)
             gdb.execute('set $pc = ' + hex(TOUCH_SEND), to_string=True)
-            state['swipe_step'] = step + 1
-            emit('qemu_touch', 0, 'kernel', step=step + 1, down=down, x=x, y=y, gesture=gesture)
+            if live:
+                step = state.get('live_touch_step', step) + 1
+                state['live_touch_step'] = step
+                state['live_touch_down'] = down
+            else:
+                step += 1
+                state['swipe_step'] = step
+            emit('qemu_touch', 0, 'kernel', step=step, down=down, x=x, y=y, gesture=gesture)
         elif state.pop('short_touch_delay', False):
             step = state.get('swipe_step', 0)
             delay = 25
@@ -799,7 +852,7 @@ try:
                 elif step == len(SWIPE_Y) + 1:
                     delay = 80
                 elif step == len(SWIPE_Y) + 2:
-                    delay = 35000
+                    delay = (25 if state.get('live_touch_down') else 60) if setup_live else 35000
             elif step == len(SWIPE_Y):
                 delay = 35000
             gdb.execute('set $x1 = ' + str(delay), to_string=True)

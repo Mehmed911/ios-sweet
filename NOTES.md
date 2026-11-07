@@ -1,3 +1,10 @@
+ACTIVE HANDOFF — interactive Duchamp QEMU desktop window (2026-11-07):
+
+- Opened a dedicated Duchamp QEMU desktop window on Windows loopback port 18290. The local viewer served the guest framebuffer and switched to the complete physical scanout at present. Its mouse input goes through SweetHIDTouch and BackBoard. The same pinned 20F66 region replay automatically reached the country screen before enabling desktop input.
+- The live-v1 run captured the country scene at SwapEnd 774 and 832, IOSurface 5. Windows returned HTTP 200 and guest input ready. At handoff the QEMU event log had 52 desktop touch samples and 64 total BackBoard queue submissions including the 12 startup samples. QEMU and its display server were left running for the user.
+- Local replay launcher is `work/launch-setup-live.sh`. The viewer is `tools/duchamp-qemu-display.py`. The stop button ends the VM. The active run was bounded to 3600 seconds from launch. The disposable QEMU RAM root used the existing 20F66 font and HID overlay. No phone access.
+
+
 ACTIVE HANDOFF — 20F66 Setup fonts and country selection in QEMU (2026-11-07):
 
 - The previous RAM root was missing the original script fallback fonts. Extracted 30 original 20F66 font files (136767248 bytes), checked representative autonym codepoints against their Unicode cmap tables, and pinned manifest cc4979a574aad865c70407cc2a8a30cfdc3ae35c47ecd9f6768e446f69336d46. The private runner grew only the temporary HFS RAM copy by 128 MiB and verified both volume headers and byte-for-byte file readback. The base image hash was unchanged.

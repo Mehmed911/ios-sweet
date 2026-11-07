@@ -394,3 +394,12 @@ row 0, labeled English, and displayed Select Your Country or Region
 at SwapEnd 793. Both captures verify against IOSurface 5, layer 0.
 The PNGs, per-swap raw buffers and trace are in
 `work/quartzcore-setup-qemu-20261107/region-v1`.
+
+For desktop control, add `SWEET_QEMU_SETUP_INTERACTIVE=1` to the
+region replay and run it as the child command of
+`tools/duchamp-qemu-display.py --port PORT RUN_DIRECTORY`. The
+viewer listens on loopback. Open it in a desktop window and wait
+for the country screen. Mouse presses and drags go through the
+guest's existing touchscreen. The viewer shows the latest complete
+physical scanout after present, with the live boot framebuffer
+available before Setup renders. Use the stop button to end the VM.
