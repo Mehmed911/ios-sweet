@@ -86,3 +86,6 @@ non-null surface, its ID, and the next SwapEnd record. The next graphical
 gate is a nonzero native layer with corresponding pixels in stopped
 QEMU scanout. Phone hardware, Mali and physical UFS were outside these
 tests.
+
+The native call trace and startup experiments continue in
+[QUARTZCORE-QEMU.md](QUARTZCORE-QEMU.md).

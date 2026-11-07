@@ -1,3 +1,11 @@
+ACTIVE HANDOFF — native SpringBoard IOSurface creation in QEMU (2026-11-07):
+
+- Branch `duchamp-bootstrap`, QEMU only. Same CI 41543710742 kernel and original 20F66 shared cache. The native baseline calls `set_all_layers_to_null(true)` from `set_enabled_(false)`, sends NULL through SwapSetLayer, and powers off. AppleCLCD previously verified the independent synthetic 2048-pixel fixture.
+- QEMU replay omitted the blocked `com.apple.AttentionAwareness` service from the guest BackBoard job and used verified original UIKit collation, CoreNLP/langid, UIKit Artwork/CoverSheet and AddressBookLegacy resources. The chained boots successively advanced through a synchronous IPC wait and collation, language-model, luminance-map and address-book startup failures.
+- Contacts replay (270.293 s) captured one QuartzCore context commit from SpringBoard PID 34 and two native IOSurfaces, ID 2 (184x124 BGRA) and ID 3 (230x186, 0x4c413038). SpringBoard then aborted in CoreEmoji's bundle creation. The last backboardd SwapEnd carried [0,0,0,0], AppleCLCD counted two swaps and zero eligible layers, and physical scanout was blank. First native frame remains pending.
+- `duchamp/QUARTZCORE-QEMU.md` has the replay instructions and exact throw sites. Private evidence is `work/quartzcore-qemu-20261107/verification.json` (SHA-256 e8531fe811d774375f08827ac65272920dcffb50d7c8d05c54949807deb077b0). `contacts/msgbuf.txt` records the surface IDs and `contacts/quartzcore-events.jsonl` the native calls. The workspace's pre-existing changes were kept separate.
+- Next QEMU trial: restore matching CoreEmoji resources, then correlate a non-null SwapSetLayer, surface ID, SwapEnd and actual scanout bytes. Extraction stopped on host I/O while C: was full. Reclaim space before another large VM. No phone or physical storage work occurred.
+
 ACTIVE HANDOFF — native compositor traced and synthetic framebuffer PASS (2026-11-07):
 Read duchamp/COMPOSITOR-QEMU.md. Private evidence in work/compositor-qemu-20261107.
 Verification SHA256 30d16a4391704a782e89183f0ef0893d132082514fd3d4a4bebd2e824cb0a725.

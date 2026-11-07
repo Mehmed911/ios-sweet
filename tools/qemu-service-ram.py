@@ -129,7 +129,8 @@ def monitor(endpoint, execute, arguments=None):
             return call(execute, arguments)
 
 
-def run_vm(kernel, base_adt, root, out, seconds, stop_markers, cmdline=None, debugger_script=None):
+def run_vm(kernel, base_adt, root, out, seconds, stop_markers, cmdline=None, debugger_script=None,
+           save_guest_root=True):
     kernel, base_adt, root, out = (Path(p).resolve() for p in (kernel, base_adt, root, out))
     require(os.name == 'posix' and not str(out).startswith('/mnt/'), 'guest RAM output must use the native Linux disk')
     require(not out.exists(), 'preserve existing run directory')
@@ -207,9 +208,12 @@ def run_vm(kernel, base_adt, root, out, seconds, stop_markers, cmdline=None, deb
             script.write_text('set pagination off\nset confirm off\nset architecture aarch64\n'
                 'target remote %s\n' % debug_endpoint + Path(debugger_script).read_text())
             with (out / 'debugger.log').open('w') as debug_log:
-                debugger = subprocess.run(['gdb-multiarch', '-q', '-nx', '-batch', '-x', str(script)],
-                    cwd=out, stdout=debug_log, stderr=subprocess.STDOUT, timeout=min(seconds, 180))
-            result['debugger_exit_code'] = debugger.returncode
+                try:
+                    debugger = subprocess.run(['gdb-multiarch', '-q', '-nx', '-batch', '-x', str(script)],
+                        cwd=out, stdout=debug_log, stderr=subprocess.STDOUT, timeout=seconds - 5)
+                    result['debugger_exit_code'] = debugger.returncode
+                except subprocess.TimeoutExpired:
+                    result['debugger_timed_out'] = True
             monitor(endpoint, 'cont')
         frames = out / 'frames'; frames.mkdir()
         next_snapshot = began + 4
@@ -238,12 +242,14 @@ def run_vm(kernel, base_adt, root, out, seconds, stop_markers, cmdline=None, deb
             (out / 'fb.txt').write_text(screen)
             screen_tool.write_png(out / 'fb.png', raw.read_bytes(), fb)
             result.update(screen_tool.screen_result(screen, unknown))
+            result['saved_framebuffer'] = True
             # The stopped, shared memory backend exposes the guest-written md0
             # bytes coherently. Save that range only, not the 10 GiB RAM file.
-            with ram_path.open('rb') as source, (out / 'ramdisk-final.hfs').open('xb') as dest:
-                source.seek(plan['root_pa'] - RAM_BASE)
-                copy_range(source, dest, plan['root_bytes'])
-            result['saved_guest_root'] = True
+            if save_guest_root:
+                with ram_path.open('rb') as source, (out / 'ramdisk-final.hfs').open('xb') as dest:
+                    source.seek(plan['root_pa'] - RAM_BASE)
+                    copy_range(source, dest, plan['root_bytes'])
+            result['saved_guest_root'] = save_guest_root
         else:
             result.update(status='qemu_exited', qemu_returncode=process.returncode)
     except Exception as error:
@@ -265,9 +271,11 @@ def main():
     parser.add_argument('--seconds', type=int, default=180)
     parser.add_argument('--stop-on-text', action='append', default=[])
     parser.add_argument('--debugger-script', type=Path, help='bounded QEMU-only GDB diagnostic script')
+    parser.add_argument('--no-save-guest-root', action='store_true', help='save framebuffer and shared RAM only')
     args = parser.parse_args()
     result = run_vm(args.kernel, args.adt, args.root, args.output, args.seconds,
-        args.stop_on_text + ['SWEET EARLY PANIC:', 'Library not loaded:', 'Symbol not found:'], debugger_script=args.debugger_script)
+        args.stop_on_text + ['SWEET EARLY PANIC:', 'Library not loaded:', 'Symbol not found:'],
+        debugger_script=args.debugger_script, save_guest_root=not args.no_save_guest_root)
     print(json.dumps(result, indent=2))
     return 0 if result.get('stop_marker') in args.stop_on_text and 'error' not in result else 1
 
