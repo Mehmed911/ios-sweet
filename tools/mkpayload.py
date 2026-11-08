@@ -141,7 +141,8 @@ def adt_dram(adt_blob):
 
 
 def build(kernel_path, adt_path, cmdline, ramdisk_path=None):
-    buf = bytearray(open(kernel_path, 'rb').read())
+    with open(kernel_path, 'rb') as source:
+        buf = bytearray(source.read())
     m = parse_macho(buf)
     nfix = apply_chained_fixups(buf, m)
     segs = [s for s in m['segs'] if s['vmsize']]
@@ -153,19 +154,32 @@ def build(kernel_path, adt_path, cmdline, ramdisk_path=None):
     kernel_end = max(s['vmaddr'] + s['vmsize'] for s in segs)
     kernel_end = (kernel_end + PAGE - 1) & ~(PAGE - 1)
 
-    adt_blob = open(adt_path, 'rb').read()
+    with open(adt_path, 'rb') as source:
+        adt_blob = source.read()
     # The ADT decides where the kernel's RAM is (mkadt.py --highmem).
     PHYS_BASE, MEM_SIZE = adt_dram(adt_blob)
     pieces = [(s['vmaddr'], s['vmsize'], buf[s['fileoff']:s['fileoff'] + s['filesize']]) for s in segs]
     ramdisk = None
     if ramdisk_path:
-        image = open(ramdisk_path, 'rb').read()
-        rd_size = (len(image) + PAGE - 1) & ~(PAGE - 1)
-        rd_va = kernel_end
+        with open(ramdisk_path, 'rb') as source:
+            image_size = os.fstat(source.fileno()).st_size
+            if image_size == 0:
+                raise ValueError('RAM disk is empty')
+            rd_size = (image_size + PAGE - 1) & ~(PAGE - 1)
+            rd_va = kernel_end
+            rd_pa = rd_va - virt_base + PHYS_BASE
+            adt_blob = add_ramdisk_to_adt(adt_blob, rd_pa, rd_size)
+            # The shim places the updated ADT and a full boot-args page after md0.
+            boot_args_pa = (rd_pa + rd_size + len(adt_blob) + PAGE - 1) & ~(PAGE - 1)
+            required = boot_args_pa + PAGE - PHYS_BASE
+            if required > MEM_SIZE:
+                raise ValueError(f'RAM disk and boot data need {required} bytes, '
+                                 f'but the ADT RAM window is {MEM_SIZE} bytes')
+            image = source.read(image_size + 1)
+            if len(image) != image_size:
+                raise ValueError('RAM disk size changed while reading')
         kernel_end = rd_va + rd_size
-        rd_pa = rd_va - virt_base + PHYS_BASE
         pieces.append((rd_va, rd_size, image))
-        adt_blob = add_ramdisk_to_adt(adt_blob, rd_pa, rd_size)
         ramdisk = (hex(rd_pa), hex(rd_size))
 
     hdr_size = SEG_TABLE + 32 * len(pieces)

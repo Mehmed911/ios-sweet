@@ -1,3 +1,9 @@
+ACTIVE HANDOFF — Duchamp phone boot resumed (2026-11-08):
+
+- The last physical milestone remains the photographed combined launchctl/syslogd/notifyd PASS on the 32 MiB RAM root, followed by verified Android restoration. Read-only ADB and Fastboot enumeration detected no device in this turn. The two saved stock boot_a copies still hash to 1b972f4f1c98428f2fca1e7c1c8cf463e0122a70a290e482be3230c7838e3e12 and the tested service image to 545112503a5e9052db709572cc840758619f2b7e27c9aa58c0af2a3924a8f6a8.
+- mkpayload now checks the aligned md0 placement, updated ADT and boot-args page before reading the RAM disk. Both boundary tests passed. The real 3 GiB Setup HFS root requires 3,260,481,536 bytes including boot data and was rejected against the 536,870,912-byte phone ADT window before any output file. This is a limit of the current profile, not a measurement of total phone RAM.
+- Fresh local evidence in `work/phone-return-local-20261108-v1`. Packaging passed 12/12 including bootshim-to-XNU QEMU entry, byte comparison, LZ4 and AVB checks. The generated service boot image is byte-identical to the November 6 trial. A separate fresh QEMU service replay passed 74/74 in 71.346 host seconds. All 17 existing offline phone-readiness tests pass. Physical UFS/firmware ownership stays gated. The GUI needs a verified way to supply its larger root; no phone boot or write in this turn.
+
 ACTIVE HANDOFF — QEMU one-vs-two vCPU Setup replay (2026-11-08):
 
 - Ran sequential isolated Ubuntu QEMU TCG tests with the same pinned CI 41543710742 XNU, HFS 20F66 root and 120 Hz display setting. Only the test payload accepts QEMU Aff0=1 and starts CPU 1 by PSCI HVC. The first two baseline attempts hit XNU interrupt-hygiene panics. The final pair used the same QEMU-only trace mode, verified in guest RAM. The benchmark had a 2304 MiB cgroup limit. Its memory pressure threshold changed during boot, so these are not matched boot-speed measurements.
