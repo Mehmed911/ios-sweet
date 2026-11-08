@@ -1,3 +1,10 @@
+ACTIVE HANDOFF — Writable QEMU /private/var with read-only qufs0 (2026-11-08):
+
+- Commit e925867 adds explicit `--ufs-var-ramdisk` for a bounded HFS+ data-only payload, with the strict read-only qufs0 gate retained. All 24 profile tests pass. The pre-existing framebuffer result edit in qemu-sweet.py remains unstaged.
+- Cloned the pinned 20F66 root and formatted a 64 MiB HFS+ data seed with the fixture's /private/var ownership and contents. The local fstab mounts qufs0 read-only at / and md0 read-write at /private/var. QEMU and XNU both verified the split. A stopped RAM snapshot contains the newly created syslog socket and launchd logs. Root copies and data seed hashes match their pre-run values.
+- The first UI harness stopped on missing scan directories on the read-only root. An independent clone precreated them and proved logd, containermanagerd, installd and native lsd identities. The optional readiness client waited for a native Mach reply beyond the controller deadline. A direct fixture cache replay started SpringBoard PID 26 and backboardd PID 27 as mobile. BackBoard posted DisplayChanged and produced three native QuartzCore context commits. No Setup frame was seen in that replay. Native xpcproxy reported datamigrator ENOENT and exited 78.
+- Added the matching native DataMigration service and wrapper to another independent read-only root for the next QEMU replay. The local 20F66 development cache option and scoped UI launch configuration are test-only. Verification and local receipts are under `work/setup-qufs-var-ram-20261108-v1`. No phone access or partition changes.
+
 ACTIVE HANDOFF — Native launchd early boot complete on QEMU qufs0 (2026-11-08):
 
 - The unchanged mount fixture completed mount-phase-2 and started the init-with-data-volume task. Native launchd then panicked at missing required /usr/libexec/cc_fips_test after 174.553 host seconds.
