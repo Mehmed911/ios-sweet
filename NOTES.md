@@ -1,3 +1,11 @@
+ACTIVE HANDOFF — Native launchd early boot complete on QEMU qufs0 (2026-11-08):
+
+- The unchanged mount fixture completed mount-phase-2 and started the init-with-data-volume task. Native launchd then panicked at missing required /usr/libexec/cc_fips_test after 174.553 host seconds.
+- In a fresh 3 GiB read-only HFS+ copy, installed hash-verified 20F66 cc_fips_test and dirs_cleaner, with their libSystem dependency in the existing dyld cache. Corecrypto POST returned true and all tests passed. Launchd advanced beyond dirs_cleaner despite its read-only temp-directory warning, then panicked at missing launchd_cache_loader after 198.435 host seconds.
+- In another fresh copy, installed hash-verified original launchd_cache_loader, /System/Library/xpc/launchd.plist and its detached signature. For the QEMU development replay only, the payload used native launchd_unsecure_cache=1, so normal AMFI cache verification was outside the test. No native executable, cache file, kernel, ADT or filesystem policy was patched.
+- The final run logged Early boot complete at 00:02:12.341834 guest time, created user/501 and began bootstrapping and importing native service jobs. It reached the 330-second runner budget with no panic observed in framebuffer samples (332.737 seconds reported). BackBoard, SpringBoard and a Setup display were not verified. The logger socket and writes under /private/var returned EROFS. Give the QEMU guest writable data in a separate fixture before retesting the UI. Physical MT6897 root delivery remains unresolved.
+- All three runs used qufs0 read-only with no RAM disk. Every test image kept its pre-run SHA-256 and all 20 existing virtual UFS profile tests passed. No phone access or partition changes. Evidence is in `work/setup-qufs-after-mount-20261108-v1/verification.json`, with per-run console captures and input receipts. Keep the local Apple artifacts out of git.
+
 ACTIVE HANDOFF — Native mount-phase-1 on the separate QEMU Setup root (2026-11-08):
 
 - Extracted original 20F66 `/sbin/mount` and `mount_hfs` from the pinned complete restore DMG. Installed and hash-verified them in a new 3 GiB HFS+ copy of the successful fsck fixture. `/sbin/mount_hfs` is a byte-identical regular copy of its original symlink target. All direct Mach-O libraries, including MediaKit and libutil, are in the existing 20F66 dyld cache.
