@@ -30,6 +30,57 @@ DTS='''/dts-v1/;
  };
 };'''
 
+PERIPHERALS = '''
+&{/} {
+    chosen_touch: touch-selector { compatible = "xiaomi-touch"; panel = <&panel>; };
+    gpio: gpio-controller {
+        compatible = "mediatek,mt6897-pinctrl";
+        interrupt-controller; #interrupt-cells = <2>; gpio-controller; #gpio-cells = <2>;
+    };
+    radio_memory: wifi-pool { compatible = "shared-dma-pool"; };
+    wifi@18000000 {
+        compatible = "mediatek,wifi"; reg = <0 0x18000000 0 0x700000>;
+        memory-region = <&radio_memory>;
+    };
+    bt@18010000 { compatible = "mediatek,bt"; reg = <0 0x18010000 0 0x1000>; };
+    conn@18020000 { compatible = "mediatek,mt6897-consys-atf"; reg = <0 0x18020000 0 0x1000>; };
+    audio@11050000 { compatible = "mediatek,mt6897-sound"; reg = <0 0x11050000 0 0x9000>; };
+    codec { compatible = "mediatek,mt6368-sound"; };
+};
+&{/soc} {
+    spi@11010000 { compatible = "mediatek,mt6985-spi"; reg = <0 0x11010000 0 0x100>; };
+    spi@11012000 {
+        compatible = "mediatek,mt6985-spi"; reg = <0 0x11012000 0 0x100>;
+        #address-cells = <1>; #size-cells = <0>;
+        touch@0 {
+            compatible = "focaltech,n11a-3683g-spi"; reg = <0>;
+            interrupt-parent = <&gpio>; interrupts = <9 8200>;
+            focaltech,reset-gpio = <&gpio 60 0>; focaltech,irq-gpio = <&gpio 9 8200>;
+            spi-max-frequency = <15000000>; focaltech,max-touch-number = <10>;
+            focaltech,super-resolution-factors = <16>; focaltech,display-coords = <0 0 19520 43392>;
+        };
+    };
+    dsi@1400d000 {
+        compatible = "mediatek,mt6897-dsi"; reg = <0 0x1400d000 0 0x1000>;
+        #address-cells = <1>; #size-cells = <0>;
+        panel: panel@0 { compatible = "test,panel"; reg = <0>; };
+    };
+    dsi@1420d000 { compatible = "mediatek,mt6897-dsi"; reg = <0 0x1420d000 0 0x1000>; status = "disabled"; };
+    usb@11201000 {
+        compatible = "mediatek,mtu3"; reg = <0 0x11201000 0 0x2e00>;
+        #address-cells = <2>; #size-cells = <2>; ranges;
+        xhci@11200000 { compatible = "mediatek,mtk-xhci"; reg = <0 0x11200000 0 0x1000>; };
+    };
+    i2c@11cc0000 {
+        compatible = "mediatek,mt6897-i2c"; reg = <0 0x11cc0000 0 0x1000>;
+        #address-cells = <1>; #size-cells = <0>;
+        sensor@10 { compatible = "mediatek,imgsensor"; reg = <0x10>; };
+    };
+    dpmaif@10014000 { compatible = "mediatek,dpmaif"; reg = <0 0x10014000 0 0x1000>; };
+    ccif@10209000 { compatible = "mediatek,ccci_ccif"; reg = <0 0x10209000 0 0x1000>; };
+};
+'''
+
 
 class HardwareTests(unittest.TestCase):
     @classmethod
@@ -55,6 +106,29 @@ class HardwareTests(unittest.TestCase):
         self.assertEqual(ufs['iommus'],[])
         self.assertIn('unverified',ufs['dma_contract'])
         self.assertNotIn('PRIVATE',json.dumps(result))
+        self.assertNotIn('peripherals', result)
+
+    def test_peripheral_bus_addresses_and_dependencies(self):
+        raw = subprocess.run(['dtc', '-q', '-I', 'dts', '-O', 'dtb'],
+                             input=(DTS + PERIPHERALS).encode(), check=True, capture_output=True).stdout
+        result = module.inspect(raw, peripherals=True)['peripherals']
+        self.assertEqual(result['touch']['bus_address'], 0)
+        self.assertNotIn('registers', result['touch'])
+        self.assertEqual(result['touch']['interrupts'][0]['args'], [9, 8200])
+        self.assertEqual(result['touch']['gpios']['focaltech,reset-gpio'][0]['args'], [60, 0])
+        self.assertEqual(result['touch_spi']['registers'][0]['physical_address'], '0x11012000')
+        self.assertEqual(result['display_dsi']['path'], '/soc/dsi@1400d000')
+        self.assertEqual(result['display_panels'][0]['bus_address'], 0)
+        self.assertEqual(result['usb_host']['registers'][0]['physical_address'], '0x11200000')
+        self.assertEqual(result['wifi']['memory_regions'], ['/wifi-pool'])
+        self.assertEqual(result['cameras'][0]['bus_address'], 0x10)
+        self.assertNotIn('registers', result['cameras'][0])
+        self.assertEqual(result['camera_i2c'][0]['registers'][0]['physical_address'], '0x11cc0000')
+        self.assertEqual(result['audio']['codec']['path'], '/codec')
+
+    def test_peripherals_reject_missing_required_node(self):
+        with self.assertRaisesRegex(ValueError, 'focaltech,n11a-3683g-spi'):
+            module.inspect(self.raw, peripherals=True)
 
     def test_all_truncations_rejected(self):
         for length in range(len(self.raw)):

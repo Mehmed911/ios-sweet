@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read a saved DTB and resolve storage/graphics dependencies without device I/O.
+"""Read a saved DTB and resolve hardware dependencies without device I/O.
 
 Only selected hardware properties are emitted, never /chosen/bootargs, serials
 or the full tree. Missing iommus is recorded as unknown, not DMA-bypass proof.
@@ -219,7 +219,105 @@ class Fdt:
         return entries
 
 
-def inspect(raw):
+def describe_node(tree, node):
+    entry={'path':node.path,'compatible':node.strings('compatible'),
+           'status':node.strings('status') or ['okay (implicit)'],
+           'registers':tree.registers(node),'interrupts':tree.interrupts(node),
+           'clocks':tree.references(node,'clocks','#clock-cells','clock-names'),
+           'resets':tree.references(node,'resets','#reset-cells','reset-names'),
+           'phys':tree.references(node,'phys','#phy-cells'),
+           'iommus':tree.references(node,'iommus','#iommu-cells'),
+           'dma_coherent_property_present':'dma-coherent' in node.props,
+           'supplies':supplies(tree,node),'flags':[key for key,value in node.props.items()
+                                                   if key.startswith('mediatek,') and not value]}
+    entry['dma_contract']='unverified; absent iommus/dma-coherent properties do not prove bypass/coherency'
+    return entry
+
+
+def supplies(tree, node):
+    result = {}
+    for key in node.props:
+        if key.endswith('-supply') or key in ('protected-memory-allocator', 'physical-memory-group-manager'):
+            provider = tree.provider(node.scalar(key))
+            result[key] = {'provider': provider.path, 'compatible': provider.strings('compatible')}
+    return result
+
+
+def inspect_peripherals(tree):
+    def one(compatible):
+        matches = [n for n in tree.nodes.values() if compatible in n.strings('compatible')]
+        if len(matches) != 1:
+            raise ValueError(f'{compatible}: expected one matching peripheral')
+        return matches[0]
+
+    def controller(node):
+        entry = describe_node(tree, node)
+        entry['power_domains'] = tree.references(node, 'power-domains', '#power-domain-cells')
+        entry['memory_regions'] = [tree.provider(h).path for h in node.cells('memory-region')]
+        return entry
+
+    def endpoint(node, gpio_keys=()):
+        if (node.parent.scalar('#address-cells') != 1 or node.parent.scalar('#size-cells') != 0):
+            raise ValueError(f'{node.path}: expected a bus endpoint address')
+        return {
+            'path': node.path, 'compatible': node.strings('compatible'),
+            'status': node.strings('status') or ['okay (implicit)'],
+            'bus': node.parent.path, 'bus_address': node.scalar('reg'),
+            'interrupts': tree.interrupts(node),
+            'clocks': tree.references(node, 'clocks', '#clock-cells', 'clock-names'),
+            'gpios': {k: tree.references(node, k, '#gpio-cells') for k in gpio_keys if k in node.props},
+            'supplies': supplies(tree, node),
+            'pinctrl': {
+                name: [tree.provider(h).path for h in node.cells(f'pinctrl-{i}')]
+                for i, name in enumerate(node.strings('pinctrl-names'))
+            },
+        }
+
+    touch = one('focaltech,n11a-3683g-spi')
+    spi = touch.parent
+    usb = one('mediatek,mtu3')
+    xhci = one('mediatek,mtk-xhci')
+    panels = [tree.provider(h) for h in one('xiaomi-touch').cells('panel')]
+    sensors = [n for n in tree.nodes.values() if 'mediatek,imgsensor' in n.strings('compatible')]
+    if not spi or 'mediatek,mt6985-spi' not in spi.strings('compatible') or xhci.parent is not usb:
+        raise ValueError('unexpected touch or USB controller relationship')
+    if not panels:
+        raise ValueError('no panel references')
+    dsi = panels[0].parent
+    if not dsi or 'mediatek,mt6897-dsi' not in dsi.strings('compatible') or any(p.parent is not dsi for p in panels):
+        raise ValueError('unexpected panel controller relationship')
+    if not sensors or any(not n.parent or 'mediatek,mt6897-i2c' not in n.parent.strings('compatible') for n in sensors):
+        raise ValueError('unexpected camera controller relationship')
+
+    touch_info = endpoint(touch, ('focaltech,reset-gpio', 'focaltech,irq-gpio'))
+    touch_info.update(spi_max_hz=touch.scalar('spi-max-frequency'),
+                      max_contacts=touch.scalar('focaltech,max-touch-number'),
+                      resolution_factor=touch.scalar('focaltech,super-resolution-factors'),
+                      display_coordinates=touch.cells('focaltech,display-coords'))
+    audio = controller(one('mediatek,mt6897-sound'))
+    codec = one('mediatek,mt6368-sound')
+    audio['codec'] = {'path': codec.path, 'compatible': codec.strings('compatible'),
+                      'supplies': supplies(tree, codec)}
+    camera_buses = {n.parent.path: n.parent for n in sensors}
+    return {
+        'touch': touch_info,
+        'touch_spi': controller(spi),
+        'display_dsi': controller(dsi),
+        'display_panels': [endpoint(panel, ('reset-gpios', 'esd-err-irq-gpio')) for panel in panels],
+        'usb_device': controller(usb),
+        'usb_host': controller(xhci),
+        'wifi': controller(one('mediatek,wifi')),
+        'bluetooth': controller(one('mediatek,bt')),
+        'connectivity': controller(one('mediatek,mt6897-consys-atf')),
+        'audio': audio,
+        'cameras': [endpoint(sensor) for sensor in sensors],
+        'camera_i2c': [controller(bus) for bus in camera_buses.values()],
+        'modem_data': controller(one('mediatek,dpmaif')),
+        'modem_control': controller(one('mediatek,ccci_ccif')),
+    }
+
+
+def inspect(raw, peripherals=False):
     tree=Fdt(raw)
     if tree.nodes['/'].strings('model')!=['MT6897']:
         raise ValueError('expected captured MT6897 model')
@@ -229,39 +327,31 @@ def inspect(raw):
         matches=[n for n in tree.nodes.values() if compatible in n.strings('compatible')]
         if len(matches)!=1:
             raise ValueError(f'{role}: expected one matching node')
-        node=matches[0]
-        entry={'path':node.path,'compatible':node.strings('compatible'),
-               'status':node.strings('status') or ['okay (implicit)'],
-               'registers':tree.registers(node),'interrupts':tree.interrupts(node),
-               'clocks':tree.references(node,'clocks','#clock-cells','clock-names'),
-               'resets':tree.references(node,'resets','#reset-cells','reset-names'),
-               'phys':tree.references(node,'phys','#phy-cells'),
-               'iommus':tree.references(node,'iommus','#iommu-cells'),
-               'dma_coherent_property_present':'dma-coherent' in node.props,
-               'supplies':{},'flags':[key for key,value in node.props.items()
-                                       if key.startswith('mediatek,') and not value]}
-        for key,value in node.props.items():
-            if key.endswith('-supply') or key in ('protected-memory-allocator','physical-memory-group-manager'):
-                provider=tree.provider(node.scalar(key))
-                entry['supplies'][key]={'provider':provider.path,'compatible':provider.strings('compatible')}
-        entry['dma_contract']='unverified; absent iommus/dma-coherent properties do not prove bypass/coherency'
-        selected[role]=entry
-    return {'fdt_sha256':hashlib.sha256(raw).hexdigest(),'nodes':selected,
-            'scope':'saved-DTB inspection only; no MMIO, firmware, DMA or device test'}
+        selected[role]=describe_node(tree,matches[0])
+    report = {'fdt_sha256':hashlib.sha256(raw).hexdigest(),'nodes':selected,
+              'scope':'saved-DTB inspection only; no MMIO, firmware, DMA or device test'}
+    if peripherals:
+        report['peripherals'] = inspect_peripherals(tree)
+    return report
 
 
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument('dtb',type=Path); ap.add_argument('output',type=Path)
+    ap.add_argument('--peripherals', action='store_true',
+                    help='include the additional Duchamp controllers and their DT dependencies')
     args=ap.parse_args()
     try:
-        report=inspect(args.dtb.read_bytes())
+        report=inspect(args.dtb.read_bytes(), peripherals=args.peripherals)
         with args.output.open('x',encoding='utf-8') as out:
             out.write(json.dumps(report,indent=2)+'\n')
     except (ValueError,OSError,UnicodeError) as e:
         ap.exit(1,f'hardware inspection failed: {e}\n')
-    print(json.dumps({'sha256':report['fdt_sha256'],
-                      'nodes':{k:v['path'] for k,v in report['nodes'].items()}},indent=2))
+    summary = {'sha256': report['fdt_sha256'],
+               'nodes': {k: v['path'] for k, v in report['nodes'].items()}}
+    if args.peripherals:
+        summary['peripheral_groups'] = list(report['peripherals'])
+    print(json.dumps(summary, indent=2))
 
 
 if __name__=='__main__':
