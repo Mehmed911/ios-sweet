@@ -1,3 +1,11 @@
+ACTIVE HANDOFF — Native mount-phase-1 on the separate QEMU Setup root (2026-11-08):
+
+- Extracted original 20F66 `/sbin/mount` and `mount_hfs` from the pinned complete restore DMG. Installed and hash-verified them in a new 3 GiB HFS+ copy of the successful fsck fixture. `/sbin/mount_hfs` is a byte-identical regular copy of its original symlink target. All direct Mach-O libraries, including MediaKit and libutil, are in the existing 20F66 dyld cache.
+- Control with unchanged CI 41543710742 kernel and ignition-level-1 payload ran stock `mount -P 1` through launchd. The fixture had no fstab. Native mount_hfs attempted a writable root update, returned EROFS, and mount exited with status 1 at 151.761 host seconds.
+- A second independent copy added only `/private/etc/fstab` with `/dev/qufs0 / hfs ro 0 1`. The original mount, launchd, fsck and Setup executable stayed byte-identical. Native mount reported `/dev/qufs0 on / (hfs, local, read-only, noatime)`. Launchd accepted the required phase-1 task, ran subsequent tasks, and started mount-phase-2 at 00:01:22.908288 guest time. The QEMU harness stopped at that marker after 150.983 host seconds with no panic observed. Phase 2 completion and Setup UI were not tested.
+- Both replays used read-only virtual UFS without a RAM disk. The source and both test image hashes were unchanged by QEMU. All 20 existing virtual UFS profile tests passed. No phone access or partition changes.
+- Evidence is under `work/setup-qufs-mount-20261108-v1/verification.json`, `run/fb.txt` and `fstab-readonly/run/fb.txt`. The passing image is `/home/mehmedamir/.cache/duchamp-qemu-tests/setup-mount-20F66-3fVzRQ/root-mount-fstab-ro.hfs` in Ubuntu WSL. Keep the original Setup root and the Apple binaries out of the index.
+
 ACTIVE HANDOFF — Native fsck on the separate QEMU Setup root (2026-11-08):
 
 - Extracted native `/sbin/fsck`, the original HFS checker and its bundle Info.plist from the complete 20F66 restore DMG. Installed and hash-verified them in a separate 3 GiB HFS+ copy. The local HFS editor cannot create symlinks, so `/sbin/fsck_hfs` is a byte-identical regular copy of its original target. All direct Mach-O libraries are present in the existing 20F66 dyld cache. Setup, launchd and the main cache file matched the original fixture.
