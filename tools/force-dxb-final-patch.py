@@ -51,6 +51,8 @@ replacement = '''        done
         python3 "${WORK_DIR}/../tools/stage-duchamp-timer-probe.py" "${WORK_DIR}/xnu"
         running "Staging fail-closed Duchamp PSCI CPU_ON authorization"
         python3 "${WORK_DIR}/../tools/stage-duchamp-psci-boot.py" "${WORK_DIR}/xnu"
+        running "Staging the opt-in Duchamp QEMU SPI2 touch replay"
+        python3 "${WORK_DIR}/../tools/stage-duchamp-qemu-spi2.py" "${WORK_DIR}/xnu"
         cd "${WORK_DIR}"
     fi
 }
