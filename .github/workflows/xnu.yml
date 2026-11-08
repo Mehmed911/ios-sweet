@@ -21,6 +21,7 @@ on:
       - "xnu/patches/**"
       - "tools/apply-duchamp-pid1-heartbeat-console.py"
       - "tools/stage-duchamp-qemu-ufs.py"
+      - "tools/stage-duchamp-qemu-spi2.py"
       - "tools/stage-duchamp-qemu-backends.py"
       - "tools/stage-duchamp-gic-boot.py"
       - "tools/stage-duchamp-timer-boot.py"
@@ -32,6 +33,8 @@ on:
       - "duchamp/drivers/duchamp_counter_probe.h"
       - "duchamp/drivers/duchamp_timer_probe.h"
       - "duchamp/drivers/duchamp_psci_boot.h"
+      - "duchamp/drivers/duchamp_ft3683g.c"
+      - "duchamp/drivers/duchamp_ft3683g.h"
       - "tools/force-dxb-final-patch.py"
       - "duchamp/drivers/ufs_readonly.c"
       - "duchamp/drivers/ufs_readonly.h"
@@ -141,6 +144,10 @@ jobs:
           cmp ../duchamp/drivers/duchamp_counter_probe.h xnu/osfmk/arm/duchamp_counter_probe.h
           cmp ../duchamp/drivers/duchamp_timer_probe.h xnu/osfmk/arm/duchamp_timer_probe.h
           cmp ../duchamp/drivers/duchamp_psci_boot.h xnu/iokit/Kernel/arm/duchamp_psci_boot.h
+          cmp ../duchamp/drivers/duchamp_ft3683g.c xnu/bsd/dev/duchamp_ft3683g.c
+          cmp ../duchamp/drivers/duchamp_ft3683g.h xnu/bsd/dev/duchamp_ft3683g.h
+          cmp ../duchamp/xnu/qemu_spi2_touch.c xnu/bsd/dev/qemu_spi2_touch.c
+          grep -Fq 'duchamp_qemu_spi2_touch_step(self->fTestCount)' xnu/iokit/Kernel/arm/hid/SweetHID.cpp
           cmp ../duchamp/drivers/ufs_readonly.c xnu/bsd/dev/duchamp_ufs_core.c
           cmp ../duchamp/drivers/ufs_readonly.h xnu/bsd/dev/ufs_readonly.h
           grep -Fq 'DUCHAMP QEMU backend selftest failed' xnu/iokit/bsddev/IOKitBSDInit.cpp
