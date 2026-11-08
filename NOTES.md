@@ -1,3 +1,9 @@
+ACTIVE HANDOFF — QEMU split root UI replay result (2026-11-08):
+
+- Final 20F66 replay mounted qufs0 read-only and a 64 MiB writable HFS+ md0 at /private/var. Native SpringBoard PID 26 and backboardd PID 27 both ran as UID 501. BackBoard produced three QuartzCore context commits. Adding the original DataMigration XPC bundle and wrapper resolved the prior xpcproxy ENOENT. The native datamigrator executed as PID 35 and exited with status 0.
+- At 1235.097 host seconds the test timed out with no panic observed. There was no Setup exec or matching framebuffer presentation. The captured SpringBoard stack shows a synchronous wait for user cfprefsd in MediaAccessibility. A separate FrontBoard thread was waiting while LaunchServices was reseeding its database. A late failed profiled.public lookup is also logged. The trace does not prove which dependency prevents Setup from starting. GDB reported a detach error during shutdown after recording the trace.
+- Source, test root and data seed hashes stayed unchanged. New guest data was captured from RAM only. The scoped UI configuration and development cache mode are local QEMU test settings. See `work/setup-qufs-var-ram-20261108-v1/verification.json` and the migration replay evidence. No phone access or partition changes.
+
 ACTIVE HANDOFF — Writable QEMU /private/var with read-only qufs0 (2026-11-08):
 
 - Commit e925867 adds explicit `--ufs-var-ramdisk` for a bounded HFS+ data-only payload, with the strict read-only qufs0 gate retained. All 24 profile tests pass. The pre-existing framebuffer result edit in qemu-sweet.py remains unstaged.
