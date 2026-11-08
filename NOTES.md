@@ -1,3 +1,10 @@
+ACTIVE HANDOFF — Native fsck on the separate QEMU Setup root (2026-11-08):
+
+- Extracted native `/sbin/fsck`, the original HFS checker and its bundle Info.plist from the complete 20F66 restore DMG. Installed and hash-verified them in a separate 3 GiB HFS+ copy. The local HFS editor cannot create symlinks, so `/sbin/fsck_hfs` is a byte-identical regular copy of its original target. All direct Mach-O libraries are present in the existing 20F66 dyld cache. Setup, launchd and the main cache file matched the original fixture.
+- Replayed CI 41543710742 with the same ignition-level-1 payload, no RAM disk and read-only virtual UFS `qufs0`. Native launchd ran the required `/sbin/fsck -qL`. The tool printed `failed to get filesystem info` and then reported skipping the OS container check in this boot environment. Launchd advanced to the next required task, proving it accepted fsck completion. The fsck exit code was not independently captured and this did not exercise a full disk check.
+- The run stopped after 156.859 host seconds at `mount-phase-1` because its native executable `/sbin/mount` is missing. The embedded launchd config invokes `mount -P 1`. Setup UI was not reached. All 20 existing virtual UFS profile tests passed. Both disk images had unchanged SHA-256 hashes after the run. No phone access or partition changes.
+- Evidence and input hashes are in `work/setup-qufs-fsck-20261108-v1/verification.json` and `run/fb.txt`. The disposable image is `/home/mehmedamir/.cache/duchamp-qemu-tests/setup-fsck-full-20F66-Py1Fb3/root-fsck.hfs` in Ubuntu WSL. Keep the original Setup root and all Apple artifacts out of the index.
+
 ACTIVE HANDOFF — Setup root on separate QEMU storage (2026-11-08):
 
 - Mounted the exact 3 GiB 20F66 Setup HFS+ fixture as read-only virtual UFS `qufs0`, without md0. XNU retained the 512 MiB high-RAM window at 0x1c0000000 and its payload measured 16,715,616 bytes. The 3.04 GiB from the previous turn included boot data for the embedded layout. Only QEMU storage was used.
