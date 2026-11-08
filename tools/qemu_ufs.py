@@ -4,6 +4,7 @@ from pathlib import Path
 import stat
 import struct
 import adt
+from mkpayload import PAGE, SEG_TABLE
 
 FIRMWARE=b'duchamp-qemu-ufs-fixture-v1\0'
 COMPATIBLE=b'qemu,ufs-test-only\0'
@@ -18,7 +19,7 @@ def child(node,name):
     return matches[0]
 
 
-def validate_tree(tree):
+def validate_tree(tree, *, allow_data_ramdisk=False):
     chosen=child(tree,'chosen')
     if chosen.prop('firmware-version')!=FIRMWARE:
         raise ValueError('not a virtual UFS firmware profile')
@@ -27,7 +28,7 @@ def validate_tree(tree):
     node=child(tree,'duchamp-qemu-ufs')
     if node.prop('compatible')!=COMPATIBLE or node.prop('reg')!=struct.pack('<2Q',*BAR) or node.prop('ecam')!=struct.pack('<2Q',*ECAM):
         raise ValueError('virtual PCI UFS resource mismatch')
-    if child(chosen,'memory-map').prop('RAMDisk') is not None:
+    if not allow_data_ramdisk and child(chosen,'memory-map').prop('RAMDisk') is not None:
         raise ValueError('virtual UFS test must not contain a fallback RAMDisk')
     if any(c.name=='sweet-ufs' for c in tree.children):
         raise ValueError('physical Qualcomm UFS node is not allowed in this fixture')
@@ -57,7 +58,42 @@ def build_tree(raw):
     return adt.serialize(tree)
 
 
-def runner_options(payload,image,cpu,framebuffer):
+def data_ramdisk(payload, tree, adt_offset, adt_size):
+    chosen = child(tree, 'chosen')
+    mmap = child(chosen, 'memory-map')
+    properties = [value for name, _, value in mmap.props if name == 'RAMDisk']
+    if len(properties) != 1 or len(properties[0]) != 16:
+        raise ValueError('expected exactly one bounded data RAMDisk')
+    address, size = struct.unpack('<2Q', properties[0])
+    magic, version, nsegs = struct.unpack_from('<8sII', payload)
+    virt_base, _, _, _, kernel_end, phys_base, mem_size = struct.unpack_from('<7Q', payload, 16)
+    table_end = SEG_TABLE + 32 * nsegs
+    if (magic != b'SWEETXNU' or version != 1 or nsegs < 2 or table_end > adt_offset
+            or (phys_base, mem_size) != (0x1c0000000, 0x20000000)):
+        raise ValueError('invalid payload layout for the data RAMDisk')
+    if (address % PAGE or size % PAGE or not (1 << 20) <= size <= (64 << 20)
+            or address < phys_base):
+        raise ValueError('data RAMDisk must be aligned and at most 64 MiB')
+    va = virt_base + address - phys_base
+    top = (kernel_end + adt_size + PAGE - 1) & -PAGE
+    if va + size != kernel_end or top + PAGE > virt_base + mem_size:
+        raise ValueError('data RAMDisk must end at the reserved payload boundary')
+    segments = list(struct.iter_unpack('<4Q', payload[SEG_TABLE:table_end]))
+    for segment_va, span, offset, length in segments[:-1]:
+        if (segment_va < virt_base or segment_va + span > va or length > span
+                or offset < table_end or offset + length > adt_offset):
+            raise ValueError('kernel segment conflicts with data RAMDisk')
+    segment_va, span, offset, length = segments[-1]
+    if ((segment_va, span, length) != (va, size, size)
+            or offset < table_end or offset + length > adt_offset
+            or any(start + count > offset for _, _, start, count in segments[:-1])
+            or payload[offset+1024:offset+1026] not in (b'H+', b'HX')):
+        raise ValueError('data RAMDisk is not a complete HFS+ payload segment')
+    return {'address': address, 'bytes': size,
+            'sha256': hashlib.sha256(memoryview(payload)[offset:offset+size]).hexdigest()}
+
+
+def runner_options(payload,image,cpu,framebuffer, *, var_ramdisk=False):
     if cpu!='cortex-a76' or framebuffer!='duchamp':
         raise ValueError('virtual UFS requires Cortex-A76 and Duchamp framebuffer')
     offset,size=struct.unpack_from('<2Q',payload,0x20)
@@ -66,7 +102,7 @@ def runner_options(payload,image,cpu,framebuffer):
     tree,end=adt.parse(payload[offset:offset+size])
     if end!=size:
         raise ValueError('invalid payload ADT length')
-    validate_tree(tree)
+    validate_tree(tree, allow_data_ramdisk=var_ramdisk)
     args=payload[0x48:0x48+608].split(b'\0')[0].decode('ascii').split()
     if args.count('rd=qufs0')!=1 or args.count('sweet-qemu-ufs=1')!=1:
         raise ValueError('missing explicit virtual UFS boot arguments')
@@ -74,6 +110,10 @@ def runner_options(payload,image,cpu,framebuffer):
            x.startswith('sweet-qemu-ufs=') and x!='sweet-qemu-ufs=1' or
            x.startswith('ufsrw=') and x!='ufsrw=0' for x in args):
         raise ValueError('ambiguous root or writable storage boot arguments')
+    if var_ramdisk and (args.count('rootrw=0') != 1
+            or any(x.startswith(('pmd', 'vmd')) for x in args)):
+        raise ValueError('data RAMDisk requires explicit read-only root and no alternate memory devices')
+    var_layout = data_ramdisk(payload, tree, offset, size) if var_ramdisk else None
     path=Path(image).resolve()
     if not stat.S_ISREG(path.stat().st_mode) or ',' in str(path):
         raise ValueError('UFS image must be a regular file with a comma-free path')
@@ -93,7 +133,9 @@ def runner_options(payload,image,cpu,framebuffer):
         raise ValueError('UFS fixture changed while hashing')
     metadata={'image':str(path),'image_bytes':before.st_size,'sha256':digest.hexdigest(),
               'readonly':True,'bar':list(BAR),'ecam':list(ECAM),'bus':0,'slot':4,'function':0,
-              'no_ramdisk':True,'scope':'QEMU-only virtual UFS; no physical device'}
+              'no_ramdisk':not var_ramdisk,'scope':'QEMU-only virtual UFS; no physical device'}
+    if var_layout:
+        metadata['data_ramdisk'] = var_layout
     options=['-drive',f'file={path},format=raw,if=none,id=duchamp_lu0,readonly=on',
              '-device','ufs,id=duchamp_ufs,addr=04.0,mcq=off',
              '-device','ufs-lu,drive=duchamp_lu0,bus=duchamp_ufs,lun=0']

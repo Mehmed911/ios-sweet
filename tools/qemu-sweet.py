@@ -252,6 +252,8 @@ def main():
     ap.add_argument('--fail-on-panic', action='store_true', help='exit 2 for a visible panic, 3 for incomplete/blank decoding; requires --kernel')
     ap.add_argument('--live-serial', action='store_true', help='stream serial console output to stdout in real time')
     ap.add_argument('--ufs-image', help='opt-in read-only HFS+ file for the strict virtual UFS profile')
+    ap.add_argument('--ufs-var-ramdisk', action='store_true',
+                    help='allow a bounded data RAM disk with the read-only virtual UFS root')
     ap.add_argument('--check-env', action='store_true', help='check QEMU installation and dependencies without running a payload')
     a = ap.parse_args()
 
@@ -272,6 +274,8 @@ def main():
         ap.error('--snapshot-interval requires --kernel and a nonnegative interval')
     if a.stop_on_text and not a.snapshot_interval:
         ap.error('--stop-on-text requires --snapshot-interval')
+    if a.ufs_var_ramdisk and not a.ufs_image:
+        ap.error('--ufs-var-ramdisk requires --ufs-image')
 
     if not check_qemu_dependency(a.cpu):
         return 1
@@ -283,10 +287,11 @@ def main():
     ufs_options = []
     if a.ufs_image:
         import qemu_ufs
-        if a.save_ramdisk:
-            ap.error('--ufs-image cannot be combined with --save-ramdisk')
+        if a.save_ramdisk and not a.ufs_var_ramdisk:
+            ap.error('--save-ramdisk with --ufs-image requires --ufs-var-ramdisk')
         try:
-            ufs_options, ufs_metadata = qemu_ufs.runner_options(payload, a.ufs_image, a.cpu, a.framebuffer)
+            ufs_options, ufs_metadata = qemu_ufs.runner_options(
+                payload, a.ufs_image, a.cpu, a.framebuffer, var_ramdisk=a.ufs_var_ramdisk)
         except (ValueError, OSError, struct.error) as error:
             ap.error(str(error))
     font = None

@@ -76,6 +76,61 @@ class Tests(unittest.TestCase):
         m=profile.child(profile.child(self.tree,'chosen'),'memory-map')
         m.props.append(('RAMDisk',0,struct.pack('<2Q',0x1c1000000,0x1000))); self.reject()
 
+    def data_payload(self, args='rd=qufs0 sweet-qemu-ufs=1 rootrw=0'):
+        base, size = 0x1c0000000, 1 << 20
+        virt_base = 0xfffffe0007000000
+        data_va = virt_base + 0x4000
+        table_end = profile.SEG_TABLE + 2 * 32
+        data_offset = table_end + 16
+        tree = deepcopy(self.tree)
+        mmap = profile.child(profile.child(tree, 'chosen'), 'memory-map')
+        mmap.props.append(('RAMDisk', 0, struct.pack('<2Q', base + 0x4000, size)))
+        raw_adt = adt.serialize(tree)
+        adt_offset = data_offset + size
+        data = bytearray(adt_offset + len(raw_adt))
+        struct.pack_into('<8sII7Q', data, 0, b'SWEETXNU', 1, 2, virt_base, virt_base,
+                         adt_offset, len(raw_adt), data_va + size, base, 0x20000000)
+        text = args.encode()
+        data[0x48:0x48 + len(text)] = text
+        struct.pack_into('<8Q', data, profile.SEG_TABLE, virt_base, 0x4000, table_end, 16,
+                         data_va, size, data_offset, size)
+        data[data_offset + 1024:data_offset + 1026] = b'H+'
+        data[adt_offset:] = raw_adt
+        return data, data_offset
+
+    def test_var_ramdisk_requires_opt_in(self):
+        payload, _ = self.data_payload()
+        with self.assertRaisesRegex(ValueError, 'fallback RAMDisk'):
+            profile.runner_options(payload, self.image, 'cortex-a76', 'duchamp')
+
+    def test_var_ramdisk_keeps_ufs_readonly(self):
+        payload, offset = self.data_payload()
+        options, meta = profile.runner_options(payload, self.image, 'cortex-a76', 'duchamp',
+                                                var_ramdisk=True)
+        self.assertIn('readonly=on', options[1])
+        self.assertTrue(meta['readonly'])
+        self.assertFalse(meta['no_ramdisk'])
+        self.assertEqual(meta['data_ramdisk']['sha256'],
+                         hashlib.sha256(payload[offset:offset + (1 << 20)]).hexdigest())
+
+    def test_var_ramdisk_rejects_implicit_and_alternate_root(self):
+        for args in ('rd=qufs0 sweet-qemu-ufs=1', 'rd=md0 sweet-qemu-ufs=1 rootrw=0',
+                     'rd=qufs0 sweet-qemu-ufs=1 rootrw=1',
+                     'rd=qufs0 sweet-qemu-ufs=1 rootrw=0 pmd0=0x80000000.0x1000'):
+            with self.subTest(args=args), self.assertRaises(ValueError):
+                payload, _ = self.data_payload(args)
+                profile.runner_options(payload, self.image, 'cortex-a76', 'duchamp', var_ramdisk=True)
+
+    def test_var_ramdisk_rejects_overlap_and_non_hfs_payload(self):
+        payload, offset = self.data_payload()
+        payload[offset + 1024:offset + 1026] = b'XX'
+        with self.assertRaisesRegex(ValueError, 'complete HFS'):
+            profile.runner_options(payload, self.image, 'cortex-a76', 'duchamp', var_ramdisk=True)
+        payload, _ = self.data_payload()
+        struct.pack_into('<Q', payload, profile.SEG_TABLE + 8, 0x8000)
+        with self.assertRaisesRegex(ValueError, 'conflicts'):
+            profile.runner_options(payload, self.image, 'cortex-a76', 'duchamp', var_ramdisk=True)
+
     def test_qualcomm_node_forbidden(self):
         self.tree.children.append(node('sweet-ufs')); self.reject()
 
