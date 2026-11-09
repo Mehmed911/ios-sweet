@@ -1,3 +1,9 @@
+ACTIVE HANDOFF — Wi-Fi was unavailable in the GPT QEMU Setup guest (2026-11-10)
+
+- Booted the same CI 42707402072 kernel and GPT disk in QEMU 10.2.1. The guest selected the same HFS+ slice, verified `qufs0` read-only and mounted `DuchampVar` on `md0`. Added an isolated VirtIO Ethernet control with QEMU user networking restricted. QMP reported it on PCI, but the XNU interface list contained only `lo0`, `gif0` and `stf0` before and after the Setup test. The local QEMU device list had no 802.11 adapter.
+- Selected English and Algeria, reached Quick Start, chose Set Up Manually and reached Written and Spoken Languages. Setup PID 63 aborted with SIGABRT about 5.6 guest seconds after Continue and was relaunched. The stack reaches Objective-C/C++ termination on the main dispatch queue. The exception reason remains unknown. No Wi-Fi picker or network connection was observed.
+- Stopped the isolated guest after collecting evidence, with no observed kernel panic. The GPT image, RAM seed and kernel hashes matched before and after. Logs and frame are under `duchamp-qemu-wifi-20261110` in the workspace outputs directory, with the private replay under `work/qufs-gpt-wifi-20261110-v1`. All execution was in QEMU.
+
 ACTIVE HANDOFF — Setup reached Hello and language selection on the same GPT root (2026-11-10)
 
 - Reused the exact CI 42707402072 kernel and whole GPT fixture from the native PID 1 proof. The guest selected block 256, verified `qufs0` read-only, and mounted `DuchampVar` on `md0`. The pinned root's fstab mounts `/dev/qufs0 / hfs ro` and `/dev/md0 /private/var hfs rw`. Data changed inside guest RAM, while the host GPT image, original RAM seed, and kernel retained their hashes.
