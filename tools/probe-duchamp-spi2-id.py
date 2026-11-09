@@ -50,7 +50,7 @@ for candidate in /sys/bus/spi/devices/spi*; do
     dev=$(readlink -f "$candidate") || fail "cannot resolve touch device"
 done
 [ -n "$dev" ] || fail "touch node is not enumerated by the running kernel"
-[ "$(readlink -f "$dev/driver")" = /sys/bus/spi/drivers/fts_ts ] ||
+[ "$(readlink -f "$dev/driver")" = /sys/bus/spi/drivers/focaltech_ts ] ||
     fail "FocalTech is not the bound touch driver"
 [ "$(readlink -f "$dev/driver/module")" = /sys/module/focaltech_touch ] ||
     fail "unexpected touch module owner"
@@ -58,7 +58,8 @@ done
 host=${dev%/*}
 while [ "$host" != /sys/devices ]; do
     case "$host" in /sys/devices/*) ;; *) fail "unexpected SPI device path";; esac
-    if [ -L "$host/of_node" ] && [ "$(readlink -f "$host/of_node")" = "$dt" ]; then
+    if [ -L "$host/driver" ] && [ -L "$host/of_node" ] &&
+       [ "$(readlink -f "$host/of_node")" = "$dt" ]; then
         break
     fi
     host=${host%/*}
@@ -77,8 +78,23 @@ expect_hex /sys/module/spi_mt65xx/notes/.note.gnu.build-id \
 
 echo "bound SPI2 controller: $host"
 echo "bound FocalTech device: $dev"
-mode=$(cat "$dev/fts_boot_mode") || fail "cannot query FocalTech firmware state"
-echo "$mode"
+if [ -r "$dev/fts_boot_mode" ]; then
+    printf 'FocalTech software debug flag: '
+    cat "$dev/fts_boot_mode"
+fi
+if [ -r "$dev/fts_driver_info" ]; then
+    echo "FocalTech driver state (IC ID is cached):"
+    cat "$dev/fts_driver_info"
+fi
+for rail in /sys/class/regulator/regulator.*; do
+    [ -r "$rail/name" ] && [ "$(cat "$rail/name")" = mt6368_vtp ] || continue
+    for attr in state microvolts num_users; do
+        if [ -r "$rail/$attr" ]; then
+            printf 'MT6368 VTP %s: ' "$attr"
+            cat "$rail/$attr"
+        fi
+    done
+done
 if [ -r "$host/power/runtime_status" ]; then
     printf 'SPI2 runtime PM: '
     cat "$host/power/runtime_status"
@@ -95,25 +111,33 @@ debug=/sys/kernel/debug
 snapshot "$debug/clk/clk_summary" '(^|[[:space:]])(univpll_d6_d2|spi2_sel|spi2_ck|peraop_spi2_bclk)([[:space:]]|$)'
 snapshot "$debug/regulator/regulator_summary" '(^|[[:space:]])mt6368_vtp([[:space:]]|$)'
 snapshot "$debug/gpio" 'fts_(avdd|reset|irq)_gpio'
+snapshot /proc/mtk_gpio/soc.pinctrl '^pins base|^PIN:|^[[:space:]]*(009|011|012|013|014|060|073):'
+snapshot /proc/interrupts '(^|[[:space:]])focaltech_ts([[:space:]]|$)'
 for pins in "$debug"/pinctrl/*10005000*/pinmux-pins; do
     snapshot "$pins" '^pin (9|11|12|13|14|60|73) '
 done
 
 [ "$PROBE_MODE" = read-id ] || exit 0
-[ "$mode" = 'tp is in fw mode' ] || fail "touch firmware is not running"
-dumpsys power | grep -Eq '^[[:space:]]*mWakefulness=Awake[[:space:]]*$' ||
+dumpsys power | grep -E '^[[:space:]]*mWakefulness=Awake[[:space:]]*$' >/dev/null ||
     fail "Android is not awake"
+# fts_boot_mode reflects a debug flag. The version attribute reads A6 over SPI
+# with status and CRC validation, and rejects 00 and FF.
+version=$(cat "$dev/fts_fw_version") || fail "cannot read the touch firmware version"
+case "$version" in
+    00|[Ff][Ff]) fail "invalid touch firmware version" ;;
+    [0-9A-Fa-f][0-9A-Fa-f]) echo "fresh FocalTech firmware version: 0x$version" ;;
+    *) fail "invalid touch firmware version" ;;
+esac
 reg="$dev/fts_wr_reg"
 [ -f "$reg" ] && [ ! -L "$reg" ] && [ -r "$reg" ] && [ -w "$reg" ] ||
     fail "stock FocalTech register endpoint is unavailable"
 
 read_id_byte() {
-    # Two hex characters plus LF select the pinned driver's read operation.
-    case "$1" in
-        A3) printf 'A3\n' > "$reg" || fail "could not request A3" ;;
-        9F) printf '9F\n' > "$reg" || fail "could not request 9F" ;;
-        *) fail "invalid ID register" ;;
-    esac
+    # The shipped handler requires the explicit read prefix and one-byte
+    # length. Reblock the request into one sysfs write, including the newline.
+    case "$1" in A3|9F) ;; *) fail "invalid ID register" ;; esac
+    printf '1%s01\n' "$1" | dd ibs=1 obs=6 count=6 status=none > "$reg" ||
+        fail "could not request $1"
     reply=$(cat "$reg") || fail "could not read the result for $1"
     case "$reply" in
         "Read $1: "[0-9A-F][0-9A-F]) printf '%s\n' "${reply##* }" ;;
