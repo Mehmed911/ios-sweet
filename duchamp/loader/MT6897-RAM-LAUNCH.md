@@ -85,6 +85,30 @@ record and framebuffer checks. The guest reported PC `0x40200000`,
 required by the diagnostic. No phone boot or partition modification was
 performed for this check.
 
+## MediaTek V6 candidate check
+
+On 2026-11-10 the published `DA_DUCHAMP_OS1.0.12.0.bin` candidate
+reported hardware code `0x1203`, subcode `0x8a00` and hardware version
+`0xca00`. Its SHA-256 is
+`b37df080ce20e073b295717bf379e0ae58ff44bfe8f0e9a52b641b087ba33969`.
+Those fields identify the candidate's target family. Admission on the
+connected Duchamp firmware remains unverified.
+[Pinned candidate](https://github.com/k4lp/mt6897-unlock-attempt/blob/152fabe7eab3e370cf4c16e039ae6c462e914b1f/security/DAA/working/candidates/DA_DUCHAMP_OS1.0.12.0.bin)
+
+The candidate's `BOOT-TO` handler computes a 32-byte digest and compares it
+against the SHA-256 of the bundled DA2 body, excluding its signature tail.
+The comparison takes the error branch on a mismatch. The PC/x0 diagnostic
+has a different digest.
+
+The isolated QEMU test ran the 52 comparison bytes from the exact DA1.
+It matched the bundled DA2 and took the mismatch branch for the diagnostic
+and for DA2 with one byte changed. The first harness run hit an alignment
+exception and the aligned replay passed all three checks. The test used
+host-computed digests and covered the comparison branch only. The complete
+USB command, device admission and firmware handoff remain untested. The
+RAM-only launch gate stays closed. The QEMU result and reproduction script
+are under `work/ram-provider-sources-20261109-v1`.
+
 ## Why the other paths do not qualify
 
 | Path | What is established | Why it is not the Duchamp RAM provider |

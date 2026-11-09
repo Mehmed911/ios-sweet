@@ -1,3 +1,9 @@
+ACTIVE HANDOFF — MediaTek V6 DA1 digest gate verified in QEMU (2026-11-10)
+
+- The published DA_DUCHAMP_OS1.0.12.0.bin candidate SHA-256 b37df080...33969 has hardware code 0x1203, subcode 0x8a00 and hardware version 0xca00. This identifies its target family. Admission on the user's installed firmware was not tested.
+- The BOOT-TO handler computes a 32-byte digest and takes its error path if it differs from the digest embedded in the exact DA1. The embedded value matches the bundled DA2 body without its signature tail (SHA-256 307a866b...bfa2). The PC/x0 diagnostic digest 2a7dff64...d20ea differs.
+- Tested the exact 52 comparison bytes in an isolated ARM64 QEMU harness with host-computed digests. The first run hit a harness alignment exception. After aligning the inputs, all three cases passed. The original DA2 matched, the diagnostic mismatched and a one-byte DA2 mutation mismatched. The comparison test did not emulate the full USB command, firmware admission or handoff, and no phone commands or writes were issued. The RAM-only gate remains closed for this candidate. Evidence and replay-da1-compare.py are under work/ram-provider-sources-20261109-v1.
+
 ACTIVE HANDOFF — Active Duchamp LK matched the offline RAM-entry audit (2026-11-09)
 
 - Read-only ADB verified Duchamp/MT6897, boot complete, slot _a and kernel 6.1.57-android14-11-gcf2c2dc91b9e-ab11782407. The active lk_a SHA-256 matched f85373d3b4cdf3c959e38bbbfe198a2857e03a5266c6f2a40c319549a5ba957a. Both CONFIG_KEXEC and CONFIG_KEXEC_FILE were unset in the running kernel. No reboot, upload, flash or partition write occurred.
