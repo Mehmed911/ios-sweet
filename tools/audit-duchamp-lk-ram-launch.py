@@ -126,8 +126,9 @@ def va_to_partition_offset(address,
     return payload_offset + delta
 
 
-def decode_bl_target(instruction, pc):
-    if instruction & 0xFC000000 != 0x94000000:
+def decode_branch_target(instruction, pc, link):
+    opcode = 0x94000000 if link else 0x14000000
+    if instruction & 0xFC000000 != opcode:
         return None
     immediate = sign_extend(instruction & 0x03FFFFFF, 26) << 2
     return (pc + immediate) & U64_MASK
@@ -209,7 +210,7 @@ def direct_registration_calls(raw, payload_offset=LK_PAYLOAD_PARTITION_OFFSET,
     calls = []
     for offset in range(payload_offset, payload_offset + payload_bytes, 4):
         pc = partition_offset_to_va(offset, payload_offset, runtime_base)
-        if decode_bl_target(u32(raw, offset), pc) == register_va:
+        if decode_branch_target(u32(raw, offset), pc, link=True) == register_va:
             calls.append(offset)
     return calls
 
@@ -312,6 +313,64 @@ def exact_c_string_offsets(raw, value, payload_offset, payload_bytes):
         cursor += 1
 
 
+def verify_continue_route(raw):
+    """Check the registered callbacks and the normal-boot event in this LK."""
+    def word(va):
+        return u32(raw, va_to_partition_offset(va))
+
+    continue_slot = 0xFFFF0000507F1A38
+    continue_handler = 0xFFFF000050708848
+    download_handler = 0xFFFF000050709D68
+    event = 0xFFFF0000507D76B0
+    storage_boot = 0xFFFF000050710AE0
+
+    # continue registers x1 from an indirect slot; download registers an ADR.
+    require(decode_adrp(word(0xFFFF000050707C10), 0xFFFF000050707C10) ==
+            (1, continue_slot & ~0xFFF) and
+            word(0xFFFF000050707C24) == 0xF9451C21 and  # ldr x1, [x1, #0xa38]
+            u64(raw, va_to_partition_offset(continue_slot)) == continue_handler,
+            "LK continue callback differs")
+    require(decode_adr(word(0xFFFF000050709CC4), 0xFFFF000050709CC4) ==
+            (1, download_handler), "LK download callback differs")
+
+    # continue sends OKAY, sets STATE_RETURN, then signals the Linux boot event.
+    # The waiter uses the same event and calls the storage boot routine.
+    branches = (
+        (0xFFFF000050708858, 0xFFFF0000507073EC, True),
+        (0xFFFF00005070885C, 0xFFFF00005070743C, True),
+        (0xFFFF000050708864, 0xFFFF000050710E94, False),
+        (0xFFFF000050710EC4, 0xFFFF000050712374, False),
+        (0xFFFF000050710FC4, 0xFFFF0000507122F0, True),
+        (0xFFFF000050710FE4, storage_boot, True),
+    )
+    for source, target, link in branches:
+        require(decode_branch_target(word(source), source, link) == target,
+                f"LK continue route branch differs at {source:#x}")
+    require(decode_adr(word(0xFFFF000050710EB8), 0xFFFF000050710EB8) ==
+            (0, event) and
+            decode_adr(word(0xFFFF000050710FB8), 0xFFFF000050710FB8) ==
+            (20, event) and
+            word(0xFFFF000050710FBC) == 0xAA1403E0,  # mov x0, x20
+            "LK continue and Linux waiter do not use the pinned event")
+
+    # The target routine references its own name in its diagnostic path.
+    label = 0xFFFF0000507A8834
+    require(decode_adrp(word(0xFFFF000050710BEC), 0xFFFF000050710BEC) ==
+            (1, label & ~0xFFF) and
+            decode_add_immediate(word(0xFFFF000050710BF0)) ==
+            (1, 1, label & 0xFFF) and
+            read_c_string(raw, label)[0] == "boot_linux_from_storage",
+            "LK storage boot routine label differs")
+    return {
+        "download_handler_va": hex(download_handler),
+        "continue_handler_va": hex(continue_handler),
+        "linux_boot_event_va": hex(event),
+        "linux_storage_boot_va": hex(storage_boot),
+        "linux_storage_boot_label": "boot_linux_from_storage",
+        "interpretation": "The registered continue path resumes storage boot.",
+    }
+
+
 def inspect_lk(raw):
     require(len(raw) == LK_PARTITION_BYTES, "lk_a size differs")
     require(sha256(raw) == LK_SHA256, "lk_a SHA-256 differs")
@@ -355,6 +414,7 @@ def inspect_lk(raw):
         raw, "boot", LK_PAYLOAD_PARTITION_OFFSET, LK_PAYLOAD_BYTES)
     require(boot_strings, "LK payload no longer contains the boot string")
     require(not execution, "LK unexpectedly exposes a RAM execution command")
+    continue_route = verify_continue_route(raw)
 
     return {
         "schema": "duchamp-mt6897-lk-ram-launch-audit-v1",
@@ -394,6 +454,7 @@ def inspect_lk(raw):
                 "binds boot/run/execute/jump/go/start/chainload to a handler."
             ),
         },
+        "fastboot_continue_route": continue_route,
         "internal_linux_handoff": {
             "status": "verified-in-exact-lk-binary",
             "partition_offset": LK_INTERNAL_HANDOFF_OFFSET,

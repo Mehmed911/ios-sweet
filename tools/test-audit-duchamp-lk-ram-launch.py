@@ -39,11 +39,14 @@ class LkRamLaunchAuditTests(unittest.TestCase):
     def test_instruction_decoders_handle_forward_and_backward_values(self):
         pc = 0xFFFF000050700100
         target = 0xFFFF000050700300
-        self.assertEqual(MODULE.decode_bl_target(encode_bl(pc, target), pc),
+        self.assertEqual(MODULE.decode_branch_target(encode_bl(pc, target), pc, link=True),
                          target)
         backward = pc - 0x80
-        self.assertEqual(MODULE.decode_bl_target(encode_bl(pc, backward), pc),
+        self.assertEqual(MODULE.decode_branch_target(encode_bl(pc, backward), pc, link=True),
                          backward)
+        branch = encode_bl(pc, target) ^ 0x80000000
+        self.assertEqual(MODULE.decode_branch_target(branch, pc, link=False), target)
+        self.assertIsNone(MODULE.decode_branch_target(branch, pc, link=True))
         page_target = 0xFFFF000050712000
         register, decoded = MODULE.decode_adrp(
             encode_adrp(0, pc, page_target), pc)

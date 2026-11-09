@@ -1,3 +1,10 @@
+ACTIVE HANDOFF — Active Duchamp LK matched the offline RAM-entry audit (2026-11-09)
+
+- Read-only ADB verified Duchamp/MT6897, boot complete, slot _a and kernel 6.1.57-android14-11-gcf2c2dc91b9e-ab11782407. The active lk_a SHA-256 matched f85373d3b4cdf3c959e38bbbfe198a2857e03a5266c6f2a40c319549a5ba957a. Both CONFIG_KEXEC and CONFIG_KEXEC_FILE were unset in the running kernel. No reboot, upload, flash or partition write occurred.
+- The pinned binary exposes 35 registered Fastboot commands without a RAM execution command. Resolved the separate download and continue callbacks. The latter acknowledges, sets STATE_RETURN and signals the normal boot event. The waiter uses that same event and calls boot_linux_from_storage. The auditor now checks those control-flow edges and the storage routine label against the exact image.
+- Reviewed AOSP Fastboot/fastbootd and pinned MTKClient V6 (118a000a83ea31c4f427fe5225abfe964546e05e). MTKClient boot_to is reached after an accepted DA1 in its DA2 load path. A Duchamp RAM handoff provider for the diagnostic is still unproved. The provider gate remains closed.
+- Both audit suites passed 12 unit tests total, and three local route mutations were rejected. Rebuilt the unchanged PC/x0 diagnostic and passed the QEMU RAM record and framebuffer checks at PC 0x40200000, x0 0x48000000 and EL1. The capture Image SHA-256 matched the prior 2a7dff64...d20ea. Evidence is under work/ram-entry-20261109-v1. No phone payload was produced or executed this turn.
+
 ACTIVE HANDOFF — Duchamp SPI2 one-shot DMA diagnostic verified in QEMU (2026-11-09)
 
 - The saved SPI2 DT node has no dma-coherent or iommus property. /soc/dma-ranges declares a 64 GiB identity window and the pinned MediaTek driver requests a 36-bit DMA mask. Android's 14 observed touch frames used DMA. These inputs do not establish runtime PA-to-DMA mapping, bounce use or resource/cache ownership under XNU. A read-only ADB config check showed CONFIG_SWIOTLB=y and both kexec options disabled.

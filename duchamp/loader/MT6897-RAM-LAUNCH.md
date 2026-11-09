@@ -60,6 +60,31 @@ python3 tools/audit-duchamp-lk-ram-launch.py \
 Use `--require-provider` as a fail-closed build gate.  It exits nonzero for the
 current LK because no eligible RAM launch provider was proved.
 
+## Active phone verification
+
+On 2026-11-09 a read-only ADB check confirmed that Android had booted on
+Duchamp/MT6897, slot `_a`. The active `lk_a` SHA-256 matched the sample above.
+The running kernel configuration had both
+`CONFIG_KEXEC` and `CONFIG_KEXEC_FILE` disabled.
+
+The binary audit also followed the registered `continue` callback. It sends
+`OKAY`, sets the Fastboot return state and signals LK's Linux boot event.
+The waiter on that same event calls `boot_linux_from_storage`. `download:`
+has a separate callback. The audited path therefore resumes storage boot.
+[AOSP Fastboot protocol](https://android.googlesource.com/platform/system/core/+/refs/heads/main/fastboot/README.md)
+
+The MediaTek V6 route documented in MTKClient invokes `boot_to` after an
+accepted download agent stage one, as part of loading stage two. An
+authenticated Duchamp entry that hands control to the diagnostic with a
+verified PC, FDT and CPU state remains unproven.
+[MTKClient V6 implementation](https://github.com/bkerler/mtkclient/blob/118a000a83ea31c4f427fe5225abfe964546e05e/mtkclient/Library/DA/xmlflash/xml_lib.py)
+
+The existing entry diagnostic was rebuilt and passed the AArch64 QEMU
+record and framebuffer checks. The guest reported PC `0x40200000`,
+`x0=0x48000000` and EL1, and the test verified the SCTLR MMU and cache bits
+required by the diagnostic. No phone boot or partition modification was
+performed for this check.
+
 ## Why the other paths do not qualify
 
 | Path | What is established | Why it is not the Duchamp RAM provider |
