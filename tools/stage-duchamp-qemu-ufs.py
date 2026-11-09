@@ -17,13 +17,17 @@ def stage(root):
     paths={
         'bsd/dev/ufs_readonly.h':repo/'duchamp/drivers/ufs_readonly.h',
         'bsd/dev/duchamp_ufs_core.c':repo/'duchamp/drivers/ufs_readonly.c',
+        'bsd/dev/ufs_gpt.h':repo/'duchamp/drivers/ufs_gpt.h',
+        'bsd/dev/duchamp_ufs_gpt.c':repo/'duchamp/drivers/ufs_gpt.c',
         'bsd/dev/duchamp_qemu_ufs.c':repo/'duchamp/xnu/qemu_ufs.c',
     }
     config=root/'bsd/conf/files'
     iokit=root/'iokit/bsddev/IOKitBSDInit.cpp'
     original_config=config.read_text(); original_iokit=iokit.read_text()
     marker='DUCHAMP QUFS ROOT SELECTED'
-    additions='bsd/dev/duchamp_ufs_core.c\t\tstandard\nbsd/dev/duchamp_qemu_ufs.c\t\tstandard\n'
+    additions=('bsd/dev/duchamp_ufs_core.c\t\tstandard\n'
+               'bsd/dev/duchamp_ufs_gpt.c\t\tstandard\n'
+               'bsd/dev/duchamp_qemu_ufs.c\t\tstandard\n')
     hashes={name:hashlib.sha256(source.read_bytes()).hexdigest() for name,source in paths.items()}
     if marker in original_iokit:
         if additions not in original_config or any(not (root/name).is_file() or

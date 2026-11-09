@@ -67,7 +67,7 @@ jobs:
       - name: Fetch build script
         run: |
           shasum -a 256 -c .github/xnu-inputs-491ff8b.sha256
-          echo 'Baseline 491ff8b5695a44c0aa8caa1a55b4aa6b5408bf27 plus the SPI2 DMA diagnostic (311 verified inputs)'
+          echo 'Baseline 491ff8b5695a44c0aa8caa1a55b4aa6b5408bf27 plus the SPI2 DMA diagnostic and qufs0 GPT root (313 verified inputs)'
           git init -q dxb
           git -C dxb fetch -q --depth 1 "$DXB_REPO" "$DXB_SHA"
           git -C dxb checkout -q FETCH_HEAD
@@ -179,6 +179,9 @@ jobs:
           grep -Fq 'duchamp_qemu_spi2_touch_step(self->fTestCount)' xnu/iokit/Kernel/arm/hid/SweetHID.cpp
           cmp ../duchamp/drivers/ufs_readonly.c xnu/bsd/dev/duchamp_ufs_core.c
           cmp ../duchamp/drivers/ufs_readonly.h xnu/bsd/dev/ufs_readonly.h
+          cmp ../duchamp/drivers/ufs_gpt.c xnu/bsd/dev/duchamp_ufs_gpt.c
+          cmp ../duchamp/drivers/ufs_gpt.h xnu/bsd/dev/ufs_gpt.h
+          cmp ../duchamp/xnu/qemu_ufs.c xnu/bsd/dev/duchamp_qemu_ufs.c
           grep -Fq 'DUCHAMP QEMU backend selftest failed' xnu/iokit/bsddev/IOKitBSDInit.cpp
           grep -Fq 'QEMU XNU BACKENDS SELFTEST PASS' xnu/bsd/dev/duchamp_qemu_backends.c
           grep -Fq 'QEMU XNU UFS LEASE PROVIDER DEFAULT CLOSED' xnu/bsd/dev/duchamp_qemu_backends.c
