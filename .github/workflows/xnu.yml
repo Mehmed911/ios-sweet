@@ -67,7 +67,7 @@ jobs:
       - name: Fetch build script
         run: |
           shasum -a 256 -c .github/xnu-inputs-491ff8b.sha256
-          echo 'Kernel source snapshot 491ff8b5695a44c0aa8caa1a55b4aa6b5408bf27 (308 verified inputs)'
+          echo 'Baseline 491ff8b5695a44c0aa8caa1a55b4aa6b5408bf27 plus the SPI2 DMA diagnostic (311 verified inputs)'
           git init -q dxb
           git -C dxb fetch -q --depth 1 "$DXB_REPO" "$DXB_SHA"
           git -C dxb checkout -q FETCH_HEAD
@@ -150,6 +150,8 @@ jobs:
           cmp ../duchamp/drivers/duchamp_ft3683g.c xnu/bsd/dev/duchamp_ft3683g.c
           cmp ../duchamp/drivers/duchamp_ft3683g.h xnu/bsd/dev/duchamp_ft3683g.h
           cmp ../duchamp/xnu/qemu_spi2_touch.c xnu/bsd/dev/qemu_spi2_touch.c
+          cmp ../duchamp/xnu/qemu_spi2_dma_probe.c xnu/bsd/dev/qemu_spi2_dma_probe.c
+          cmp ../duchamp/drivers/mt6897_spi2_probe.c xnu/bsd/dev/mt6897_spi2_probe.c
           grep -Fq 'duchamp_qemu_spi2_touch_step(self->fTestCount)' xnu/iokit/Kernel/arm/hid/SweetHID.cpp
           cmp ../duchamp/drivers/ufs_readonly.c xnu/bsd/dev/duchamp_ufs_core.c
           cmp ../duchamp/drivers/ufs_readonly.h xnu/bsd/dev/ufs_readonly.h
@@ -224,7 +226,7 @@ jobs:
           mkdir -p out
           cp -R dxb/fakeroot/System/Library/Kernels/. out/ 2>/dev/null || true
           cp .github/xnu-inputs-491ff8b.sha256 out/SOURCE-INPUTS.txt
-          printf '%s\n' '491ff8b5695a44c0aa8caa1a55b4aa6b5408bf27' > out/SOURCE-COMMIT.txt
+          printf '%s\n' "$GITHUB_SHA" > out/SOURCE-COMMIT.txt
           printf '%s\n' 'be0517eacb845f541690fa06811dbfd9139f742bb1e9a95d4251035357205472' > out/IIG-ARCHIVE-SHA256.txt
           ls -la out
           (cd out && shasum -a 256 kernel.* > SHA256SUMS) || true

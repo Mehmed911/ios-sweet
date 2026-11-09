@@ -7,6 +7,9 @@ from pathlib import Path
 SOURCES = (
     "duchamp/drivers/duchamp_ft3683g.c",
     "duchamp/drivers/duchamp_ft3683g.h",
+    "duchamp/drivers/mt6897_spi2_probe.c",
+    "duchamp/drivers/mt6897_spi2_probe.h",
+    "duchamp/xnu/qemu_spi2_dma_probe.c",
     "duchamp/xnu/qemu_spi2_touch.c",
 )
 HID_ANCHOR = """void
@@ -40,6 +43,8 @@ def stage(root):
     hid_text = hid.read_text()
     anchor = "bsd/dev/sweet_touch.c\t\t\tstandard\n"
     entries = ("bsd/dev/duchamp_ft3683g.c\t\tstandard\n"
+               "bsd/dev/mt6897_spi2_probe.c\t\tstandard\n"
+               "bsd/dev/qemu_spi2_dma_probe.c\t\tstandard\n"
                "bsd/dev/qemu_spi2_touch.c\t\tstandard\n")
     if HID_HOOK in hid_text:
         if anchor + entries not in config_text or any(

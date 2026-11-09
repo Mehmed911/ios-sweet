@@ -7,6 +7,7 @@
 
 extern void sweet_hid_touch(int finger, int down, int x, int y);
 int duchamp_qemu_spi2_touch_step(unsigned step);
+extern int duchamp_qemu_spi2_dma_probe(const uint8_t *wire, struct dft_report *out);
 
 enum {
 	SPI2_ID_BYTES = 10,
@@ -67,7 +68,7 @@ duchamp_qemu_spi2_touch_step(unsigned step)
 	static const char compatible[] = "qemu,duchamp-spi2-touch-test-v1";
 	struct spi2_fixture fixture = { 0 };
 	const void *value, *reports;
-	unsigned enabled = 0, size, reports_size;
+	unsigned enabled = 0, dma_probe = 0, size, reports_size;
 	DTEntry node;
 	uint64_t midr;
 
@@ -83,6 +84,11 @@ duchamp_qemu_spi2_touch_step(unsigned step)
 	    !reports_size || reports_size % DFT_WIRE_BYTES ||
 	    reports_size > SPI2_MAX_REPORTS * DFT_WIRE_BYTES) {
 		printf("DUCHAMP SPI2 QEMU FIXTURE REJECTED\n");
+		return -1;
+	}
+	if (PE_parse_boot_argn("sweet-qemu-spi2-dma-probe", &dma_probe,
+	    sizeof(dma_probe)) && (dma_probe != 1 || reports_size != DFT_WIRE_BYTES)) {
+		printf("DUCHAMP SPI2 QEMU ONE-SHOT FIXTURE REJECTED\n");
 		return -1;
 	}
 	if (step == 0) {
@@ -112,7 +118,8 @@ duchamp_qemu_spi2_touch_step(unsigned step)
 	}
 	fixture.report = (const uint8_t *)reports + (step - 1) * DFT_WIRE_BYTES;
 	struct dft_report report;
-	const int status = dft_read_report(fixture_exchange, &fixture, &report);
+	const int status = dma_probe ? duchamp_qemu_spi2_dma_probe(fixture.report, &report) :
+	    dft_read_report(fixture_exchange, &fixture, &report);
 	if (status == DFT_BAD_CRC) {
 		printf("DUCHAMP SPI2 QEMU REPORT CRC REJECTED\n");
 		return SPI2_PERIOD_MS;
