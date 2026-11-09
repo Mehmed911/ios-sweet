@@ -101,6 +101,30 @@ jobs:
           xcodebuild -version
           xcrun --find iig
 
+      - name: Install and verify the pinned 22G74 KDK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=29866842eef039812888daea4176ce493be153b0d6d1b88f90753d69ea51b7d4
+          dmg="$RUNNER_TEMP/KDK-22G74.dmg"
+          valid() {
+            [[ -f "$dmg" && "$(stat -f %z "$dmg")" = 658949979 ]] &&
+              printf '%s  %s\n' "$sha" "$dmg" | shasum -a 256 -c -
+          }
+          if ! curl --fail --silent --show-error --location --retry 2 --retry-all-errors --connect-timeout 25 --max-time 140 \
+            --header "Authorization: Bearer $GH_TOKEN" --header "Accept: application/octet-stream" \
+            --output "$dmg" "https://api.github.com/repos/dortania/KdkSupportPkg/releases/assets/135995669?ci=$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" || ! valid; then
+            curl --fail --silent --show-error --location --retry 2 --retry-all-errors --connect-timeout 25 --max-time 140 \
+              --output "$dmg" "https://github.com/dortania/KdkSupportPkg/releases/download/22G74/Kernel_Debug_Kit_13.5_build_22G74.dmg?ci=$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+            valid
+          fi
+          mount="$RUNNER_TEMP/kdk-22g74-mount"
+          mkdir -p "$mount"
+          hdiutil attach -nobrowse -readonly -mountpoint "$mount" "$dmg"
+          sudo installer -pkg "$mount/KernelDebugKit.pkg" -target /
+          hdiutil detach "$mount"
+          test -d /Library/Developer/KDKs/KDK_13.5_22G74.kdk
+
       - name: Stage pinned IIG source outputs
         env:
           GH_TOKEN: ${{ github.token }}
