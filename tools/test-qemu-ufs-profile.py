@@ -57,6 +57,40 @@ class Tests(unittest.TestCase):
     def test_duplicate_root(self): self.reject(args='rd=qufs0 rd=md0 sweet-qemu-ufs=1')
     def test_duplicate_gate(self): self.reject(args='rd=qufs0 sweet-qemu-ufs=1 sweet-qemu-ufs=0')
     def test_missing_gate(self): self.reject(args='rd=qufs0')
+
+    def gpt_tree(self):
+        raw = profile.build_tree(adt.serialize(self.base), gpt=(512, profile.GPT_ROOT_GUID))
+        return adt.parse(raw)[0]
+
+    def test_gpt_profile_requires_whole_disk_and_explicit_readonly(self):
+        tree = self.gpt_tree()
+        self.reject(tree)
+        raw = bytearray(1024*1024)
+        raw[512:520] = b'EFI PART'
+        self.image.write_bytes(raw)
+        _,meta = profile.runner_options(self.payload(tree),self.image,'cortex-a76','duchamp')
+        self.assertEqual(meta['gpt'],{'sector_bytes':512,'root_guid':str(profile.GPT_ROOT_GUID)})
+        self.reject(tree,args='rd=qufs0 sweet-qemu-ufs=1')
+        self.reject(tree,args='rd=qufs0 sweet-qemu-ufs=1 rootrw=0 pmd0=0x40000000.0x1000')
+
+    def test_gpt_profile_rejects_missing_invalid_or_duplicate_properties(self):
+        def reject_gpt(tree):
+            with self.assertRaisesRegex(ValueError,'GPT sector size and root GUID'):
+                profile.validate_tree(tree)
+        for key,value in (('gpt-sector-size',b''),('gpt-sector-size',struct.pack('<I',1024)),
+                          ('gpt-root-guid',bytes(16)),('gpt-root-guid',bytes(15))):
+            tree = self.gpt_tree()
+            self.setprop(tree,'duchamp-qemu-ufs',key,value)
+            with self.subTest(key=key,value=value):
+                reject_gpt(tree)
+        tree = self.gpt_tree()
+        target = profile.child(tree,'duchamp-qemu-ufs')
+        target.props = [p for p in target.props if p[0] != 'gpt-root-guid']
+        reject_gpt(tree)
+        tree = self.gpt_tree()
+        target = profile.child(tree,'duchamp-qemu-ufs')
+        target.props.append(('gpt-root-guid',0,profile.GPT_ROOT_GUID.bytes_le))
+        reject_gpt(tree)
     def test_other_cpu(self): self.reject(cpu='cortex-a715')
     def test_other_framebuffer(self): self.reject(fb='sweet')
 

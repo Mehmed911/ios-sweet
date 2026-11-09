@@ -19,7 +19,7 @@
 #include <vm/vm_kern.h>
 #include <pexpert/pexpert.h>
 #include <pexpert/device_tree.h>
-#include "ufs_readonly.h"
+#include "ufs_gpt.h"
 
 extern vm_offset_t ml_io_map(vm_offset_t, vm_size_t);
 extern ppnum_t pmap_find_phys(pmap_t, addr64_t);
@@ -31,6 +31,7 @@ int duchamp_qemu_ufs_rootdev(dev_t *);
 #define QU_PCI_ID 0x00131b36u
 static struct {
     struct dufs_host host;
+    struct dufs_partition partition;
     vm_offset_t regs, dma;
     uint64_t dma_pa, bytes, requests;
     uint32_t physical_bytes, sector_bytes;
@@ -38,6 +39,10 @@ static struct {
     int bmajor,cmajor,attempted,ready;
     uint8_t bounce[DUFS_MAX_TRANSFER];
 } qu;
+struct qu_gpt_profile {
+    uint32_t sector;
+    uint8_t guid[DUFS_GPT_GUID_BYTES];
+};
 static LCK_GRP_DECLARE(qu_group,"duchamp_qemu_ufs");
 static LCK_MTX_DECLARE(qu_lock,&qu_group);
 
@@ -80,7 +85,7 @@ static uint64_t qu_milliseconds(void *ctx) {
 static int qu_error(int result) {
     return result==DUFS_TIMEOUT?ETIMEDOUT:result==DUFS_ARGUMENT?EINVAL:EIO;
 }
-static int qu_profile(void) {
+static int qu_profile(struct qu_gpt_profile *gpt) {
     uint32_t enabled=0;
     if(!PE_parse_boot_argn("sweet-qemu-ufs",&enabled,sizeof(enabled)) || enabled!=1) return ENXIO;
     uint64_t midr;
@@ -106,6 +111,19 @@ static int qu_profile(void) {
     if(SecureDTGetProperty(node,"ecam",&value,&size)!=kSuccess || size!=sizeof(ecam)) return ENXIO;
     memcpy(ecam,value,sizeof(ecam));
     if(reg[0]!=QU_BAR || reg[1]!=0x1000 || ecam[0]!=QU_ECAM || ecam[1]!=0x1000000) return ENXIO;
+    const int has_sector=SecureDTGetProperty(node,"gpt-sector-size",&value,&size)==kSuccess;
+    if(has_sector) {
+        if(size!=sizeof(gpt->sector)) return EINVAL;
+        memcpy(&gpt->sector,value,sizeof(gpt->sector));
+        if(gpt->sector!=512 && gpt->sector!=4096) return EINVAL;
+    }
+    const int has_guid=SecureDTGetProperty(node,"gpt-root-guid",&value,&size)==kSuccess;
+    if(has_sector!=has_guid) return EINVAL;
+    if(has_guid) {
+        static const uint8_t zero_guid[DUFS_GPT_GUID_BYTES];
+        if(size!=sizeof(gpt->guid) || !memcmp(value,zero_guid,size)) return EINVAL;
+        memcpy(gpt->guid,value,sizeof(gpt->guid));
+    }
     return 0;
 }
 static int qu_open(dev_t device,int flags,__unused int type,__unused struct proc *p) {
@@ -137,7 +155,7 @@ static void qu_strategy(buf_t bp) {
         uint32_t skip=(uint32_t)(position%qu.physical_bytes);
         uint32_t take=MIN(count-done,DUFS_MAX_TRANSFER-skip);
         uint32_t blocks=(skip+take+qu.physical_bytes-1)/qu.physical_bytes;
-        int result=dufs_read(&qu.host,position/qu.physical_bytes,blocks,
+        int result=dufs_partition_read(&qu.host,&qu.partition,position/qu.physical_bytes,blocks,
                              qu.bounce,(size_t)blocks*qu.physical_bytes);
         if(result) { error=qu_error(result); break; }
         memcpy(address+done,qu.bounce+skip,take);
@@ -198,7 +216,7 @@ static int qu_read(dev_t dev,struct uio *uio,__unused int flags) {
         take=(uint32_t)MIN((uint64_t)take,qu.bytes-position);
         uint32_t blocks=(skip+take+qu.physical_bytes-1)/qu.physical_bytes;
         lck_mtx_lock(&qu_lock);
-        int result=dufs_read(&qu.host,position/qu.physical_bytes,blocks,
+        int result=dufs_partition_read(&qu.host,&qu.partition,position/qu.physical_bytes,blocks,
                              (void *)scratch,(size_t)blocks*qu.physical_bytes);
         lck_mtx_unlock(&qu_lock);
         if(result) { error=qu_error(result); break; }
@@ -226,7 +244,8 @@ int duchamp_qemu_ufs_rootdev(dev_t *device) {
     if(qu.ready) { *device=qu.device; return 0; }
     if(qu.attempted) return ENXIO;
     qu.attempted=1;
-    int error=qu_profile();
+    struct qu_gpt_profile gpt={0};
+    int error=qu_profile(&gpt);
     if(error) { printf("DUCHAMP QUFS PROFILE REJECTED\n"); return error; }
     printf("DUCHAMP QUFS PROFILE VERIFIED\n");
     vm_offset_t config=ml_io_map(QU_ECAM+(4u<<15),0x1000);
@@ -265,7 +284,23 @@ int duchamp_qemu_ufs_rootdev(dev_t *device) {
     if(result) { printf("DUCHAMP QUFS ATTACH FAILED result=%d timeout_cause=%u\n",
                        result,dufs_timeout_cause(&qu.host)); return qu_error(result); }
     if(qu.physical_bytes!=4096 || blocks>UINT64_MAX/qu.physical_bytes) return ENXIO;
-    qu.bytes=blocks*qu.physical_bytes; qu.sector_bytes=DEV_BSIZE;
+    qu.partition=(struct dufs_partition){0,blocks};
+    if(gpt.sector) {
+        vm_offset_t scratch=0;
+        const vm_size_t scratch_size=round_page(sizeof(struct dufs_gpt_scratch));
+        if(kmem_alloc(kernel_map,&scratch,scratch_size,KMA_DATA,VM_KERN_MEMORY_IOKIT)!=KERN_SUCCESS)
+            return ENOMEM;
+        result=dufs_gpt_find_hfs(&qu.host,gpt.sector,gpt.guid,(void *)scratch,&qu.partition);
+        kmem_free(kernel_map,scratch,scratch_size);
+        if(result) {
+            printf("DUCHAMP QUFS GPT REJECTED result=%d\n",result);
+            return qu_error(result);
+        }
+        printf("DUCHAMP QUFS GPT SELECTED start=%llu blocks=%llu sector=%u\n",
+            (unsigned long long)qu.partition.first_block,
+            (unsigned long long)qu.partition.blocks,gpt.sector);
+    }
+    qu.bytes=qu.partition.blocks*qu.physical_bytes; qu.sector_bytes=DEV_BSIZE;
     qu.bmajor=bdevsw_add(-1,&qu_bdevsw);
     if(qu.bmajor<0) return ENXIO;
     qu.cmajor=cdevsw_add_with_bdev(-1,&qu_cdevsw,qu.bmajor);
@@ -275,7 +310,7 @@ int duchamp_qemu_ufs_rootdev(dev_t *device) {
     devfs_make_node(makedev(qu.cmajor,0),DEVFS_CHAR,UID_ROOT,GID_OPERATOR,0440,"rqufs0");
     qu.ready=1;
     printf("DUCHAMP QUFS READY blocks=%llu blocksize=%u dma=0x%llx readonly=1\n",
-           (unsigned long long)blocks,qu.physical_bytes,(unsigned long long)qu.dma_pa);
+           (unsigned long long)qu.partition.blocks,qu.physical_bytes,(unsigned long long)qu.dma_pa);
     *device=qu.device;
     return 0;
 }

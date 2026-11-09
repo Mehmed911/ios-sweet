@@ -3,6 +3,7 @@ import hashlib
 from pathlib import Path
 import stat
 import struct
+import uuid
 import adt
 from mkpayload import PAGE, SEG_TABLE
 
@@ -10,6 +11,7 @@ FIRMWARE=b'duchamp-qemu-ufs-fixture-v1\0'
 COMPATIBLE=b'qemu,ufs-test-only\0'
 BAR=(0x10000000,0x1000)
 ECAM=(0x3f000000,0x1000000)
+GPT_ROOT_GUID=uuid.UUID('a1f31536-d200-4eb6-b196-530f8768ea63')
 
 
 def child(node,name):
@@ -17,6 +19,17 @@ def child(node,name):
     if len(matches)!=1:
         raise ValueError(f'expected exactly one ADT {name}')
     return matches[0]
+
+
+def gpt_profile(node):
+    sectors = [value for name, _, value in node.props if name == 'gpt-sector-size']
+    guids = [value for name, _, value in node.props if name == 'gpt-root-guid']
+    if not sectors and not guids:
+        return None
+    if (len(sectors) != 1 or sectors[0] not in (struct.pack('<I', 512), struct.pack('<I', 4096))
+            or len(guids) != 1 or len(guids[0]) != 16 or not any(guids[0])):
+        raise ValueError('virtual UFS requires exactly one valid GPT sector size and root GUID')
+    return struct.unpack('<I', sectors[0])[0], uuid.UUID(bytes_le=guids[0])
 
 
 def validate_tree(tree, *, allow_data_ramdisk=False):
@@ -39,9 +52,10 @@ def validate_tree(tree, *, allow_data_ramdisk=False):
     d,ds,r,rs=struct.unpack('<4Q',registers)
     if (d+0x01000000,r+0x01000000)!=(0x08000000,0x080a0000) or ds<0x10000 or rs<0x20000 or gic.prop('virtual-timer-intid')!=struct.pack('<I',27):
         raise ValueError('GIC/timer profile does not match QEMU virt')
+    return gpt_profile(node)
 
 
-def build_tree(raw):
+def build_tree(raw, *, gpt=None):
     tree,end=adt.parse(raw)
     if end!=len(raw):
         raise ValueError('ADT has trailing data')
@@ -53,6 +67,10 @@ def build_tree(raw):
     chosen.props=[(n,f,FIRMWARE if n=='firmware-version' else v) for n,f,v in chosen.props]
     node=adt.Node(); node.props=[('name',0,b'duchamp-qemu-ufs\0'),
         ('compatible',0,COMPATIBLE),('reg',0,struct.pack('<2Q',*BAR)),('ecam',0,struct.pack('<2Q',*ECAM))]
+    if gpt:
+        sector, guid = gpt
+        node.props.extend([('gpt-sector-size',0,struct.pack('<I',sector)),
+                           ('gpt-root-guid',0,guid.bytes_le)])
     tree.children.append(node)
     validate_tree(tree)
     return adt.serialize(tree)
@@ -102,7 +120,7 @@ def runner_options(payload,image,cpu,framebuffer, *, var_ramdisk=False):
     tree,end=adt.parse(payload[offset:offset+size])
     if end!=size:
         raise ValueError('invalid payload ADT length')
-    validate_tree(tree, allow_data_ramdisk=var_ramdisk)
+    gpt=validate_tree(tree, allow_data_ramdisk=var_ramdisk)
     args=payload[0x48:0x48+608].split(b'\0')[0].decode('ascii').split()
     if args.count('rd=qufs0')!=1 or args.count('sweet-qemu-ufs=1')!=1:
         raise ValueError('missing explicit virtual UFS boot arguments')
@@ -113,6 +131,8 @@ def runner_options(payload,image,cpu,framebuffer, *, var_ramdisk=False):
     if var_ramdisk and (args.count('rootrw=0') != 1
             or any(x.startswith(('pmd', 'vmd')) for x in args)):
         raise ValueError('data RAMDisk requires explicit read-only root and no alternate memory devices')
+    if gpt and (args.count('rootrw=0') != 1 or any(x.startswith(('pmd','vmd')) for x in args)):
+        raise ValueError('GPT fixture requires explicit read-only root and no alternate memory devices')
     var_layout = data_ramdisk(payload, tree, offset, size) if var_ramdisk else None
     path=Path(image).resolve()
     if not stat.S_ISREG(path.stat().st_mode) or ',' in str(path):
@@ -120,10 +140,16 @@ def runner_options(payload,image,cpu,framebuffer, *, var_ramdisk=False):
     before=path.stat()
     digest=hashlib.sha256()
     with path.open('rb') as source:
-        source.seek(1024)
-        signature=source.read(2)
-        if before.st_size%4096 or before.st_size<1024*1024 or signature not in (b'H+',b'HX'):
-            raise ValueError('UFS fixture must be an aligned HFS+ file')
+        if before.st_size%4096 or before.st_size<1024*1024:
+            raise ValueError('UFS fixture must be aligned and at least 1 MiB')
+        if gpt:
+            source.seek(gpt[0])
+            if source.read(8)!=b'EFI PART':
+                raise ValueError('GPT fixture must contain a whole disk with a primary GPT header')
+        else:
+            source.seek(1024)
+            if source.read(2) not in (b'H+',b'HX'):
+                raise ValueError('UFS fixture must be an aligned HFS+ file')
         source.seek(0)
         for chunk in iter(lambda: source.read(4*1024*1024),b''):
             digest.update(chunk)
@@ -136,6 +162,8 @@ def runner_options(payload,image,cpu,framebuffer, *, var_ramdisk=False):
               'no_ramdisk':not var_ramdisk,'scope':'QEMU-only virtual UFS; no physical device'}
     if var_layout:
         metadata['data_ramdisk'] = var_layout
+    if gpt:
+        metadata['gpt']={'sector_bytes':gpt[0],'root_guid':str(gpt[1])}
     options=['-drive',f'file={path},format=raw,if=none,id=duchamp_lu0,readonly=on',
              '-device','ufs,id=duchamp_ufs,addr=04.0,mcq=off',
              '-device','ufs-lu,drive=duchamp_lu0,bus=duchamp_ufs,lun=0']

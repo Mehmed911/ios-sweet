@@ -46,6 +46,8 @@ def main():
     if digest(kernel)!=args.kernel_sha256:
         ap.error('kernel hash differs from the explicitly selected CI artifact')
     manifest=json.loads((fixture/'fixture.json').read_text())
+    gpt=manifest.get('gpt')
+    disk=fixture/('root.gpt.raw' if gpt else 'root.hfs')
     if manifest['init_source_sha256']!=digest(repo/'tools'/init_name):
         ap.error('fixture init was built from a different diagnostic source')
     for name,expected in manifest['sha256'].items():
@@ -53,6 +55,8 @@ def main():
     symbols=subprocess.check_output(['llvm-nm','--defined-only',str(kernel)],text=True)
     names={line.split()[-1] for line in symbols.splitlines() if line.split()}
     required={'_duchamp_qemu_ufs_rootdev','_dufs_bind','_dufs_read','_dufs_start','_dufs_timeout_cause'}
+    if gpt:
+        required|={'_dufs_gpt_find_hfs','_dufs_partition_read'}
     if args.backends:
         required|={'_duchamp_qemu_backends_prepare','_mv7_map','_mv7_seal','_mb_iommu_install',
                    '_mb_pmic_voltage','_mb_pmif_transfer','_mb_firmware_ufs','_mp_prepare',
@@ -83,7 +87,7 @@ def main():
     physical_locations={name:address-virt_base+phys_base for name,address in physical_symbols.items()}
     run=out/'run'
     command=['python3',str(repo/'tools/qemu-sweet.py'),str(payload),str(run),
-        '--kernel',str(kernel),'--framebuffer','duchamp','--ufs-image',str(fixture/'root.hfs'),
+        '--kernel',str(kernel),'--framebuffer','duchamp','--ufs-image',str(disk),
         '--secs',str(args.seconds),'--snapshot-interval','2','--fail-on-panic',
         '--stop-on-text','SWEET EARLY PANIC:','--stop-on-text','DUCHAMP UFS PID1 FAIL',
         '--stop-on-text','DUCHAMP UFS PID1 heartbeat']
@@ -131,11 +135,21 @@ def main():
         'no_observed_panic':result.get('status')=='no_panic_observed' and not any(
             x in screen for x in ('panic(cpu ','SWEET EARLY PANIC:','DUCHAMP UFS PID1 FAIL','DUCHAMP QUFS ATTACH FAILED')),
         'success_stop':result.get('stop_marker')=='DUCHAMP UFS PID1 heartbeat',
-        'host_image_unchanged':digest(fixture/'root.hfs')==manifest['sha256']['root.hfs']==metadata['sha256'],
+        'host_image_unchanged':digest(disk)==manifest['sha256'][disk.name]==metadata['sha256'],
         'readonly_no_ramdisk':metadata['readonly'] and metadata['no_ramdisk'],
         'kernel_pin_preserved':digest(kernel)==args.kernel_sha256,
         'compiled_adapter_symbols_present':required<=names,
         'virtual_timer_irq_witness':witness_process.returncode==0 and timer_witness.get('passed') is True})
+    if gpt:
+        with disk.open('rb') as whole:
+            whole.seek(1024)
+            whole_disk_signature=whole.read(2)
+            whole.seek(gpt['root_offset'])
+            slice_digest=hashlib.sha256(whole.read(gpt['root_bytes'])).hexdigest()
+        checks['whole_gpt_disk_attached']=(
+            metadata.get('gpt')=={k:gpt[k] for k in ('sector_bytes','root_guid')} and
+            whole_disk_signature not in (b'H+',b'HX') and gpt['root_offset']>0 and
+            slice_digest==manifest['sha256']['root.hfs'])
     checks['test_sources_unchanged']=source_hashes=={str(p.relative_to(repo)):digest(p) for p in test_paths}
     physical_addresses={}
     if args.backends:
@@ -146,7 +160,8 @@ def main():
         root=physical_addresses.get('_root_pa',0)
         checks['physical_root_alignment_and_range']=bool(root and root%65536==0 and root+65536<=1<<35)
     report={'passed':all(checks.values()),'checks':checks,'kernel_sha256':args.kernel_sha256,
-        'early_log_visibility':{text:text in screen for text in ('DUCHAMP QUFS READY','DUCHAMP QUFS ROOT SELECTED')},
+        'early_log_visibility':{text:text in screen for text in (
+            'DUCHAMP QUFS READY','DUCHAMP QUFS ROOT SELECTED','DUCHAMP QUFS GPT SELECTED')},
         'test_source_hashes':source_hashes,
         'ci_run':args.ci_run,'ci_head':args.ci_head,'fixture':manifest,
         'payload_sha256':digest(payload),'source_root_unchanged':checks['host_image_unchanged'],
