@@ -13,9 +13,12 @@ from pathlib import Path
 import shutil
 import socket
 import stat
+import struct
 import subprocess
 import tempfile
 import time
+import uuid
+import zlib
 
 U32, U64, PTR, SIZE = C.c_uint32, C.c_uint64, C.c_void_p, C.c_size_t
 RD = C.CFUNCTYPE(U32, PTR, U32)
@@ -35,6 +38,106 @@ class Config(C.Structure):
                 ('command', U64), ('data', U64), ('timeout', U32),
                 ('ready', C.c_uint8), ('lun', C.c_uint8),
                 ('descriptor_bits', C.c_uint8), ('data_bits', C.c_uint8), ('poll_limit', U32)]
+
+
+class Partition(C.Structure):
+    _fields_ = [('first_block', U64), ('blocks', U64)]
+
+
+class GptScratch(C.Structure):
+    _fields_ = [('block', C.c_uint8 * 4096), ('primary', C.c_uint8 * 16384),
+                ('backup', C.c_uint8 * 16384)]
+
+
+HFS_TYPE = uuid.UUID('48465300-0000-11aa-aa11-00306543ecac').bytes_le
+ROOT_GUID = uuid.UUID('a1f31536-d200-4eb6-b196-530f8768ea63').bytes_le
+NEIGHBOR_GUID = uuid.UUID('6d726bf3-22e1-4684-8312-76a36453d8d5').bytes_le
+
+
+def gpt_fixture(original, sector, fault=None, root=None):
+    image = bytearray(original)
+    root_offset = 1024 * 1024
+    root_bytes = len(root) if root else 2 * 1024 * 1024
+    if root:
+        image.extend(bytes(root_bytes))
+        image[root_offset:root_offset + root_bytes] = root
+    image[:512] = bytes(512)
+    last_lba = len(image) // sector - 1
+    image[450] = 0xee
+    struct.pack_into('<II', image, 454, 1, last_lba)
+    image[510:512] = b'\x55\xaa'
+    if fault == 'hybrid_mbr':
+        image[466] = 0x83
+    table_bytes = 128 * 128
+    backup_lba = last_lba - table_bytes // sector
+    first_usable = 2 + table_bytes // sector
+    last_usable = backup_lba - 1
+    root_first = root_offset // sector
+    root_last = (root_offset + root_bytes) // sector - 1
+    if not root:
+        image[root_offset + 1024:root_offset + 1028] = (
+            b'H+\x00\x04' if fault != 'bad_hfs_header' else b'\x00' * 4)
+    table = bytearray(table_bytes)
+    struct.pack_into('<16s16sQQ', table, 0,
+                     NEIGHBOR_GUID if fault == 'wrong_type' else HFS_TYPE, ROOT_GUID,
+                     root_first + (fault == 'unaligned'), root_last)
+    struct.pack_into('<16s16sQQ', table, 128, HFS_TYPE,
+                     ROOT_GUID if fault == 'duplicate' else NEIGHBOR_GUID,
+                     root_last if fault == 'overlap' else root_last + 1,
+                     root_last + (1024 * 1024) // sector)
+    table[56:70] = 'iosroot'.encode('utf-16-le')
+    table[184:198] = 'iosroot'.encode('utf-16-le')
+    for own, alternate, entries in ((1, last_lba, 2), (last_lba, 1, backup_lba)):
+        header = bytearray(sector)
+        data = table[:]
+        if own == last_lba and fault == 'conflict':
+            data[56] ^= 1
+        table_lba = first_usable if own == 1 and fault == 'metadata_overlap' else entries
+        struct.pack_into('<8sIIIIQQQQ16sQIII', header, 0, b'EFI PART', 0x10000,
+                         92, 0, 0, own, alternate, first_usable, last_usable,
+                         NEIGHBOR_GUID, table_lba, 128, 128, zlib.crc32(data))
+        struct.pack_into('<I', header, 16, zlib.crc32(header[:92]))
+        if own == 1 and fault == 'header_crc':
+            header[16] ^= 1
+        if own == last_lba and fault == 'table_crc':
+            data[56] ^= 1
+        image[own * sector:(own + 1) * sector] = header
+        image[entries * sector:entries * sector + table_bytes] = data
+    return bytes(image)
+
+
+def gpt_checks(lib, host, original, sector, fault, expected_blocks, operations):
+    scratch = GptScratch()
+    partition = Partition(0x1111, 0x2222)
+    guid = C.create_string_buffer(ROOT_GUID)
+    result = lib.dufs_gpt_find_hfs(host, sector, guid, C.byref(scratch), C.byref(partition))
+    if fault:
+        return {'gpt_' + fault + '_rejected': result == -8,
+                'gpt_failed_selection_untouched': (partition.first_block, partition.blocks) ==
+                (0x1111, 0x2222)}
+
+    first, blocks = 256, expected_blocks
+    checks = {'gpt_partition_exact': result == 0 and
+              (partition.first_block, partition.blocks) == (first, blocks)}
+    storage = C.create_string_buffer(8192)
+    for relative in (0, blocks - 1):
+        offset = (first + relative) * 4096
+        rc = lib.dufs_partition_read(host, C.byref(partition), relative, 1, storage, 4096)
+        checks[f'gpt_read_{relative}'] = rc == 0 and storage.raw[:4096] == original[offset:offset + 4096]
+
+    before, saved = len(operations), storage.raw
+    rc = lib.dufs_partition_read(host, C.byref(partition), blocks - 1, 2, storage, 8192)
+    checks['gpt_reject_read_past_end_no_io'] = rc == -1 and len(operations) == before and storage.raw == saved
+    rc = lib.dufs_partition_read(host, C.byref(partition), 0xffffffffffffffff, 1, storage, 4096)
+    checks['gpt_reject_read_overflow_no_io'] = rc == -1 and len(operations) == before
+
+    missing = C.create_string_buffer(bytes(range(16)))
+    rc = lib.dufs_gpt_find_hfs(host, sector, missing, C.byref(scratch), C.byref(partition))
+    checks['gpt_reject_unknown_guid'] = rc == -9 and (partition.first_block, partition.blocks) == (first, blocks)
+    rc = lib.dufs_gpt_find_hfs(host, 4096 if sector == 512 else 512, guid,
+                              C.byref(scratch), C.byref(partition))
+    checks['gpt_reject_wrong_sector_size'] = rc == -8
+    return checks
 
 
 class Surface(C.Structure):
@@ -152,13 +255,16 @@ def configure_library(path):
         getattr(lib, name).argtypes = [PTR]
     lib.dufs_capacity.argtypes = [PTR, C.POINTER(U64), C.POINTER(U32)]
     lib.dufs_read.argtypes = [PTR, U64, U32, PTR, SIZE]
+    lib.dufs_gpt_find_hfs.argtypes = [PTR, U32, PTR, C.POINTER(GptScratch), C.POINTER(Partition)]
+    lib.dufs_partition_read.argtypes = [PTR, C.POINTER(Partition), U64, U32, PTR, SIZE]
     lib.dfb_validate.argtypes = [C.POINTER(Surface)]
     lib.dfb_fill.argtypes = [C.POINTER(Surface), Rect, U32]
     lib.dfb_blit.argtypes = [C.POINTER(Surface), U32, U32, C.POINTER(Surface), Rect]
     return lib
 
 
-def ufs_checks(lib, q, base, original, fault, data_base=None, descriptor_bits=64, data_bits=64):
+def ufs_checks(lib, q, base, original, fault, data_base=None, descriptor_bits=64, data_bits=64,
+               gpt=None):
     errors, checks, operations, cdbs = [], {}, [], []
     inject, timeout_arm = [None], [False]
 
@@ -251,6 +357,8 @@ def ufs_checks(lib, q, base, original, fault, data_base=None, descriptor_bits=64
                                ('over_max_transfer', 0, 65, 65*4096)]:
         before = len(operations)
         checks[name+'_no_io'] = lib.dufs_read(host, lba, blocks, target, n) == -1 and len(operations) == before
+    if gpt:
+        checks.update(gpt_checks(lib, host, original, *gpt, operations))
     # Software-injected faults are separate from successful emulation checks.
     # Tag fault alters a returned copy; timeout masks completion only AFTER
     # the doorbell write, so this exercises the bounded wait, not the busy gate.
@@ -318,11 +426,12 @@ def main():
     ap.add_argument('--cc', default='clang')
     ap.add_argument('--cross-cc', default='clang')
     ap.add_argument('--root-image',type=Path,help='optional existing regular HFS+ image, opened read-only')
+    ap.add_argument('--gpt', action='store_true', help='also test GPT-wrapped virtual UFS disks')
     args = ap.parse_args()
     out = args.output.resolve()
     out.mkdir(parents=True, exist_ok=False)
     repo = Path(__file__).resolve().parent.parent
-    sources = ['ufs_readonly.c', 'framebuffer.c']
+    sources = ['ufs_readonly.c', 'ufs_gpt.c', 'framebuffer.c']
     libpath = out / 'drivers.so'
     command = [args.cc, '-std=c11', '-O2', '-Wall', '-Wextra', '-Werror', '-fPIC', '-shared',
                *(str(repo / 'duchamp/drivers' / s) for s in sources), '-o', str(libpath)]
@@ -354,20 +463,37 @@ def main():
               'cross_compile_only':cross_objects,
               'source_hashes': {str(p.relative_to(repo)): hashlib.sha256(p.read_bytes()).hexdigest()
                                 for p in (repo/'duchamp/drivers').glob('*.[ch]')}, 'ufs': []}
-    cases=[(0x100000,'tag',image,original,None,64,64),
-           (0x100100000,'timeout',image,original,None,64,64),
-           (0x100100000,'frozen',image,original,None,64,64),
-           (0x100000,'tag',image,original,0x100110000,32,64),
-           (0x100100000,'tag',image,original,0x110000,64,32)]
+    cases=[(0x100000,'tag',image,original,None,64,64,None),
+           (0x100100000,'timeout',image,original,None,64,64,None),
+           (0x100100000,'frozen',image,original,None,64,64,None),
+           (0x100000,'tag',image,original,0x100110000,32,64,None),
+           (0x100100000,'tag',image,original,0x110000,64,32,None)]
+    root_data = None
     if args.root_image:
         root=args.root_image.resolve()
         if not stat.S_ISREG(root.stat().st_mode):
             ap.error('--root-image must be a regular file')
-        data=root.read_bytes()
-        if len(data)<1024*1024 or len(data)%4096 or data[1024:1026] not in (b'H+',b'HX'):
+        root_data = root.read_bytes()
+        if len(root_data)<1024*1024 or len(root_data)%4096 or root_data[1024:1026] not in (b'H+',b'HX'):
             ap.error('--root-image must contain an aligned HFS+ volume')
-        cases.append((0x100100000,'tag',root,data,None,64,64))
-    for index, (base, fault, disk, contents, data_base, descriptor_bits, data_bits) in enumerate(cases):
+        cases.append((0x100100000,'tag',root,root_data,None,64,64,None))
+    if args.gpt:
+        layouts = [(512, None), (4096, None)]
+        layouts.extend((512, fault) for fault in (
+            'header_crc', 'table_crc', 'conflict', 'overlap', 'duplicate',
+            'metadata_overlap', 'unaligned', 'wrong_type', 'bad_hfs_header', 'hybrid_mbr'))
+        for sector, fault in layouts:
+            disk = out / f'gpt-{sector}-{fault or "valid"}.raw'
+            contents = gpt_fixture(original, sector, fault)
+            disk.write_bytes(contents)
+            cases.append((0x100000, 'tag', disk, contents, None, 64, 64, (sector, fault, 512)))
+        if root_data:
+            disk = out / 'gpt-512-real-hfs.raw'
+            contents = gpt_fixture(original, 512, root=root_data)
+            disk.write_bytes(contents)
+            cases.append((0x100100000, 'tag', disk, contents, None, 64, 64,
+                          (512, None, len(root_data) // 4096)))
+    for index, (base, fault, disk, contents, data_base, descriptor_bits, data_bits, gpt) in enumerate(cases):
         folder = out / f'ufs-{index}'
         folder.mkdir()
         # Unix socket length is bounded; use a short temporary socket directory.
@@ -375,9 +501,14 @@ def main():
             q = None
             try:
                 q = Qtest(args.qemu, disk, Path(name))
-                item=ufs_checks(lib,q,base,contents,fault,data_base,descriptor_bits,data_bits)
+                item=ufs_checks(lib,q,base,contents,fault,data_base,descriptor_bits,data_bits,gpt)
                 item['image_sha256']=hashlib.sha256(contents).hexdigest()
-                item['image_kind']='existing HFS+ (read only)' if disk!=image else 'generated fixture'
+                item['image_kind'] = 'generated GPT fixture' if gpt else (
+                    'existing HFS+ (read only)' if disk != image else 'generated fixture')
+                if gpt:
+                    item['gpt_sector_bytes'], item['gpt_fault'], expected_blocks = gpt
+                    if item['gpt_fault'] is None:
+                        item['gpt_expected_partition_blocks'] = expected_blocks
                 item['image_unchanged']=disk.read_bytes()==contents
                 item['checks']['image_unchanged']=item['image_unchanged']
                 result['ufs'].append(item)
