@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Slot B pstore exports contain no attributable XNU log (2026-11-11)
+
+- Read lkmsg (262144 bytes) and lpmsg (65536 bytes) through live LK Fastboot USB on Duchamp with B selected. Both returned DATA and terminal OKAY. Excluding send-buffer tails, the two payloads have no readable XNU lines, same-boot identifier, or UFS handoff markers in ASCII or UTF-16. These exports cover console/pmsg slices only and omit LK-stripped header bytes. ATF and other pstore zones were not read.
+- B remained selected with zero retries before and after. No reboot, slot switch, partition access or writes. UFS controller/queue state and DMA/cache delegation remain unproven. Private captures and verification are under outputs/duchamp-slot-b-pstore-20261111.
+
 ACTIVE HANDOFF - Current Slot B Fastboot cannot export raw ATF through the reviewed paths (2026-11-11)
 
 - Live Duchamp LK Fastboot identified B, version duchamp_cc6aa9311_202412180714, with zero B retries before and after. The standard get_staged request returned unknown command and zero bytes. max-fetch-size was empty. No reboot, slot change or partition access.

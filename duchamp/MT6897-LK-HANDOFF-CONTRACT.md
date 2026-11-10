@@ -167,6 +167,14 @@ exports crash storage. No path reviewed establishes an export of the live
 ATF ring through LK Fastboot. The same-boot XNU provenance is still missing.
 See outputs/duchamp-slot-b-atf-fastboot-audit-20261111.
 
+The live pstore follow-up returned 262144 bytes through lkmsg and 65536
+through lpmsg, each with terminal OKAY. After excluding the send-buffer
+tails, the longest ASCII sequences were six and four characters,
+respectively. Neither slice had the expected XNU markers, a boot identifier
+or UFS handoff fields in ASCII or UTF-16. These are the exported console
+and pmsg slices only. LK omits zone-header bytes, and other pstore zones and
+the ATF ring were not read. See outputs/duchamp-slot-b-pstore-20261111.
+
 ## RAM and reserved memory
 
 The final FDT declares one 12 GiB RAM range:
