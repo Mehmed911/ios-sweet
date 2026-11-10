@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Photograph verifies Apple launchd and diagnostic services on Slot B (2026-11-11)
+
+- Matched the user-supplied Slot B photo to the pinned services fixture. It shows NOTIFYD CONTROL PASS (notifyd PID 7), SYSLOGD CONTROL PASS (syslogd PID 4, six ASL messages, clients 5 and 6) and heartbeat 8 with probes stopped. The controller enters the lifecycle only after checking getppid() == 1 and proc_pidpath(1) == /sbin/launchd. Together with the preceding Fastboot Slot B selection this establishes native launchd as PID 1 on B.
+- Archived the photo and updated the trial receipt under outputs/duchamp-slot-b-trial-20261111. Setup and physical UFS are still unverified on B. Retain the known-good B image as a fallback. The next hardware diagnostic needs to prove the MT6897 storage handoff before issuing a bounded read-only 4 KiB comparison against Android. Keep any future iOS root separate from shared userdata. No phone access, reboot, slot switch or partition writes during this photo review.
+
 ACTIVE HANDOFF - Duchamp Slot B accepted the XNU trial and the user saw XNU logs (2026-11-11)
 
 - The user authorized exactly vendor_boot_b, init_boot_b and boot_b, preserving A, recovery and userdata, with return to A if XNU failed. Verified A boot, unlock, 90 percent battery, all image pins and matching live backups of the three B partitions before flashing. Fastboot returned OKAY for all three writes. No write command targeted A, recovery, userdata, vbmeta, dtbo or LK.
