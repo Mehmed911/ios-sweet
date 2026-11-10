@@ -91,7 +91,7 @@ python3 duchamp/bootshim/test_boot_menu_qemu.py "$out/preview/Image" "$out/test"
 The emulated PL011 maps W and S to the two volume keys and Enter to the power
 key. Android (A) is initially selected and wins the 10-second timeout even
 when XNU (B) has been highlighted. The harness verifies the framebuffer focus
-and saves PNG captures. In this profile both selections end at the shim.
+and saves PNG captures. B ends at the shim in the preview build.
 
 To test XNU dispatch, build with the existing QEMU SWEETXNU payload:
 
@@ -103,11 +103,18 @@ python3 duchamp/bootshim/test_boot_menu_qemu.py "$out/preview/Image" "$out/dispa
 ```
 
 This configuration lets a confirmed B enter the existing guarded XNU loader
-path. A remains a local selection and returns to the shim. The build and entry
-guards restrict the profile to QEMU virt. The phone backend still needs
-verified early access to the volume and power keys and a documented way to
-select Android A and reset. The saved FDT's keypad node describes the Android
-driver's resources. It does not establish their availability at shim entry.
+path. A confirmation or menu timeout requests the next slot from a simulated
+firmware provider on the emulated UART. A fresh A readback is required before
+issuing the QEMU PSCI reset. A wrong slot or missing readback leaves an error
+on screen and halts at the shim. The harness observes the QMP guest-reset
+event after a simulated A readback.
+
+The build and entry guards restrict the profile to QEMU virt. Android on
+Duchamp advertises volume up through mtk-kpd, and volume down and power
+through mtk-pmic-keys. The archived LK log records keypad initialization
+and a PMIC volume-down press during boot. Reading all three keys at
+bootshim entry and requesting a verified next-slot change from that entry
+remain open. The QEMU provider uses no phone slot metadata or storage.
 
 `payload_preflight.c` is the next-stage no-copy/no-jump boundary. It runs the
 existing FDT/payload guard and additionally requires the measured Duchamp XNU

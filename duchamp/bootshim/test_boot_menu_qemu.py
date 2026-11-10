@@ -61,8 +61,7 @@ def boot(image, output, name, dtb=None):
 def expect(process, transcript, line, timeout=5):
     marker = line.encode() + b"\n"
     deadline = time.monotonic() + timeout
-    start = len(transcript)
-    while marker not in transcript[start:]:
+    while marker not in transcript:
         remaining = deadline - time.monotonic()
         if remaining <= 0 or not select.select([process.stdout], [], [], remaining)[0]:
             raise RuntimeError(f"Timed out waiting for {line!r}: {transcript[-600:]!r}")
@@ -77,20 +76,26 @@ def press(process, keys):
     process.stdin.flush()
 
 
-def framebuffer(qmp_path, temp):
-    raw = temp / "frame.raw"
+@contextmanager
+def qmp_session(qmp_path):
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
         connection.settimeout(5)
         connection.connect(str(qmp_path))
         with connection.makefile("rwb") as stream:
             json.loads(stream.readline())
             qmp_call(stream, "qmp_capabilities")
-            qmp_call(stream, "stop")
-            registers = qmp_call(stream, "human-monitor-command",
-                                 **{"command-line": "info registers"})
-            qmp_call(stream, "pmemsave", val=FB_BASE, size=FB_STRIDE * FB_HEIGHT,
-                     filename=str(raw))
-            qmp_call(stream, "cont")
+            yield stream
+
+
+def framebuffer(qmp_path, temp):
+    raw = temp / "frame.raw"
+    with qmp_session(qmp_path) as stream:
+        qmp_call(stream, "stop")
+        registers = qmp_call(stream, "human-monitor-command",
+                             **{"command-line": "info registers"})
+        qmp_call(stream, "pmemsave", val=FB_BASE, size=FB_STRIDE * FB_HEIGHT,
+                 filename=str(raw))
+        qmp_call(stream, "cont")
     return raw.read_bytes(), registers
 
 
@@ -124,6 +129,7 @@ def main():
         ("confirm-a", active_image, args.xnu_dtb, b"swx\r", "A CONFIRMED", "A"),
         ("confirm-b", args.preview, None, b"s\r", "B PREVIEW", "B"),
         ("timeout", active_image, args.xnu_dtb, b"s", "A TIMEOUT", "A"),
+        ("buffered-readback", active_image, args.xnu_dtb, b"\rA", "A CONFIRMED", "A"),
     )
     for name, image, dtb, keys, choice, focus in cases:
         with boot(image.resolve(), args.output, name, dtb) as (guest, qmp, temp, log):
@@ -134,7 +140,14 @@ def main():
                 save_screen(args.output, "menu", initial)
             press(guest, keys)
             expect(guest, log, f"DUCHAMP MENU CHOICE {choice}", timeout=12)
-            if b"DUCHAMP MENU FOCUS B\n" not in log:
+            if focus == "A":
+                expect(guest, log, "DUCHAMP ANDROID NEXT SLOT REQUEST A")
+                if name == "confirm-a":
+                    press(guest, b"B")
+                    expect(guest, log, "DUCHAMP ANDROID BLOCKED NEXT SLOT")
+                else:
+                    expect(guest, log, "DUCHAMP ANDROID BLOCKED NO READBACK")
+            if name != "buffered-readback" and b"DUCHAMP MENU FOCUS B\n" not in log:
                 raise RuntimeError("The menu did not highlight Slot B")
             if name == "confirm-a" and b"DUCHAMP MENU FOCUS A\n" not in log:
                 raise RuntimeError("The menu did not return focus to Slot A")
@@ -144,8 +157,32 @@ def main():
                 raise RuntimeError("An Android or preview choice entered the XNU kernel")
             if name == "confirm-b":
                 save_screen(args.output, "selected-b", raw)
+        if b"DUCHAMP ANDROID NEXT SLOT VERIFIED" in log or (
+                focus == "B" and b"DUCHAMP ANDROID NEXT SLOT REQUEST" in log):
+            raise RuntimeError("Unexpected Android slot dispatch")
         results[name] = {"choice": choice, "framebuffer_focus": focus}
+        if focus == "A":
+            results[name]["return_blocked"] = "wrong slot" if name == "confirm-a" else "no readback"
         print(f"{name}: PASS {choice}", flush=True)
+
+    with boot(active_image.resolve(), args.output, "android-reset", args.xnu_dtb) as (
+            guest, qmp, _temp, log):
+        expect(guest, log, "DUCHAMP MENU READY")
+        with qmp_session(qmp) as stream:
+            press(guest, b"\r")
+            expect(guest, log, "DUCHAMP ANDROID NEXT SLOT REQUEST A")
+            press(guest, b"A")
+            expect(guest, log, "DUCHAMP ANDROID NEXT SLOT VERIFIED A")
+            while packet := stream.readline():
+                event = json.loads(packet)
+                if event.get("event") == "SHUTDOWN" and event["data"]["reason"] == "guest-reset":
+                    break
+            else:
+                raise RuntimeError("QEMU did not report a guest reset")
+        if guest.wait(5) != 0:
+            raise RuntimeError("QEMU failed while handling the verified Android return")
+    results["android-reset"] = {"next_slot_readback": "A", "qmp": "guest-reset", "mock_firmware": True}
+    print("android-reset: PASS verified simulated Slot A, then guest reset", flush=True)
 
     if args.with_xnu:
         with boot(args.with_xnu.resolve(), args.output, "xnu", args.xnu_dtb) as (guest, qmp, temp, log):

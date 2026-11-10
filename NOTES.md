@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - Android menu return rehearsed with verified QEMU reset (2026-11-11)
+
+- Read-only Android A identifies volume up through mtk-kpd and volume down/power through mtk-pmic-keys. The saved Duchamp DT and pinned Xiaomi driver sources agree. The archived LK trace observes keypad initialization, a power-key status read and a PMIC home/volume-down press on the way to Fastboot. All three button edges at bootshim entry remain unverified.
+- Menu A or timeout now sends the next-slot request. The QEMU provider requires a fresh readback of A before PSCI reset and blocks a wrong slot, missing reply and pre-buffered reply. QMP observed a guest-reset after simulated A. Six cases pass, including real XNU kernel dispatch on B inside QEMU. Android boot from this menu and a documented phone-side next-slot provider remain pending.
+- Android is still running on A. No phone reset, slot change, partition write or flash. Reports are under outputs/duchamp-boot-menu-return-20261111.
+
 ACTIVE HANDOFF - Duchamp dual-boot menu verified in QEMU (2026-11-11)
 
 - Built the opt-in QEMU menu on the existing framebuffer and used emulated serial keys for navigation and confirmation. A is the default after 10 seconds, including if B was highlighted without confirmation. Four QEMU cases passed, including confirmed B entering the XNU kernel through the existing payload guard. Confirmed A and timeout remain shim decisions, with no Android dispatch in this profile.

@@ -26,6 +26,7 @@
 #define ACCENT UINT32_C(0xff62ddd2)
 
 #define MENU_SECONDS 10U
+#define SLOT_ACK_SECONDS 2U
 #define ROW_HEIGHT 152U
 #define ROW_GAP 20U
 #define MARGIN 90U
@@ -111,6 +112,43 @@ draw_choices(const struct duchamp_framebuffer *fb, unsigned y, unsigned focus)
 	}
 }
 
+/* A QEMU host stands in for the firmware's next-slot selector and readback. */
+static void
+request_android(const struct duchamp_framebuffer *fb, unsigned y, uint64_t frequency)
+{
+	draw_text(fb, MARGIN, y, 3, "Requesting Android Slot A...", ACCENT);
+	__asm__ volatile("dsb sy" ::: "memory");
+
+	/* Discard any bytes buffered with the menu key before requesting readback. */
+	for (unsigned i = 0; i < 16 && !(*uart(UART_FR) & UART_RX_EMPTY); i++)
+		(void)*uart(UART_DR);
+	uart_log("DUCHAMP ANDROID NEXT SLOT REQUEST A\n");
+	const uint64_t start = counter();
+	const char *failure = "DUCHAMP ANDROID BLOCKED NO READBACK\n";
+	while (counter() - start < frequency * SLOT_ACK_SECONDS) {
+		if (*uart(UART_FR) & UART_RX_EMPTY) {
+			__asm__ volatile("yield");
+			continue;
+		}
+		const uint32_t readback = *uart(UART_DR);
+		if (readback == 'A') {
+			uart_log("DUCHAMP ANDROID NEXT SLOT VERIFIED A\n");
+			register uint64_t function __asm__("x0") = UINT64_C(0x84000009);
+			__asm__ volatile("dsb sy; hvc #0" : "+r"(function) :: "memory");
+			failure = "DUCHAMP ANDROID BLOCKED RESET RETURNED\n";
+			break;
+		}
+		if (readback == 'B' || readback == '!') {
+			failure = "DUCHAMP ANDROID BLOCKED NEXT SLOT\n";
+			break;
+		}
+	}
+	rectangle(fb, MARGIN, y, (unsigned)fb->width - 2 * MARGIN, 48, BACKGROUND);
+	draw_text(fb, MARGIN, y, 3, "Android return unavailable", MUTED);
+	__asm__ volatile("dsb sy" ::: "memory");
+	uart_log(failure);
+}
+
 /* The only input is QEMU virt's PL011, standing in for the three phone keys. */
 int
 duchamp_boot_menu_qemu(const struct duchamp_framebuffer *fb, int xnu_available)
@@ -157,19 +195,19 @@ duchamp_boot_menu_qemu(const struct duchamp_framebuffer *fb, int xnu_available)
 
 	focus = 0;
 	draw_choices(fb, rows, focus);
-	draw_text(fb, MARGIN, rows + 536, 3, "Android selected (timeout)", ACCENT);
 	__asm__ volatile("dsb sy" ::: "memory");
 	uart_log("DUCHAMP MENU CHOICE A TIMEOUT\n");
+	request_android(fb, rows + 536, frequency);
 	return 0;
 
 confirmed:
-	draw_text(fb, MARGIN, rows + 536, 3,
-	    focus ? "XNU selected" : "Android selected", ACCENT);
-	__asm__ volatile("dsb sy" ::: "memory");
 	if (!focus) {
 		uart_log("DUCHAMP MENU CHOICE A CONFIRMED\n");
+		request_android(fb, rows + 536, frequency);
 		return 0;
 	}
+	draw_text(fb, MARGIN, rows + 536, 3, "XNU selected", ACCENT);
+	__asm__ volatile("dsb sy" ::: "memory");
 	uart_log(xnu_available ? "DUCHAMP MENU CHOICE B XNU\n" :
 	    "DUCHAMP MENU CHOICE B PREVIEW\n");
 	return xnu_available;
