@@ -26,6 +26,7 @@ lk_ram=${LK_RAM_TRANSPORT:-}
 phone_layout=${PHONE_LAYOUT:-}
 phone_capture=${PHONE_CAPTURE:-}
 ufs_handoff_probe=${UFS_HANDOFF_PROBE:-}
+boot_menu=${BOOT_MENU:-}
 if [ -n "$ufs_handoff_probe" ]; then
 	if [ "$ufs_handoff_probe" != 1 ] || [ "$phone_capture" != 1 ]; then
 		echo "UFS_HANDOFF_PROBE=1 requires PHONE_CAPTURE=1" >&2
@@ -35,7 +36,25 @@ if [ -n "$ufs_handoff_probe" ]; then
 fi
 ldflags="-Wl,--defsym,DUCHAMP_IMAGE_BASE=0"
 
-if [ -n "$phone_capture" ]; then
+if [ -n "$boot_menu" ]; then
+	if [ "$boot_menu" != 1 ] || [ "${QEMU_ONLY:-}" != 1 ]; then
+		echo "BOOT_MENU=1 requires QEMU_ONLY=1" >&2
+		exit 2
+	fi
+	if [ -n "$phone_capture$phone_layout$lk_ram${PHONE_CONTRACT:-}${RETURN:-}" ]; then
+		echo "BOOT_MENU is separate from phone and firmware diagnostics" >&2
+		exit 2
+	fi
+	if [ -n "${PAYLOAD:-}" ]; then
+		if [ "${MATERIALIZE:-}:${READY:-}:${JUMP:-}" != 1:1:1 ]; then
+			echo "BOOT_MENU with PAYLOAD requires MATERIALIZE=1 READY=1 JUMP=1" >&2
+			exit 2
+		fi
+		cflags="$cflags -DDUCHAMP_EMBED_PAYLOAD=1"
+	fi
+	cflags="$cflags -DDUCHAMP_BOOT_MENU=1 -DDUCHAMP_QEMU_ONLY=1 -DDUCHAMP_TEST_NO_WATCHDOG=1"
+	ldflags="-Wl,--defsym,DUCHAMP_IMAGE_BASE=0x40200000"
+elif [ -n "$phone_capture" ]; then
 	if [ "$phone_capture" != 1 ]; then
 		echo "PHONE_CAPTURE must be exactly 1" >&2
 		exit 2
@@ -125,6 +144,10 @@ if [ -n "$phone_capture" ]; then
 else
 	$cc $cflags -c shim.c -o "$out/shim.o"
 	objects="$out/start.o $out/shim.o $out/mt6897_entry.o"
+fi
+if [ -n "$boot_menu" ]; then
+	$cc $cflags -c boot_menu.c -o "$out/boot_menu.o"
+	objects="$objects $out/boot_menu.o"
 fi
 
 if [ -n "$lk_ram" ]; then

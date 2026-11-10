@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Duchamp dual-boot menu verified in QEMU (2026-11-11)
+
+- Built the opt-in QEMU menu on the existing framebuffer and used emulated serial keys for navigation and confirmation. A is the default after 10 seconds, including if B was highlighted without confirmation. Four QEMU cases passed, including confirmed B entering the XNU kernel through the existing payload guard. Confirmed A and timeout remain shim decisions, with no Android dispatch in this profile.
+- Verified the build from a clean source snapshot. Existing PC/x0 capture is byte-identical and host regression tests pass. The saved FDT has an enabled MediaTek keypad node, but early key availability and a supported A-select-and-reset backend remain unverified. Android A and XNU B were untouched. Screenshots and results are in outputs/duchamp-boot-menu-qemu-20261111/verified-clean.
+
 ACTIVE HANDOFF - Android boot verified on Duchamp Slot A (2026-11-11)
 
 - With user approval, refreshed the bootloader after the earlier accepted A selection. Fresh LK Fastboot reported current-slot a and slot-unbootable:a no. Normal reboot then returned OKAY. ADB confirmed duchamp, ro.boot.slot_suffix=_a, sys.boot_completed=1, Android 14 and build V816.0.17.0.UNLMIXM.

@@ -78,6 +78,37 @@ machine, captures the measured Duchamp framebuffer address through QMP, and
 checks every diagnostic row plus the first stride-padding word. This complements
 the native host harness by exercising the assembly entry and linked image.
 
+## Dual-boot menu in QEMU
+
+Build and exercise the menu from the repository root with fresh output paths:
+
+```sh
+out=$(realpath -m work/duchamp-menu)
+BOOT_MENU=1 QEMU_ONLY=1 SHIM_OUT="$out/preview" sh duchamp/bootshim/build.sh
+python3 duchamp/bootshim/test_boot_menu_qemu.py "$out/preview/Image" "$out/test"
+```
+
+The emulated PL011 maps W and S to the two volume keys and Enter to the power
+key. Android (A) is initially selected and wins the 10-second timeout even
+when XNU (B) has been highlighted. The harness verifies the framebuffer focus
+and saves PNG captures. In this profile both selections end at the shim.
+
+To test XNU dispatch, build with the existing QEMU SWEETXNU payload:
+
+```sh
+PAYLOAD=/path/to/payload-qemu.bin MATERIALIZE=1 READY=1 JUMP=1 \
+  BOOT_MENU=1 QEMU_ONLY=1 SHIM_OUT="$out/with-xnu" sh duchamp/bootshim/build.sh
+python3 duchamp/bootshim/test_boot_menu_qemu.py "$out/preview/Image" "$out/dispatch" \
+  --with-xnu "$out/with-xnu/Image" --xnu-dtb /path/to/phone-fdt.bin
+```
+
+This configuration lets a confirmed B enter the existing guarded XNU loader
+path. A remains a local selection and returns to the shim. The build and entry
+guards restrict the profile to QEMU virt. The phone backend still needs
+verified early access to the volume and power keys and a documented way to
+select Android A and reset. The saved FDT's keypad node describes the Android
+driver's resources. It does not establish their availability at shim entry.
+
 `payload_preflight.c` is the next-stage no-copy/no-jump boundary. It runs the
 existing FDT/payload guard and additionally requires the measured Duchamp XNU
 window (`0x1c0000000` + `0x20000000`), a bounded entry/top, and 1-32 segments.

@@ -3,6 +3,9 @@
 
 #include "diagnostic.h"
 #include "../loader/mt6897_entry.h"
+#if defined(DUCHAMP_BOOT_MENU)
+#include "boot_menu.h"
+#endif
 #if defined(DUCHAMP_EMBED_PAYLOAD)
 #include "payload_preflight.h"
 #endif
@@ -335,6 +338,22 @@ duchamp_bootshim_main(void)
 	}
 	diagnostic->marker = DUCHAMP_MARKER_SUCCESS;
 	diagnostic->checksum = diagnostic_checksum(diagnostic);
+#if defined(DUCHAMP_BOOT_MENU)
+	const struct duchamp_framebuffer menu_framebuffer = {
+		.base = FB_BASE,
+		.stride = FB_STRIDE,
+		.width = FB_WIDTH,
+		.height = FB_HEIGHT,
+		.depth = 32
+	};
+#if defined(DUCHAMP_XNU_JUMP)
+	if (!duchamp_boot_menu_qemu(&menu_framebuffer, 1))
+		return;
+#else
+	(void)duchamp_boot_menu_qemu(&menu_framebuffer, 0);
+	return;
+#endif
+#endif
 	draw_diagnostic(diagnostic);
 #if defined(DUCHAMP_TEST_XNU_RETURN)
 	{
