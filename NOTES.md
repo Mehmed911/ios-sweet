@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - LK UFS boot metadata confirmed, XNU delegation still unproven (2026-11-10)
+
+- Replayed the pinned LK, Android Image and FDT layout audit. The captured LK writes a four-byte /chosen/atag,ufs property. The live Android FDT matched the saved property and bootmode phandle. The matched vendor module reads it through ufs_mtk_init. The pinned reference source defines the field as RPMB Region 2 key state. The FDT also identifies 12 clocks and the PHY, with no ownership grant established.
+- Read-only Android ADB returned 327 lines from the available ATF boot log on Duchamp V816.0.17.0.UNLMIXM. The phone reports BL31 2fbca47 and common_2.6.1(6897-1.2). Public TF-A lts-v2.8.6 points to ff0bd5f. The available log contains no UFS handoff, resource ownership or DMA-cache marker. The matching BL31 source remains unverified.
+- All 14 local LK-layout, BL31 identity and resource-binding tests passed. UFS controller quiescence and delegation, clock and PHY ownership, and the DMA buffer/system-cache contract for XNU remain unproven. Evidence is in outputs/duchamp-ufs-handoff-audit-20261110/verification.json. No phone reboot, flash, partition write, MMIO/SMC probe or physical XNU UFS read.
+
 ACTIVE HANDOFF - Matched Duchamp firmware and DMA evidence keep physical XNU UFS closed (2026-11-10)
 
 - Read-only Android recheck matched the complete active-slot tee_a hash and installed ufs_mediatek_mod build-ID note to the saved captures. Re-extracted the saved BL31 UFS dispatch evidence and matched its pinned audit after line-ending normalization. The saved client ABI verifier reproduced its pinned report byte-for-byte. A common zero return does not prove a successful effect or authorize XNU.
