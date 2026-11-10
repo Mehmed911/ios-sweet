@@ -1,3 +1,9 @@
+ACTIVE HANDOFF — Cellular service boundary verified from the saved QEMU run (2026-11-10)
+
+- Rechecked the saved 20F66 run from a9a049a. Setup made 29 failed lookups for com.apple.commcenter.coretelephony.xpc across PIDs 63 and 65. SpringBoard made four failed lookups for that endpoint and 219 for com.apple.commcenter.xpc. Launchd returned error 3. The same root has no CommCenter job in its 15 embedded launchd jobs or its LaunchDaemons directory.
+- The run configured restricted VirtIO Ethernet. The saved XNU interface inventory contains only lo0, gif0 and stf0. No cellular interface or modem is present in the guest. The saved 20F66 CoreTelephony metadata provides separate read-only SIM and registration queries that could be used to test a future isolated service implementation.
+- Reparsed the saved stock Duchamp DTB with SHA-256 9c49589f70044127be8941a9ea5537977f440ccd5ac15cfd24e120c8a1181d29. It identifies /soc/ccifdriver@10209000 as mediatek,ccci_ccif and /soc/dpmaif@10014000 as mediatek,dpmaif. All 22 hardware-inspector tests passed. This was an offline audit of saved files. No new QEMU boot, phone access, SIM registration, call, or cellular data session was performed.
+
 ACTIVE HANDOFF — QEMU Setup Wi-Fi scan boundary and synthetic SSID verified (2026-11-10)
 
 - Replayed Setup in the isolated QEMU 10.2.1 guest with the same CI 42707402072 kernel, read-only GPT qufs0 and RAM-backed /private/var on md0. The native picker showed zero SSIDs. Matched the empty framebuffer to IOSurface 5 at SwapEnd 6566.
