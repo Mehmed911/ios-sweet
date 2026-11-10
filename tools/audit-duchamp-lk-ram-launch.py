@@ -371,6 +371,45 @@ def verify_continue_route(raw):
     }
 
 
+def verify_uefilog_route(raw, commands):
+    """Identify the retained-log sender without executing an OEM command."""
+    channel = next((item for item in commands
+                    if item["command"] == "oem uefilog"), None)
+    handler = 0xFFFF000050709034
+    require(channel is not None and channel["handler_va"] == handler,
+            "LK uefilog registration differs")
+    for source, target in (
+        (0x9248, 0x141AC), (0x9250, 0x141B8),
+        (0x92A4, 0xC7A0), (0x92B8, 0x67D88), (0x92C8, 0xC7A0),
+    ):
+        pc = partition_offset_to_va(source)
+        require(decode_branch_target(u32(raw, source), pc, link=True) ==
+                partition_offset_to_va(target),
+                f"LK uefilog retained-log branch differs at {source:#x}")
+    require(raw[0x9254:0x925C] == bytes.fromhex("682649296a5a40b9") and
+            raw[0x141AC:0x141C4] == bytes.fromhex(
+                "4807009000d542f9c0035fd64807009000dd42f9c0035fd6"),
+            "LK uefilog retained-log source differs")
+    label = partition_offset_to_va(0xB1A1F)
+    expected_label = b"pllk  log::::\n %s \n\0"
+    require(raw[0xB1A1F:0xB1A1F + len(expected_label)] == expected_label and
+            decode_adrp(u32(raw, 0x92D8), partition_offset_to_va(0x92D8)) ==
+            (0, label & ~0xFFF) and
+            decode_add_immediate(u32(raw, 0x92DC)) == (0, 0, label & 0xFFF),
+            "LK uefilog retained-log label differs")
+    return {
+        "command": "oem uefilog",
+        "handler_partition_offset": "0x9234",
+        "source": "retained PL/LK log buffer",
+        "evidence": "registered handler, buffer getters, copy/send calls and PL/LK label",
+        "phone_command_executed": False,
+        "runtime_channel_verified": False,
+        "xnu_handoff_snapshot_proven": False,
+        "ufs_resource_grant_proven": False,
+        "ram_execution_provider_proven": False,
+    }
+
+
 def inspect_lk(raw):
     require(len(raw) == LK_PARTITION_BYTES, "lk_a size differs")
     require(sha256(raw) == LK_SHA256, "lk_a SHA-256 differs")
@@ -504,6 +543,8 @@ def main():
     parser.add_argument("--lk", required=True,
                         help="exact saved Duchamp lk_a partition image")
     parser.add_argument("--output", help="new JSON report; never overwritten")
+    parser.add_argument("--diagnostic-channels", action="store_true",
+                        help="also inspect the saved OEM retained-log sender")
     parser.add_argument(
         "--require-provider", action="store_true",
         help="exit nonzero unless the audit proves a RAM launch provider")
@@ -516,6 +557,9 @@ def main():
         raw = path.read_bytes()
         report = inspect_lk(raw)
         report["artifact"]["path"] = str(path.resolve())
+        if arguments.diagnostic_channels:
+            commands = report["fastboot_registry"]["dynamic_table"]["commands"]
+            report["diagnostic_channels"] = [verify_uefilog_route(raw, commands)]
         rendered = json.dumps(report, indent=2, sort_keys=True) + "\n"
         if output is not None:
             require(output.parent.is_dir(), "output directory does not exist")

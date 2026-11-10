@@ -35,7 +35,49 @@ def encode_bl(pc, target):
     return 0x94000000 | (((target - pc) >> 2) & 0x3FFFFFF)
 
 
+def uefilog_fixture():
+    raw = bytearray(0xC0000)
+    for source, target in (
+        (0x9248, 0x141AC), (0x9250, 0x141B8),
+        (0x92A4, 0xC7A0), (0x92B8, 0x67D88), (0x92C8, 0xC7A0),
+    ):
+        struct.pack_into("<I", raw, source, encode_bl(
+            MODULE.partition_offset_to_va(source),
+            MODULE.partition_offset_to_va(target)))
+    raw[0x9254:0x925C] = bytes.fromhex("682649296a5a40b9")
+    raw[0x141AC:0x141C4] = bytes.fromhex(
+        "4807009000d542f9c0035fd64807009000dd42f9c0035fd6")
+    label = MODULE.partition_offset_to_va(0xB1A1F)
+    data = b"pllk  log::::\n %s \n\0"
+    raw[0xB1A1F:0xB1A1F + len(data)] = data
+    struct.pack_into("<II", raw, 0x92D8, encode_adrp(
+        0, MODULE.partition_offset_to_va(0x92D8), label),
+        encode_add_immediate(0, 0, label & 0xFFF))
+    commands = [{"command": "oem uefilog", "handler_va": 0xFFFF000050709034}]
+    return raw, commands
+
+
 class LkRamLaunchAuditTests(unittest.TestCase):
+    def test_uefilog_identifies_retained_buffer_without_runtime_promotion(self):
+        raw, commands = uefilog_fixture()
+        report = MODULE.verify_uefilog_route(raw, commands)
+        self.assertEqual(report["source"], "retained PL/LK log buffer")
+        for key in ("phone_command_executed", "runtime_channel_verified",
+                    "xnu_handoff_snapshot_proven", "ufs_resource_grant_proven",
+                    "ram_execution_provider_proven"):
+            self.assertIs(report[key], False)
+
+    def test_uefilog_requires_registered_handler_and_exact_copy_path(self):
+        raw, commands = uefilog_fixture()
+        with self.assertRaisesRegex(ValueError, "registration"):
+            MODULE.verify_uefilog_route(raw, [])
+        for offset in (0x9250, 0x9254, 0x92C8, 0x141AC, 0xB1A1F):
+            with self.subTest(offset=hex(offset)):
+                changed = bytearray(raw)
+                changed[offset] ^= 1
+                with self.assertRaises(ValueError):
+                    MODULE.verify_uefilog_route(changed, commands)
+
     def test_instruction_decoders_handle_forward_and_backward_values(self):
         pc = 0xFFFF000050700100
         target = 0xFFFF000050700300

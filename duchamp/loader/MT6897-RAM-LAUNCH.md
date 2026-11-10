@@ -123,6 +123,57 @@ The `oem uefilog` command recovered from the OEM table is a log command.  Its
 name does not prove that a UEFI boot-services environment or a callable UEFI
 image loader is installed.
 
+## Diagnostic channel review, 2026-11-11
+
+The opt-in `--diagnostic-channels` audit now follows the registered
+`oem uefilog` handler in the exact saved LK. The handler gets a retained
+buffer and its header, computes a length from the header, copies the buffer,
+and sends it through the existing response routine. Its own log label reads
+`pllk  log`. The checked file offsets are the handler at `0x9234`, buffer
+getters at `0x141ac` and `0x141b8`, copy at `0x92b8`, and label at
+`0xb1a1f`. This static evidence identifies the sender's source. Availability
+on a running phone, an XNU handoff snapshot and a resource grant remain
+unverified. The audit executes no OEM command.
+
+The MediaTek kernel reference at the pinned `a805f95d61dbf0b2959c9262acc626893114321d`
+revision implements two log consumers. `/proc/pl_lk` returns the saved PL/LK
+buffer. The ATF logger consumes an existing ring and advances its shared
+read index. The raw ATF view maintains a separate reader offset. The ordinary
+ATF file's open routine calls `nonseekable_open` and performs no SMC. Time
+synchronization occurs during driver probe and resume, while its write
+routine has a separate debug SMC. These source-level observations have not
+been matched to the running logger's binary. Reading those views does not
+ask the firmware to sample UFS at a new execution boundary.
+[ATF log consumer](https://github.com/mt6897-devs/android_kernel_device_modules_6.1/blob/a805f95d61dbf0b2959c9262acc626893114321d/drivers/misc/mediatek/atf/atf_log.c)
+[PL/LK log consumer](https://github.com/mt6897-devs/android_kernel_device_modules_6.1/blob/a805f95d61dbf0b2959c9262acc626893114321d/drivers/misc/mediatek/log_store/log_store.c)
+
+Upstream TF-A documents a DebugFS service selected through build options,
+with shared-buffer setup and an SMC conduit. Its presence and exported
+files on Duchamp have not been established. MediaTek's public UART boot-log
+instructions describe Genio evaluation boards. A verified Duchamp UART
+connection and firmware trace containing the required UFS fields remain
+missing. [TF-A v2.8 DebugFS](https://trustedfirmware-a.readthedocs.io/en/v2.8/components/debugfs-design.html)
+[MediaTek Genio communication guide](https://genio.mediatek.com/doc/android/sw/android/get-started/communication.html)
+
+The reviewed Xiaomi kernel branch and module tree provide Android source,
+while a matching LK/BL31 diagnostic contract remains unverified. The first
+recursive kernel inventory was truncated. A separate complete
+`drivers`-subtree query closed the inventory gap for the logger filenames.
+The source receipts and 25 local audit/ownership test results are under
+`outputs/duchamp-diagnostic-channels-20261111`. The hardware acquisition
+requirements remain in [MT6897-LK-HANDOFF-CONTRACT.md](../MT6897-LK-HANDOFF-CONTRACT.md#ufs-evidence-at-the-bl31-exit-boundary).
+
+Reproduce the extended static audit with a new output path.
+
+```sh
+python3 tools/audit-duchamp-lk-ram-launch.py \
+  --lk ../phone-firmware/lk_a.bin --diagnostic-channels \
+  --require-provider --output work/lk-diagnostic-channels-NEW.json
+```
+
+For the saved LK, the report is written and the provider requirement exits
+with status 1. This preserves the existing launch gate.
+
 The comparison above was made against these saved source snapshots:
 
 - HakiOS kernel/docs commit `2631f5d7d4f9d7322aca60991b34ba465dec343b`,
