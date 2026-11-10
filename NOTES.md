@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - Duchamp physical UFS block reference captured under Android (2026-11-10)
+
+- Read-only ADB on Duchamp/MT6897, Android V816.0.17.0.UNLMIXM, active slot _a. First 4 KiB of vendor_boot_a matched two independent reads from Linux SCSI LUN 2, LBA 276480, and the exact saved partition backup. Reference SHA-256 065f2cf024655ce86cd67efd58901ded708c34cf2e721778b6b3de67f5382fd6. Only the digest and geometry were retained.
+- The active-slot tee_a hash matches the saved partition byte-for-byte. Linux bound ufshcd-mtk, reports 13 supplier links, and has no iommu_group link for that controller. These observations do not establish XNU firmware effects, resource/cache ownership, direct PA-to-DMA translation, or bounce disposition. The pinned gate still denies current evidence, mask 0x000100000000040e, with zero hardware/provider dispatches.
+- Native and ARM64 model checks passed for the gate, DMA routing and cache backend. The full XNU replay passed 23/23 checks in 76.25 host seconds with virtual GPT/qufs0, diagnostic PID 1 and EROFS on write-open. That replay used a separate synthetic HFS+ fixture. Physical XNU read and Setup mount remain pending. No phone reboot, flash, partition write, MMIO diagnostic, or SMC. Evidence is in outputs/duchamp-ufs-known-block-20261110.
+
 ACTIVE HANDOFF - Duchamp Setup root needs a separate transport (2026-11-10)
 
 - Rechecked the actual 3,355,443,200-byte HFS+ root from the verified QEMU Wi-Fi picker with the phone ADT extracted from the known boot_a service candidate. The current CI kernel, root and boot data require 3,394,748,416 bytes. The payload builder rejected them against the 536,870,912-byte phone window before loading the root or creating an image. The saved phone FDT describes 12 GiB total, which does not establish a safe larger XNU window.
