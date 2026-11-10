@@ -42,6 +42,8 @@ RAM_PROVIDER_SIZE = struct.calcsize(RAM_PROVIDER_FORMAT)
 PHONE_CAPTURE_FORMAT = "<QII4QIIQ"
 PHONE_CAPTURE_SIZE = struct.calcsize(PHONE_CAPTURE_FORMAT)
 PHONE_CAPTURE_MAGIC = 0x3130435048435544
+UFS_HANDOFF_FORMAT = "<QIIQII"
+UFS_HANDOFF_SIZE = struct.calcsize(UFS_HANDOFF_FORMAT)
 
 
 def mutation_receipt(data, value=1469598103934665603):
@@ -152,7 +154,11 @@ def main():
                         type=lambda value: int(value, 0))
     parser.add_argument("--expect-capture-x0",
                         type=lambda value: int(value, 0))
+    parser.add_argument("--ufs-handoff-record-pa", type=lambda value: int(value, 0))
     args = parser.parse_args()
+    if args.ufs_handoff_record_pa is not None and (
+            args.capture_record_pa is None or args.pattern != "pc-x0"):
+        parser.error("--ufs-handoff-record-pa requires the PC/x0 capture")
     if args.expect_no_return and args.return_record_pa is None:
         parser.error("--expect-no-return requires --return-record-pa")
     if args.expect_no_return and args.expect_return_reason is not None:
@@ -189,6 +195,8 @@ def main():
         lk_report_raw = Path(temp) / "lk-ram-report.raw"
         ram_provider_raw = Path(temp) / "ram-provider-report.raw"
         capture_record_raw = Path(temp) / "phone-capture-record.raw"
+        ufs_handoff_raw = Path(temp) / "ufs-handoff-record.raw"
+        ufs_fdt_raw = Path(temp) / "ufs-fdt.raw"
         exception_raw = Path(temp) / "exception-record.raw"
         qemu_stderr = Path(temp) / "qemu.stderr"
         command = [
@@ -272,6 +280,26 @@ def main():
                     qmp_call(stream, "pmemsave", val=args.capture_record_pa,
                              size=PHONE_CAPTURE_SIZE,
                              filename=str(capture_record_raw))
+                if args.ufs_handoff_record_pa is not None:
+                    qmp_call(stream, "pmemsave", val=args.ufs_handoff_record_pa,
+                             size=UFS_HANDOFF_SIZE, filename=str(ufs_handoff_raw))
+                    ufs_record = struct.unpack(UFS_HANDOFF_FORMAT, ufs_handoff_raw.read_bytes())
+                    capture = struct.unpack(PHONE_CAPTURE_FORMAT, capture_record_raw.read_bytes())
+                    fdt_address = capture[4]
+                    fdt_bytes = ufs_record[4]
+                    if (ufs_record[:3] != (0x3153465548435544, 1, UFS_HANDOFF_SIZE) or
+                            ufs_record[5] != 15 or not 40 <= fdt_bytes <= 2 << 20 or
+                            not 0x40000000 <= fdt_address <= 0x80000000 - fdt_bytes):
+                        raise SystemExit(f"invalid UFS handoff receiver report: {ufs_record}")
+                    qmp_call(stream, "pmemsave", val=fdt_address, size=fdt_bytes,
+                             filename=str(ufs_fdt_raw))
+                    fdt = ufs_fdt_raw.read_bytes()
+                    if (struct.unpack_from(">II", fdt) != (0xd00dfeed, fdt_bytes) or
+                            mutation_receipt(fdt) != ufs_record[3]):
+                        raise SystemExit("UFS handoff receiver FDT fingerprint mismatch")
+                    print("bootshim-ufs-handoff-receiver: PASS "
+                          f"fdt_bytes={fdt_bytes} fdt_fingerprint={ufs_record[3]:#018x} "
+                          "blockers=0xf physical-read=blocked")
                 if args.exception_record_pa is not None:
                     qmp_call(stream, "pmemsave", val=args.exception_record_pa,
                              size=40, filename=str(exception_raw))
@@ -511,6 +539,10 @@ def main():
                 "x0-glyph": (start_x, second_y, 0xFFFFFFFF),
                 "pc-glyph-gap": (start_x + 4 * 8, first_y, 0xFF000000),
             }
+            if args.ufs_handoff_record_pa is not None:
+                line_step = (7 + 4) * 8
+                samples["ufs-fingerprint-glyph"] = (start_x, second_y + line_step, 0xFFFFFFFF)
+                samples["ufs-blockers-glyph"] = (start_x, second_y + 2 * line_step, 0xFFFFFFFF)
             for name, (x, y, expected) in samples.items():
                 actual = framebuffer_pixel(x, y)
                 if actual != expected:

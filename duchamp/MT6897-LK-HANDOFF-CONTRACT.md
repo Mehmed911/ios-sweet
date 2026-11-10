@@ -207,6 +207,29 @@ duchamp-phone-layout: PASS base=0x40000000 bytes=40848 fdt-ceiling=0x47c80000 ex
 The verifier also requires zero relocations, no undefined symbols, an empty LK
 capsule section, and absence of XNU jump, payload and LK transport symbols.
 
+## Slot B UFS handoff diagnostic
+
+The optional receiver runs from the existing PC/x0 diagnostic entry. It reports
+the FDT fingerprint in the framebuffer line D0 and missing handoff evidence in
+D1. The fingerprint correlates the observed x0 with the bytes captured in RAM.
+In D1, bits 0 through 3 mark the missing firmware trace, unknown
+controller-enable state, unknown queue state, and unverified DMA delegation.
+Bit 4 also appears if the FDT header or bounds check fails. The receiver
+halts at the bootshim and leaves the UFS registers untouched.
+
+Run from the repository root with a fresh output directory:
+
+```sh
+UFS_HANDOFF_PROBE=1 sh duchamp/bootshim/test_phone_capture_qemu.sh \
+  work/lk-handoff-audit-v1/report.json work/slot-b-ufs-receiver-v1
+```
+
+QEMU verifies the fingerprint from guest RAM and requires D1 to be 0xf for a
+valid FDT. The known-block qtest exercises the separate emulated UFS path. A
+physical read requires same-boot firmware evidence of the controller and its
+active queue mode, empty transfer and task queues, the resource grant, and DMA
+address and cache ownership.
+
 ## Still unknown
 
 - LK's own numeric internal PC has not been captured; the diagnostic observed

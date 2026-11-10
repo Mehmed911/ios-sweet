@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - Slot B UFS handoff receiver and known-block replay (2026-11-11)
+
+- Built an opt-in PC/x0 receiver that correlates the FDT from RAM and reports missing same-boot firmware trace, unknown controller and queue state, and unverified DMA in D1=0xf. Both QEMU runs verified the fingerprint and framebuffer output. The original PC/x0 capture still builds byte-for-byte. No UFS MMIO, SMC, DMA, storage command or XNU jump in this receiver.
+- The emulated UFS qtest passed 27/27, including one 4096-byte READ(16) on LUN 2 / LBA 276480 matching the retained Android digest, one-byte mismatch rejection, and zero backend access for absent authorization or busy queues. The resource gate passed 9/9.
+- LK requests HCE=0 without readback. Actual HCE, legacy/MCQ queue state, firmware resource delegation and the XNU DMA/cache contract are unproven at handoff. Physical read and Setup mount remain pending. Keep the verified Slot B image and leave A and shared userdata alone. Local report and raw receiver are under outputs/duchamp-slot-b-ufs-diagnostic-20261111.
+
 ACTIVE HANDOFF - Photograph verifies Apple launchd and diagnostic services on Slot B (2026-11-11)
 
 - Matched the user-supplied Slot B photo to the pinned services fixture. It shows NOTIFYD CONTROL PASS (notifyd PID 7), SYSLOGD CONTROL PASS (syslogd PID 4, six ASL messages, clients 5 and 6) and heartbeat 8 with probes stopped. The controller enters the lifecycle only after checking getppid() == 1 and proc_pidpath(1) == /sbin/launchd. Together with the preceding Fastboot Slot B selection this establishes native launchd as PID 1 on B.

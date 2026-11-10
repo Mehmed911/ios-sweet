@@ -25,6 +25,14 @@ cflags="--target=aarch64-none-elf -O2 -ffreestanding -nostdlib -fno-pic -mgenera
 lk_ram=${LK_RAM_TRANSPORT:-}
 phone_layout=${PHONE_LAYOUT:-}
 phone_capture=${PHONE_CAPTURE:-}
+ufs_handoff_probe=${UFS_HANDOFF_PROBE:-}
+if [ -n "$ufs_handoff_probe" ]; then
+	if [ "$ufs_handoff_probe" != 1 ] || [ "$phone_capture" != 1 ]; then
+		echo "UFS_HANDOFF_PROBE=1 requires PHONE_CAPTURE=1" >&2
+		exit 2
+	fi
+	cflags="$cflags -DDUCHAMP_UFS_HANDOFF_PROBE=1"
+fi
 ldflags="-Wl,--defsym,DUCHAMP_IMAGE_BASE=0"
 
 if [ -n "$phone_capture" ]; then
@@ -195,8 +203,12 @@ if [ -n "$phone_layout" ]; then
 		--elf "$out/duchamp-diagnostic.elf" --image "$out/Image"
 fi
 if [ -n "$phone_capture" ]; then
-	python3 ../../tools/verify-duchamp-phone-capture.py \
+	set -- \
 		--contract "$phone_contract" \
 		--elf "$out/duchamp-diagnostic.elf" --image "$out/Image"
+	if [ -n "$ufs_handoff_probe" ]; then
+		set -- "$@" --ufs-handoff-probe
+	fi
+	python3 ../../tools/verify-duchamp-phone-capture.py "$@"
 fi
 ls -l "$out/duchamp-diagnostic.elf" "$out/Image"

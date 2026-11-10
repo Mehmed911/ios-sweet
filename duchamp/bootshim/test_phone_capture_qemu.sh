@@ -45,11 +45,25 @@ if [ -z "$capture_offset" ]; then
 fi
 capture_pa=$((0x40200000 + 0x$capture_offset))
 
-python3 test_qemu.py --image "$out/Image" --pattern pc-x0 --wait 3 \
+set -- --image "$out/Image" --pattern pc-x0 --wait 3 \
 	--capture-record-pa "$capture_pa" \
 	--expect-capture-pc 0x40200000 --expect-capture-x0 0x48000000
-python3 ../../tools/verify-duchamp-phone-capture.py \
-	--contract "$contract" --elf "$out/duchamp-diagnostic.elf" \
+if [ "${UFS_HANDOFF_PROBE:-}" = 1 ]; then
+	probe_offset=$(llvm-nm "$out/duchamp-diagnostic.elf" |
+		awk '$3 == "duchamp_bootshim_ufs_handoff_record" { print $1 }')
+	if [ -z "$probe_offset" ]; then
+		echo "UFS handoff record symbol missing" >&2
+		exit 1
+	fi
+	set -- "$@" --ufs-handoff-record-pa "$((0x40200000 + 0x$probe_offset))"
+fi
+python3 test_qemu.py "$@"
+
+set -- --contract "$contract" --elf "$out/duchamp-diagnostic.elf" \
 	--image "$out/Image" --json-out "$out/verification.json"
+if [ "${UFS_HANDOFF_PROBE:-}" = 1 ]; then
+	set -- "$@" --ufs-handoff-probe
+fi
+python3 ../../tools/verify-duchamp-phone-capture.py "$@"
 
 echo "phone-capture-qemu-suite: PASS output=$out record-pa=$(printf '0x%x' "$capture_pa")"

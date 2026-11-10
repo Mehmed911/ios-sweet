@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import re
 from pathlib import Path
 import struct
 import subprocess
@@ -102,7 +103,7 @@ def inspect_arm64_image(image):
     }
 
 
-def inspect_build(elf, image):
+def inspect_build(elf, image, ufs_handoff_probe=False):
     image_report = inspect_arm64_image(image)
     symbols = read_symbols(elf)
     required = (
@@ -121,6 +122,14 @@ def inspect_build(elf, image):
             symbols["duchamp_bootshim_main"] < symbols["_end"],
             "phone-capture symbols are out of order")
     verify_capture_store(image, symbols)
+    probe_symbol = "duchamp_bootshim_ufs_handoff_record"
+    require((probe_symbol in symbols) == ufs_handoff_probe,
+            "UFS handoff probe selection differs from the linked image")
+    if ufs_handoff_probe:
+        instructions = subprocess.check_output(
+            ["llvm-objdump", "-d", str(elf)], text=True)
+        require(not re.search(r"\b(?:smc|hvc)\s+#", instructions),
+                "UFS handoff probe contains a secure-monitor or hypervisor call")
 
     forbidden = (
         "duchamp_phone_layout_guard", "duchamp_phone_layout_stop",
@@ -159,7 +168,7 @@ def inspect_build(elf, image):
         "relocations": 0,
         "undefined_symbols": 0,
         "payload_transport_or_jump_linked": False,
-        "fdt_dereference_linked": False,
+        "fdt_dereference_linked": ufs_handoff_probe,
         "watchdog_access_linked": False,
     }
 
@@ -170,9 +179,12 @@ def main():
     parser.add_argument("--elf", type=Path)
     parser.add_argument("--image", type=Path)
     parser.add_argument("--json-out", type=Path)
+    parser.add_argument("--ufs-handoff-probe", action="store_true")
     arguments = parser.parse_args()
     if (arguments.elf is None) != (arguments.image is None):
         parser.error("--elf and --image must be supplied together")
+    if arguments.ufs_handoff_probe and arguments.elf is None:
+        parser.error("--ufs-handoff-probe requires --elf and --image")
     if arguments.json_out and arguments.json_out.exists():
         parser.error("preserve existing output")
     try:
@@ -180,14 +192,16 @@ def main():
             encoding="utf-8"))
         result = {
             "result": "PASS",
-            "mode": "runtime-pc-x0-capture-offline-verification",
+            "mode": ("ufs-handoff-receiver-offline-verification"
+                     if arguments.ufs_handoff_probe else
+                     "runtime-pc-x0-capture-offline-verification"),
             "contract": LAYOUT.validate_contract(contract),
             "build": None,
             "safety": {
                 "position_independent": True,
                 "ram_record_only": True,
                 "framebuffer_write_linked": True,
-                "fdt_dereference_linked": False,
+                "fdt_dereference_linked": arguments.ufs_handoff_probe,
                 "watchdog_access_linked": False,
                 "storage_access_linked": False,
                 "payload_transport_linked": False,
@@ -200,7 +214,8 @@ def main():
         }
         if arguments.elf:
             result["build"] = inspect_build(
-                arguments.elf.resolve(), arguments.image.resolve().read_bytes())
+                arguments.elf.resolve(), arguments.image.resolve().read_bytes(),
+                arguments.ufs_handoff_probe)
         if arguments.json_out:
             arguments.json_out.parent.mkdir(parents=True, exist_ok=True)
             with arguments.json_out.open("x", encoding="utf-8") as output:
@@ -212,7 +227,8 @@ def main():
     if result["build"]:
         print("duchamp-phone-capture: PASS "
               f"link-base=0 bytes={result['build']['image']['bytes']} "
-              "payload=absent fdt-deref=absent phone-run=not-authorized")
+              f"payload=absent fdt-deref={'present' if arguments.ufs_handoff_probe else 'absent'} "
+              "phone-run=not-authorized")
     else:
         print("duchamp-phone-capture-contract: PASS phone-run=not-authorized")
     return 0

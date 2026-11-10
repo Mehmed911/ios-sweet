@@ -1,5 +1,9 @@
 #include "phone_capture.h"
 
+#if defined(DUCHAMP_UFS_HANDOFF_PROBE)
+#include "../loader/mt6897_entry.h"
+#endif
+
 #define GLYPH_WIDTH 5U
 #define GLYPH_HEIGHT 7U
 #define GLYPH_SCALE 8U
@@ -117,6 +121,74 @@ draw_line(volatile unsigned char *base, size_t stride, size_t x, size_t y,
 		    line[index]);
 }
 
+#if defined(DUCHAMP_UFS_HANDOFF_PROBE)
+#define UFS_PROBE_FDT_BEGIN UINT64_C(0x40000000)
+#define UFS_PROBE_FDT_END UINT64_C(0x80000000)
+#define UFS_PROBE_FDT_MAX (2U * 1024U * 1024U)
+#define UFS_PROBE_FDT_HEADER 40U
+#define UFS_PROBE_MISSING_TRACE (UINT32_C(1) << 0)
+#define UFS_PROBE_UNKNOWN_HCE (UINT32_C(1) << 1)
+#define UFS_PROBE_UNKNOWN_QUEUES (UINT32_C(1) << 2)
+#define UFS_PROBE_UNVERIFIED_DMA (UINT32_C(1) << 3)
+#define UFS_PROBE_INVALID_FDT (UINT32_C(1) << 4)
+
+struct duchamp_ufs_handoff_record {
+	uint64_t magic;
+	uint32_t version;
+	uint32_t size;
+	uint64_t fdt_fingerprint;
+	uint32_t fdt_bytes;
+	uint32_t blockers;
+};
+
+struct duchamp_ufs_handoff_record duchamp_bootshim_ufs_handoff_record;
+
+static uint32_t
+probe_be32(const volatile unsigned char *bytes)
+{
+	return ((uint32_t)bytes[0] << 24) | ((uint32_t)bytes[1] << 16) |
+	    ((uint32_t)bytes[2] << 8) | bytes[3];
+}
+
+static void
+capture_ufs_handoff(uint64_t fdt_address, unsigned entry_result)
+{
+	struct duchamp_ufs_handoff_record *record =
+	    &duchamp_bootshim_ufs_handoff_record;
+	/* The receiver has no firmware trace, resource grant or UFS access. */
+	record->magic = UINT64_C(0x3153465548435544);
+	record->version = 1;
+	record->size = sizeof(*record);
+	record->fdt_bytes = 0;
+	record->fdt_fingerprint = 0;
+	record->blockers = UFS_PROBE_MISSING_TRACE | UFS_PROBE_UNKNOWN_HCE |
+	    UFS_PROBE_UNKNOWN_QUEUES | UFS_PROBE_UNVERIFIED_DMA |
+	    UFS_PROBE_INVALID_FDT;
+	if (entry_result != DUCHAMP_ENTRY_OK ||
+	    fdt_address < UFS_PROBE_FDT_BEGIN ||
+	    fdt_address > UFS_PROBE_FDT_END - UFS_PROBE_FDT_HEADER)
+		return;
+	const volatile unsigned char *fdt =
+	    (const volatile unsigned char *)(uintptr_t)fdt_address;
+	if (probe_be32(fdt) != UINT32_C(0xd00dfeed))
+		return;
+	uint32_t bytes = probe_be32(fdt + 4);
+	if (bytes < UFS_PROBE_FDT_HEADER || bytes > UFS_PROBE_FDT_MAX ||
+	    bytes > UFS_PROBE_FDT_END - fdt_address)
+		return;
+
+	/* For screen-to-RAM correlation only. This is not a trust token. */
+	uint64_t fingerprint = UINT64_C(1469598103934665603);
+	for (uint32_t i = 0; i < bytes; i++) {
+		fingerprint ^= fdt[i];
+		fingerprint *= UINT64_C(1099511628211);
+	}
+	record->fdt_bytes = bytes;
+	record->fdt_fingerprint = fingerprint;
+	record->blockers &= ~UFS_PROBE_INVALID_FDT;
+}
+#endif
+
 uint64_t
 duchamp_phone_capture_checksum(const struct duchamp_phone_capture_record *record)
 {
@@ -175,6 +247,20 @@ duchamp_phone_capture_run(volatile void *framebuffer, size_t stride,
 	second_y = first_y + GLYPH_HEIGHT * GLYPH_SCALE + 4U * GLYPH_SCALE;
 	draw_line(base, stride, start_x, first_y, pc_line);
 	draw_line(base, stride, start_x, second_y, x0_line);
+#if defined(DUCHAMP_UFS_HANDOFF_PROBE)
+	const size_t line_step = (GLYPH_HEIGHT + 4U) * GLYPH_SCALE;
+	const size_t fourth_y = second_y + 2U * line_step;
+	capture_ufs_handoff(entry_x0, entry_result);
+	if (fourth_y + GLYPH_HEIGHT * GLYPH_SCALE <= height) {
+		char line[LINE_CHARACTERS];
+		format_line(line, 'D', '0',
+		    duchamp_bootshim_ufs_handoff_record.fdt_fingerprint);
+		draw_line(base, stride, start_x, second_y + line_step, line);
+		format_line(line, 'D', '1',
+		    duchamp_bootshim_ufs_handoff_record.blockers);
+		draw_line(base, stride, start_x, fourth_y, line);
+	}
+#endif
 #if defined(__aarch64__) && !defined(DUCHAMP_TEST_NO_ARCH_BARRIER)
 	__asm__ volatile("dsb sy; isb" ::: "memory");
 #endif
