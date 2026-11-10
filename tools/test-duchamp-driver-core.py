@@ -4,11 +4,14 @@
 No phone backend, XNU kernel, physical device or host block device is used.
 The UFS fixture is freshly generated and opened read-only by QEMU. qtest
 drives the actual emulated DMA engine; no guest CPU or guest OS is running.
+Known-block mode embeds one block of a pinned local backup in an isolated,
+temporary sparse LUN and publishes only digests and test results.
 """
 import argparse
 import ctypes as C
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import socket
@@ -150,7 +153,7 @@ class Rect(C.Structure):
 
 
 class Qtest:
-    def __init__(self, qemu, image, folder):
+    def __init__(self, qemu, image, folder, *, lun=0, keep_trace=True):
         self.folder = folder
         self.path = folder / 'qtest.sock'
         self.stderr = (folder / 'qemu.stderr').open('w')
@@ -158,10 +161,10 @@ class Qtest:
             qemu, '-machine', 'q35,accel=tcg,max-ram-below-4g=128M',
             '-m', '256M', '-nodefaults', '-display', 'none', '-S',
             '-qtest', f'unix:{self.path},server=on,wait=off',
-            '-qtest-log', str(folder / 'qtest.log'),
+            '-qtest-log', str(folder / 'qtest.log') if keep_trace else os.devnull,
             '-drive', f'if=none,id=lu0,file={image},format=raw,readonly=on',
             '-device', 'ufs,id=ufs0,addr=04.0,mcq=off',
-            '-device', 'ufs-lu,drive=lu0,bus=ufs0,lun=0',
+            '-device', f'ufs-lu,drive=lu0,bus=ufs0,lun={lun}',
         ], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=self.stderr)
         self.socket = socket.socket(socket.AF_UNIX)
         self.socket.settimeout(5)
@@ -264,12 +267,15 @@ def configure_library(path):
 
 
 def ufs_checks(lib, q, base, original, fault, data_base=None, descriptor_bits=64, data_bits=64,
-               gpt=None):
+               gpt=None, known_block=None):
     errors, checks, operations, cdbs = [], {}, [], []
+    busy_register = None
     inject, timeout_arm = [None], [False]
 
     def rd(_, offset):
         operations.append(('r', offset))
+        if offset == busy_register:
+            return 1
         try:
             value = q.read(offset)
             return value | 1 if inject[0] in ('timeout','frozen') and offset == 0x58 else value
@@ -286,18 +292,23 @@ def ufs_checks(lib, q, base, original, fault, data_base=None, descriptor_bits=64
             errors.append(str(e))
 
     def put(_, address, data, length):
+        operations.append(('dma-write', address, length))
         try:
             raw = C.string_at(data, length)
             if address == base + 0x1000:
                 cdbs.append({'transaction': raw[0], 'flags': raw[1],
                              'opcode': raw[16] if raw[0] == 1 else None,
                              'query': raw[12] if raw[0] == 0x16 else None})
+                if known_block is not None and cdbs[-1]['opcode'] == 0x88:
+                    cdbs[-1].update(lun=raw[2], lba=int.from_bytes(raw[18:26], 'big'),
+                                     blocks=int.from_bytes(raw[26:30], 'big'))
             q.put(address, raw)
             return 0
         except Exception as e:
             errors.append(str(e)); return -1
 
     def get(_, address, data, length):
+        operations.append(('dma-read', address, length))
         try:
             raw = bytearray(q.get(address, length))
             if inject[0] == 'tag' and address == base + 0x1200:
@@ -307,16 +318,39 @@ def ufs_checks(lib, q, base, original, fault, data_base=None, descriptor_bits=64
         except Exception as e:
             errors.append(str(e)); return -1
 
-    callbacks = [RD(rd), WR(wr), DMA(put), DMA(get), FENCE(lambda _: None),
-                 TICK(lambda _: 1 if inject[0]=='frozen' else time.monotonic_ns() // 1_000_000)]
+    def fence(_):
+        operations.append(('barrier',))
+
+    def tick(_):
+        operations.append(('clock',))
+        return 1 if inject[0] == 'frozen' else time.monotonic_ns() // 1_000_000
+
+    callbacks = [RD(rd), WR(wr), DMA(put), DMA(get), FENCE(fence), TICK(tick)]
     data_base=base+0x10000 if data_base is None else data_base
     cfg = Config(IO(None, *callbacks), min(base,data_base), max(base+0x100000,data_base+0x40000),
                  base, base+0x1000, data_base, 500, 1, 0, descriptor_bits, data_bits,
                  64 if fault=='frozen' else 1000000)
     host = C.create_string_buffer(lib.dufs_host_size())
+    if known_block is not None:
+        cfg.lun = known_block['lun']
     cfg.ready = 0
     checks['unproven_platform_no_io'] = lib.dufs_bind(host, C.byref(cfg)) == -2 and not operations
     cfg.ready = 1
+    if known_block is not None:
+        for name, register in [('transfer_doorbell', 0x58),
+                               ('task_doorbell', 0x78), ('task_run', 0x80)]:
+            busy_register = register
+            blocked_host = C.create_string_buffer(lib.dufs_host_size())
+            before = len(operations)
+            refused = (lib.dufs_bind(blocked_host, C.byref(cfg)) == 0 and
+                       lib.dufs_start(blocked_host) == -3)
+            new_operations = operations[before:]
+            checks[f'{name}_blocked_before_write_or_dma'] = (
+                refused and ('r', register) in new_operations and
+                all(op[0] == 'r' for op in new_operations))
+        busy_register = None
+        return read_known_block(lib, host, cfg, checks, cdbs, errors, known_block)
+
     for name, field, value in [('unaligned_list', 'list', base+1),
                               ('overlap', 'command', base),
                               ('outside_window', 'data', cfg.end),
@@ -387,6 +421,109 @@ def ufs_checks(lib, q, base, original, fault, data_base=None, descriptor_bits=64
                 reads=reads, packets=cdbs, injected_fault=fault, errors=errors)
 
 
+def read_known_block(lib, host, cfg, checks, packets, errors, target):
+    blocks, size = U64(), U32()
+    checks['emulated_controller_initialized'] = (
+        lib.dufs_bind(host, C.byref(cfg)) == 0 and lib.dufs_start(host) == 0 and
+        lib.dufs_nop(host) == 0 and lib.dufs_device_init(host) == 0 and
+        lib.dufs_capacity(host, C.byref(blocks), C.byref(size)) == 0)
+    checks['exact_geometry'] = (
+        blocks.value == target['lba'] + 2 and size.value == target['bytes'])
+    guard = b'\xa5' * 16
+    destination = guard + bytes(target['bytes']) + guard
+    storage = C.create_string_buffer(destination, len(destination))
+    first_packet = len(packets)
+    rc = None
+    if checks['emulated_controller_initialized'] and checks['exact_geometry']:
+        rc = lib.dufs_read(host, target['lba'], 1, C.addressof(storage) + len(guard),
+                           target['bytes'])
+    data_end = len(guard) + target['bytes']
+    digest = hashlib.sha256(storage.raw[len(guard):data_end]).hexdigest() if rc == 0 else None
+    matches_android = digest == target['android_sha256']
+    reads = packets[first_packet:]
+    checks['exact_single_read_command'] = reads == [{
+        'transaction': 1, 'flags': 0x40, 'opcode': 0x88, 'query': None,
+        'lun': target['lun'], 'lba': target['lba'], 'blocks': 1,
+    }]
+    checks['only_read_scsi'] = all(
+        cmd['opcode'] in (0x9e, 0x88) and cmd['flags'] == 0x40
+        for cmd in packets if cmd['transaction'] == 1)
+    checks['read_exact_fixture_block'] = rc == 0 and digest == target['fixture_sha256']
+    checks['expected_android_digest_verdict'] = matches_android == target['expect_match']
+    checks['destination_guards_preserved'] = (
+        storage.raw[:len(guard)] == guard and
+        storage.raw[data_end:] == guard)
+    checks['callbacks_clean'] = not errors
+    return dict(checks=checks, command=reads, returned_sha256=digest,
+                matched_android=matches_android, read_result=rc)
+
+
+def run_known_block(lib, qemu, out, reference, backup):
+    reference_fields = {
+        'os': 'Android', 'product': 'duchamp', 'soc': 'mt6897',
+        'partition': 'vendor_boot_a', 'linux_scsi_lun': 2, 'linux_lba': 276480,
+        'linux_logical_block_bytes': 4096, 'byte_offset': 1132462080,
+        'block_sha256': '065f2cf024655ce86cd67efd58901ded708c34cf2e721778b6b3de67f5382fd6',
+        'saved_vendor_boot_sha256': 'd1d1887eba4f7b4920fc4292de5cf4e9aa6e7ce474a6b45ffeb4141434743e49',
+    }
+    if not reference.is_file() or not backup.is_file():
+        raise ValueError('reference and backup must be regular files')
+    metadata = json.loads(reference.read_text())
+    if (not isinstance(metadata, dict) or
+            any(metadata.get(key) != value for key, value in reference_fields.items()) or
+            not all(metadata.get(key) is True for key in
+                    ('matched_live_partition', 'matched_second_lba_read', 'matched_saved_partition'))):
+        raise ValueError('Android reference differs from the pinned observation')
+    block_bytes = reference_fields['linux_logical_block_bytes']
+    expected_digest = reference_fields['block_sha256']
+    backup_digest = reference_fields['saved_vendor_boot_sha256']
+    with backup.open('rb') as source:
+        if (not stat.S_ISREG(os.fstat(source.fileno()).st_mode) or
+                hashlib.file_digest(source, 'sha256').hexdigest() != backup_digest):
+            raise ValueError('saved vendor_boot_a backup hash differs')
+        source.seek(0)
+        block = source.read(block_bytes)
+    if len(block) != block_bytes or hashlib.sha256(block).hexdigest() != expected_digest:
+        raise ValueError('saved block hash differs from Android reference')
+
+    lun, lba = reference_fields['linux_scsi_lun'], reference_fields['linux_lba']
+    report = dict(scope='QEMU UFS qtest only; no XNU guest or physical device',
+                  qemu=subprocess.check_output([qemu, '--version'], text=True).splitlines()[0],
+                  lun=lun, lba=lba, block_bytes=block_bytes, android_sha256=expected_digest,
+                  saved_backup_sha256=backup_digest, physical_backend_enabled=False,
+                  physical_ufs_read_performed=False, raw_data_in_report=False, cases={})
+    for label, contents in [('match', block),
+                            ('one_byte_changed', bytes([block[0] ^ 1]) + block[1:])]:
+        with tempfile.TemporaryDirectory(prefix='dufs-known-') as name:
+            folder = Path(name)
+            image = folder / 'virtual-lun.raw'
+            with image.open('wb') as disk:
+                disk.truncate((lba + 2) * block_bytes)
+                disk.seek(lba * block_bytes)
+                disk.write(contents)
+            target = dict(lun=lun, lba=lba, bytes=block_bytes, android_sha256=expected_digest,
+                          fixture_sha256=hashlib.sha256(contents).hexdigest(),
+                          expect_match=(label == 'match'))
+            q = Qtest(qemu, image, folder, lun=lun, keep_trace=False)
+            try:
+                item = ufs_checks(lib, q, 0x100000, None, None, known_block=target)
+            finally:
+                q.close()
+            with image.open('rb') as disk:
+                disk.seek(lba * block_bytes)
+                item['checks']['fixture_block_unchanged'] = disk.read(block_bytes) == contents
+            report['cases'][label] = item
+
+    with backup.open('rb') as source:
+        report['backup_unchanged'] = hashlib.file_digest(source, 'sha256').hexdigest() == backup_digest
+    checks = [value for case in report['cases'].values() for value in case['checks'].values()]
+    checks.append(report['backup_unchanged'])
+    report.update(checks=len(checks), checks_passed=sum(checks), passed=all(checks))
+    (out / 'result.json').write_text(json.dumps(report, indent=2) + '\n')
+    print(json.dumps(report, indent=2))
+    return 0 if report['passed'] else 1
+
+
 def framebuffer_checks(lib):
     width, height, stride, guard = 1220, 2712, 4992, 64
     n = stride*height
@@ -427,7 +564,11 @@ def main():
     ap.add_argument('--cross-cc', default='clang')
     ap.add_argument('--root-image',type=Path,help='optional existing regular HFS+ image, opened read-only')
     ap.add_argument('--gpt', action='store_true', help='also test GPT-wrapped virtual UFS disks')
+    ap.add_argument('--known-block', nargs=2, type=Path, metavar=('REFERENCE_JSON', 'SAVED_VENDOR_BOOT'),
+                    help='run only the pinned Android block check on a temporary read-only QEMU LUN')
     args = ap.parse_args()
+    if args.known_block and (args.gpt or args.root_image):
+        ap.error('--known-block cannot be combined with --gpt or --root-image')
     out = args.output.resolve()
     out.mkdir(parents=True, exist_ok=False)
     repo = Path(__file__).resolve().parent.parent
@@ -436,6 +577,8 @@ def main():
     command = [args.cc, '-std=c11', '-O2', '-Wall', '-Wextra', '-Werror', '-fPIC', '-shared',
                *(str(repo / 'duchamp/drivers' / s) for s in sources), '-o', str(libpath)]
     subprocess.run(command, check=True)
+    if args.known_block:
+        return run_known_block(configure_library(libpath), args.qemu, out, *args.known_block)
     guards = out/'guard-tests'
     subprocess.run([args.cc,'-std=c11','-O1','-g','-Wall','-Wextra','-Werror',
                     '-fsanitize=address,undefined','-fno-sanitize-recover=all','-fno-omit-frame-pointer',
