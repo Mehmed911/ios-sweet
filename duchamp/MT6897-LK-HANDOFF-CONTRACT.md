@@ -129,6 +129,14 @@ quiescence or grant access. The firmware-side ownership grant must come from
 the authority that can issue it. The receiver's observations establish
 receipt and timing. [AArch64 boot contract](https://docs.kernel.org/arch/arm64/booting.html#call-the-kernel-image)
 
+The published Duchamp Android driver also exposes
+`/proc/atf_log/atf_raw_buf`. Its read handler copies the reserved ATF buffer
+and advances a separate driver offset. The saved Android FDT declares a 2 MiB
+region with the expected compatible string. A future raw export can be
+examined for retained entries, but the reader supplies neither a previous-boot
+identity nor a UFS measurement. There is no raw export tied to the recorded
+Slot B trial. [Duchamp ATF log driver](https://github.com/MiCode/MTK_kernel_device_modules/blob/bsp-duchamp-u-oss/drivers/misc/mediatek/atf/atf_log.c)
+
 The saved stock Android logs lack this pair. The existing PC/x0 diagnostic
 reports CPU entry state and has no UFS sampling or grant channel. The
 [RAM launch audit](loader/MT6897-RAM-LAUNCH.md) currently has no documented

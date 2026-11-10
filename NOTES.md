@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - Slot B firmware trace remains missing (2026-11-11)
+
+- Rechecked the Slot B photograph and Fastboot receipt. They establish the diagnostic RAM-root launchd and services, with no firmware queue state or same-boot ownership record. Two host checks found no ADB or Fastboot device. No reboot, partition write, physical UFS read or mount.
+- The official Duchamp ATF and PL/LK source blobs match the locally archived copies. The saved Android FDT declares a 2 MiB ATF buffer. The Android raw interface only copies that existing buffer, with no verified cross-boot retention or correlation to Slot B. The current trace still needs an actual BL31-boundary sample and firmware delegation for XNU. All 22 local identity, handoff and ownership checks passed.
+- Rechecked the prior QEMU Hello and language image hashes. Its read-only qufs0 GPT root and RAM-backed /private/var are verified in that receipt. A separate physical root location has not been established. Report is under outputs/duchamp-slot-b-firmware-trace-20261111.
+
 ACTIVE HANDOFF - Slot B UFS handoff receiver and known-block replay (2026-11-11)
 
 - Built an opt-in PC/x0 receiver that correlates the FDT from RAM and reports missing same-boot firmware trace, unknown controller and queue state, and unverified DMA in D1=0xf. Both QEMU runs verified the fingerprint and framebuffer output. The original PC/x0 capture still builds byte-for-byte. No UFS MMIO, SMC, DMA, storage command or XNU jump in this receiver.
