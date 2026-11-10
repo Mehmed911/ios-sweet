@@ -143,6 +143,20 @@ reports CPU entry state and has no UFS sampling or grant channel. The
 no-write entry provider for Duchamp. The optional BL31 audit records these
 scope limits and leaves the physical UFS gate closed.
 
+### Live retained LK log on Slot B
+
+Fastboot identified Duchamp with B selected. The previously audited OEM log
+handler returned 197219 bytes over USB and completed with OKAY. The log
+records loading BL31 and entering Fastboot. It contains no XNU handoff
+marker, no HCE or queue state, and no DMA or cache grant. The result proves
+that the PL/LK export works on the phone. The Android ATF raw export and a
+firmware trace from the XNU handoff remain separate and unverified.
+
+The post-capture query still reported B selected and reported zero tries
+remaining, with successful and unbootable both reported as no. This pass did
+not issue a reboot, boot, slot change or partition write. The receipt and
+private raw capture are under outputs/duchamp-slot-b-live-lk-log-20261111.
+
 ## RAM and reserved memory
 
 The final FDT declares one 12 GiB RAM range:

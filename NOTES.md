@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Live Slot B Fastboot PL/LK export verified (2026-11-11)
+
+- Confirmed Duchamp in LK Fastboot, current-slot B. The verified retained-log command returned 197219 bytes and terminal OKAY using the installed Android USB DLL and a bounded host receiver. The log confirms BL31 image load followed by entering Fastboot, with no XNU handoff, HCE, queue, DMA/cache or ownership markers. USB capture works for PL/LK. A same-boot BL31-to-XNU firmware trace is still missing.
+- B remains selected. After capture Fastboot reported zero retries, successful=no and unbootable=no. No reboot, slot change, firmware replacement, direct MMIO, partition write or physical UFS block read. Seven LK audit and nine ownership regressions passed. Keep the private capture out of git. Report and capture are under outputs/duchamp-slot-b-live-lk-log-20261111.
+
 ACTIVE HANDOFF - Slot B firmware trace remains missing (2026-11-11)
 
 - Rechecked the Slot B photograph and Fastboot receipt. They establish the diagnostic RAM-root launchd and services, with no firmware queue state or same-boot ownership record. Two host checks found no ADB or Fastboot device. No reboot, partition write, physical UFS read or mount.
