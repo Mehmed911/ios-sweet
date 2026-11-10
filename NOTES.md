@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - Compact 20F66 HFS+ RAM root reached Setup Hello on QEMU (2026-11-11)
+
+- Cloned the pinned 3 GiB RAM Setup root and removed 59 non-English CoreEmoji localizations from the new copy. The compact HFS+ volume is 3,019,898,880 bytes (2,880 MiB), 192 MiB smaller, with 81,580,032 bytes free at build time. fsck.hfsplus -fn passed. Compared every retained data file with the original: 1,333 matched, including all 43 dyld cache files. Source root stayed byte-identical. Compact SHA-256 475ac6e417412562bad1b7330fdc99eae232b86ecd7090da92fd68d6f900ea0e.
+- Both the first compact run and a parallel original-root control tripped the guest interrupt-processing timeout in QEMU. The successful compact retry used the same image and CI 41543710742 kernel with the QEMU-only ml-timeout-interrupt-masked-scale changed from 4 to 32, and reused the established iOSUser and software scanout hooks. XNU mounted SweetRAMRoot from md0. Setup PID 37 received BackBoard status 0. The Hello framebuffer passed 6/6 checks at SwapEnd 186, IOSurface 5, layer 0, in 273.713 host seconds. All active pixels matched the software scanout. No kernel panic was seen in the successful run.
+- Result, Hello PNG, logs, and local replay tools are in outputs/duchamp-setup-compact-ram-20261111. The private compact root is at ~/.cache/duchamp-qemu-tests/setup-compact-ram-20261111-v3/root.hfs in Ubuntu WSL. Only Hello was tested. QEMU attached no guest disk or UFS device. No phone access, partition changes, or physical UFS.
+
 ACTIVE HANDOFF - Xiaomi OTA comparison finds no additional Duchamp RAM entry (2026-11-11)
 
 - ADB read-only on V816.0.17.0.UNLMIXM, slot _a, confirmed the saved lk_a SHA-256 and disabled CONFIG_KEXEC and CONFIG_KEXEC_FILE. No reboot or write to the phone.
