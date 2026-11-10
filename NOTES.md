@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Duchamp accepted Slot A selection in Fastboot (2026-11-11)
+
+- The user requested Slot A. Confirmed the connected Duchamp in LK Fastboot with B reported, and A marked successful and bootable. Sent set_active a once and Fastboot returned OKAY. Two immediate getvar queries still report B in the existing LK session. The earlier B selection showed the same stale readback until a new bootloader session. Slot A readback and Android boot remain unverified.
+- Left the device in Fastboot with no reboot, no second slot command and no image flash.
+
 ACTIVE HANDOFF - Slot B pstore exports contain no attributable XNU log (2026-11-11)
 
 - Read lkmsg (262144 bytes) and lpmsg (65536 bytes) through live LK Fastboot USB on Duchamp with B selected. Both returned DATA and terminal OKAY. Excluding send-buffer tails, the two payloads have no readable XNU lines, same-boot identifier, or UFS handoff markers in ASCII or UTF-16. These exports cover console/pmsg slices only and omit LK-stripped header bytes. ATF and other pstore zones were not read.
