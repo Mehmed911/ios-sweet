@@ -96,6 +96,45 @@ wrapper/trampoline presents the secure monitor with the function ID in `x0`,
 kernel target in `x1`, FDT target in `x2`, zero in `x3`, and one in `x4`.
 Neither target address is a fixed literal in `lk_a`.
 
+## UFS evidence at the BL31 exit boundary
+
+The optional `--atf` input follows the kernel-boot descriptor in the pinned
+BL31 capture from `tee_a`. The normal first-entry handler selects callback
+group 5, whose table contains `sip_emi_set_nsr_permission` followed by
+`spm_smpu_hre_first_bk`. Both precede the handler's final helper. An LK-side
+snapshot taken before the secure call would miss this work. The capture
+identifies the BL31 build seen in Android, while byte-for-byte equivalence
+to the running BL31 remains unverified.
+
+An acceptable hardware capture has two correlated records from the same
+boot. The firmware record is emitted through a documented vendor trace or
+supported diagnostic channel after the last platform work at the EL3 exit
+boundary. The receiving bootshim records the same boot identifier at its
+first entry and binds it to the loaded XNU image before any XNU UFS activity.
+Keep both records in reserved RAM or export through the documented channel.
+
+| Required field | What the capture must establish |
+| --- | --- |
+| Provenance | Firmware identity, fresh boot identifier, Duchamp identity, XNU image and live FDT digests, and the stage that supplied each observation. |
+| Controller | Actual HCE state after shutdown, with the queue mode and the point at which submissions stopped. |
+| Legacy queues | Transfer and task doorbells and run/stop status. Record drain after the last firmware storage operation. |
+| MCQ | If enabled, cover every configured submission and completion queue, its operational state and head/tail positions, and outstanding work. If disabled, record the observed mode. |
+| Ownership | An explicit grant for XNU or a documented firmware-mediated contract covering the controller, clocks and HW voter, reset, PHY, regulators and interrupts. |
+| DMA and cache | The effective DMA mapping and its owner, firewall permission, IOMMU domain or direct window, bounce disposition, and who performs cache maintenance for the XNU buffers through the system cache. |
+
+If firmware turns off register access during shutdown, the record needs the
+last valid drain sample plus a firmware guarantee that no producer or DMA
+can resume before the handoff. A zero doorbell alone cannot establish DMA
+quiescence or grant access. The firmware-side ownership grant must come from
+the authority that can issue it. The receiver's observations establish
+receipt and timing. [AArch64 boot contract](https://docs.kernel.org/arch/arm64/booting.html#call-the-kernel-image)
+
+The saved stock Android logs lack this pair. The existing PC/x0 diagnostic
+reports CPU entry state and has no UFS sampling or grant channel. The
+[RAM launch audit](loader/MT6897-RAM-LAUNCH.md) currently has no documented
+no-write entry provider for Duchamp. The optional BL31 audit records these
+scope limits and leaves the physical UFS gate closed.
+
 ## RAM and reserved memory
 
 The final FDT declares one 12 GiB RAM range:
@@ -132,6 +171,10 @@ The verified local result is:
 ```text
 duchamp-lk-handoff: PASS lk=0x50700000 image=0x40000000 fdt=0x47c80000 execution=blocked
 ```
+
+To include the captured secure-side path, add
+`--atf research/mt6897-firmware-live/20261101-v1/atf.bin` and use a fresh output
+path. The report adds `captured_bl31_handoff`. The default report is unchanged.
 
 ## Separate fail-closed phone-layout path
 

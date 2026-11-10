@@ -40,7 +40,50 @@ def arm64_image_fixture(size=64):
     return bytes(raw)
 
 
+def bl31_fixture():
+    raw = bytearray(MODULE.BL31_BYTES)
+    base = MODULE.BL31_BASE
+    struct.pack_into("<QIIQQ", raw, 0x65500, base + 0xB63C,
+                     0x82000115, 0xC2000115, base + 0x5364F, base + 0x66120)
+    struct.pack_into("<QQ", raw, 0x67140, base + 0x61C70, base + 0x61C90)
+    struct.pack_into("<QQQQ", raw, 0x61C70, base + 0x5BFA3, base + 0x37150,
+                     base + 0x5FC27, base + 0x3B5F8)
+    for start, data in (
+        (0x5364F, b"MTK_SIP_KERNEL_BOOT"),
+        (0x5BFA3, b"sip_emi_set_nsr_permission"),
+        (0x5FC27, b"spm_smpu_hre_first_bk"),
+        (0xB6B8, MODULE.BL31_BOOT_CALLBACK_CALLSITE),
+        (0x28DB4, MODULE.BL31_BOOT_CALLBACK_ITERATOR),
+    ):
+        raw[start:start + len(data)] = data
+    return raw
+
+
 class HandoffAuditTests(unittest.TestCase):
+    def test_bl31_callback_order_does_not_promote_runtime_claims(self):
+        raw = bl31_fixture()
+        with mock.patch.object(MODULE, "BL31_SHA256", MODULE.sha256(raw)):
+            report = MODULE.inspect_bl31_handoff(raw)
+        self.assertEqual([item["name"] for item in report["boot_callbacks_in_table_order"]],
+                         ["sip_emi_set_nsr_permission", "spm_smpu_hre_first_bk"])
+        for key in ("installed_bl31_binary_equivalence_proven",
+                    "xnu_handoff_snapshot_present", "ufs_queues_idle_proven",
+                    "ufs_resource_delegation_proven", "physical_ufs_authorized"):
+            self.assertIs(report[key], False)
+
+    def test_bl31_rejects_changed_digest_and_callback_even_if_repinned(self):
+        raw = bl31_fixture()
+        with self.assertRaisesRegex(ValueError, "SHA-256 differs"):
+            MODULE.inspect_bl31_handoff(raw)
+        for offset, message in ((0xB6C4, "instructions"),
+                                (0x67148, "bounds"), (0x61C78, "entry")):
+            with self.subTest(offset=hex(offset)):
+                altered = bytearray(raw)
+                altered[offset] ^= 1
+                with mock.patch.object(MODULE, "BL31_SHA256", MODULE.sha256(altered)):
+                    with self.assertRaisesRegex(ValueError, message):
+                        MODULE.inspect_bl31_handoff(altered)
+
     def test_mtk_package_parser_accepts_one_bounded_entry(self):
         raw, payload = mtk_fixture()
         entries = MODULE.parse_mtk_package(bytes(raw))

@@ -46,6 +46,26 @@ LK_SMC_TRAMPOLINE_OFFSET = 0x10CD4
 LK_SMC_TRAMPOLINE = bytes.fromhex("240080d2030000d4c0035fd6")
 LK_SMC_FUNCTION_ID = 0xC2000115
 
+BL31_BYTES = 953976
+BL31_SHA256 = "716222a632e4a0623a2e467e17f1d36f38a37f79a1c026447fe724e75e90e07e"
+BL31_BASE = 0x48800000
+BL31_KERNEL_BOOT_DESCRIPTOR = 0x65500
+BL31_KERNEL_BOOT_HANDLER = 0xB63C
+BL31_BOOT_CALLBACK_BOUNDS = 0x67118 + 5 * 8
+BL31_BOOT_CALLBACKS = (
+    ("sip_emi_set_nsr_permission", 0x37150),
+    ("spm_smpu_hre_first_bk", 0x3B5F8),
+)
+# Saved handler selects callback group 5 before the final helper. The
+# iterator reads both bounds and calls each 16-byte entry's function.
+BL31_BOOT_CALLBACK_CALLSITE = bytes.fromhex(
+    "26feff97a0008052950200f9b575009423720094"
+)
+BL31_BOOT_CALLBACK_ITERATOR = bytes.fromhex(
+    "f40100f094620491955a61f8550200b436040011887a76f8bf0208ebc2010054"
+    "73010090737a2a91a80640f900013fd6"
+)
+
 ANDROID_IMAGE_LOAD = 0x40000000
 LIVE_FDT_ADDRESS = 0x47C80000
 LIVE_FDT_BYTES = 0x76980
@@ -235,6 +255,51 @@ def inspect_lk(raw):
             "kernel_target_is_fixed_in_lk_binary": False,
             "fdt_target_is_fixed_in_lk_binary": False,
         },
+    }
+
+
+def inspect_bl31_handoff(raw):
+    require(len(raw) == BL31_BYTES, "captured BL31 size differs")
+    digest = sha256(raw)
+    require(digest == BL31_SHA256, "captured BL31 SHA-256 differs")
+    handler, fast32, fast64, name, _ = struct.unpack_from(
+        "<QIIQQ", raw, BL31_KERNEL_BOOT_DESCRIPTOR)
+    require((handler, fast32, fast64) ==
+            (BL31_BASE + BL31_KERNEL_BOOT_HANDLER, 0x82000115,
+             LK_SMC_FUNCTION_ID) and
+            c_string(raw, name - BL31_BASE, 32) == "MTK_SIP_KERNEL_BOOT",
+            "captured BL31 kernel boot descriptor differs")
+    for start, instructions in (
+        (0xB6B8, BL31_BOOT_CALLBACK_CALLSITE),
+        (0x28DB4, BL31_BOOT_CALLBACK_ITERATOR),
+    ):
+        require(raw[start:start + len(instructions)] == instructions,
+                "captured BL31 boot callback instructions differ")
+    begin, end = struct.unpack_from("<QQ", raw, BL31_BOOT_CALLBACK_BOUNDS)
+    require((begin, end) == (BL31_BASE + 0x61C70, BL31_BASE + 0x61C90),
+            "captured BL31 boot callback table bounds differ")
+    callbacks = []
+    for index, (expected_name, expected_target) in enumerate(BL31_BOOT_CALLBACKS):
+        offset = begin - BL31_BASE + index * 16
+        name, target = struct.unpack_from("<QQ", raw, offset)
+        observed_name = c_string(raw, name - BL31_BASE, 32)
+        require((observed_name, target) ==
+                (expected_name, BL31_BASE + expected_target),
+                "captured BL31 boot callback entry differs")
+        callbacks.append({"name": observed_name, "handler_file_offset": hex(expected_target)})
+    return {
+        "scope": "static captured BL31 only",
+        "capture_sha256": digest,
+        "kernel_boot_descriptor_file_offset": hex(BL31_KERNEL_BOOT_DESCRIPTOR),
+        "kernel_boot_handler_file_offset": hex(BL31_KERNEL_BOOT_HANDLER),
+        "boot_callbacks_in_table_order": callbacks,
+        "required_observation_point":
+            "after BL31 boot callbacks and before the non-secure handoff",
+        "installed_bl31_binary_equivalence_proven": False,
+        "xnu_handoff_snapshot_present": False,
+        "ufs_queues_idle_proven": False,
+        "ufs_resource_delegation_proven": False,
+        "physical_ufs_authorized": False,
     }
 
 
@@ -673,6 +738,8 @@ def main():
     parser.add_argument("--vendor-boot", type=Path, required=True)
     parser.add_argument("--fdt", type=Path, required=True)
     parser.add_argument("--iomem", type=Path, required=True)
+    parser.add_argument("--atf", type=Path,
+                        help="optionally audit the pinned saved BL31 binary")
     parser.add_argument("--output", type=Path, required=True)
     arguments = parser.parse_args()
     if arguments.output.exists():
@@ -688,6 +755,10 @@ def main():
         blobs = {name: path.resolve().read_bytes()
                  for name, path in paths.items()}
         report = build_report(paths, blobs, Path(__file__).resolve().parent.parent)
+        if arguments.atf is not None:
+            atf = arguments.atf.resolve().read_bytes()
+            report["captured_bl31_handoff"] = inspect_bl31_handoff(atf)
+            report["inputs"]["atf"] = receipt(arguments.atf, atf)
         arguments.output.parent.mkdir(parents=True, exist_ok=True)
         with arguments.output.open("x", encoding="utf-8") as output:
             output.write(json.dumps(report, indent=2) + "\n")
