@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - Lenovo MT6897 reference narrowed the Duchamp UFS comparison (2026-11-11)
+
+- Rehashed the actual 64 MiB combined-services image and the phone photo. Both match the pinned Duchamp hardware trial in PHONE-SERVICES-BATCH.md. That trial used boot_a and restored stock Android. The verified RAM-root services are a reusable XNU baseline. The standalone RAM-only entry and full Setup root remain separate requirements.
+- Reviewed public UniXNU-tb375fc at cc4da0eabe4a27825253e6332f33ca4760ebb359. Its README records physical XNU and a 232 MiB APFS recovery fixture through a Lenovo-specific UEFI chain. The reported trials restored boot_a/misc. Decoded the saved Duchamp DTB using /soc address/size cell widths and confirmed its UFSHCI base and size match Lenovo's 0x112b0000 / 0x3000. The source checks inherited controller readiness and empty transfer/task doorbells and uses explicit cache maintenance on private aligned DMA buffers. Its diagnostic write path and board-specific ownership assumptions are outside the Duchamp read-only scope.
+- All 12 existing resource/ownership checks passed. Next compare the inherited controller, DMA and cache assumptions against Duchamp handoff evidence and validate a bounded one-block read design against the existing fail-closed gate. This source comparison establishes no Duchamp UFS grant or new RAM boot provider. No phone operation or driver changes.
+
 ACTIVE HANDOFF - Live PL/LK log separates early UFS deinit from the final LK handoff (2026-11-10)
 
 - Read the existing Android /proc/pl_lk and /proc/bootprof views over ADB on V816.0.17.0.UNLMIXM, slot _a. The PL/LK log was 254,454 bytes with separate PL and LK sections. PL reports UFS power-off notification and boot_device_deinit. LK logs its Linux jump announcement before blackbox log persistence and a later UFS sense warning. The pinned LK instructions place the blackbox call between the announcement and the secure handoff call.
