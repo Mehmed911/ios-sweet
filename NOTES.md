@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Current Slot B Fastboot cannot export raw ATF through the reviewed paths (2026-11-11)
+
+- Live Duchamp LK Fastboot identified B, version duchamp_cc6aa9311_202412180714, with zero B retries before and after. The standard get_staged request returned unknown command and zero bytes. max-fetch-size was empty. No reboot, slot change or partition access.
+- Audited all 35 registrations in the archived matching LK. No upload/fetch handler. dump_pllk_log shares uefilog's retained PL/LK buffer. lkmsg/lpmsg map the separate pstore region. expdb exports crash storage and was not run. The official ATF raw reader is an Android driver. No raw ATF or boot ID links the current session to the XNU handoff. Physical UFS stays blocked. Seven LK audit tests passed. Report under outputs/duchamp-slot-b-atf-fastboot-audit-20261111.
+
 ACTIVE HANDOFF - Live Slot B Fastboot PL/LK export verified (2026-11-11)
 
 - Confirmed Duchamp in LK Fastboot, current-slot B. The verified retained-log command returned 197219 bytes and terminal OKAY using the installed Android USB DLL and a bounded host receiver. The log confirms BL31 image load followed by entering Fastboot, with no XNU handoff, HCE, queue, DMA/cache or ownership markers. USB capture works for PL/LK. A same-boot BL31-to-XNU firmware trace is still missing.

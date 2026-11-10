@@ -157,6 +157,16 @@ remaining, with successful and unbootable both reported as no. This pass did
 not issue a reboot, boot, slot change or partition write. The receipt and
 private raw capture are under outputs/duchamp-slot-b-live-lk-log-20261111.
 
+The installed LK also rejected the standard get_staged request with
+`unknown command`. Its max-fetch-size reply was empty. The 35 registrations in
+the saved LK have no upload or fetch command. The archived A/B LK hashes
+match, and the saved LK build identifier matches the live version reply.
+The dump_pllk_log handler uses the same retained PL/LK buffer as uefilog.
+The lkmsg and lpmsg handlers map the separate pstore region, while expdb
+exports crash storage. No path reviewed establishes an export of the live
+ATF ring through LK Fastboot. The same-boot XNU provenance is still missing.
+See outputs/duchamp-slot-b-atf-fastboot-audit-20261111.
+
 ## RAM and reserved memory
 
 The final FDT declares one 12 GiB RAM range:
