@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Duchamp Slot A stays Android; Slot B is the XNU boot target (2026-11-11)
+
+- User clarified the intended dual-boot layout. Preserve Android and its working recovery on A. Scope the future XNU loader image to boot_b and load the iOS root from separate storage that does not overwrite Android data. The root location and physical UFS path are still unresolved.
+- ADB and Fastboot both reported zero devices in this check. Saved boot_b and vendor_boot_b captures are zero-filled and cannot establish the current state. Verify live slot metadata, B's supporting boot images and slot-specific firmware requirements, and the known-good A recovery and return path before deploying anything. Check retry behavior separately from an XNU boot success. No slot switch, reboot or device write occurred.
+
 ACTIVE HANDOFF - Duchamp storage boot is the target and Android recovery must remain usable (2026-11-11)
 
 - User selected storage-backed iOS boot and asked to preserve a useful Android recovery such as OrangeFox. Standalone RAM-only entry is no longer a prerequisite. Reuse the existing boot-v4 Duchamp entry evidence and QEMU GPT-backed read-only Setup proof. Keep the storage location unassigned on the phone. Do not repurpose userdata or change GPT without specific approval. The physical UFS path remains fail-closed pending MT6897 ownership, queue, DMA and cache evidence.
