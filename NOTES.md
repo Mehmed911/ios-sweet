@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Live PL/LK log separates early UFS deinit from the final LK handoff (2026-11-10)
+
+- Read the existing Android /proc/pl_lk and /proc/bootprof views over ADB on V816.0.17.0.UNLMIXM, slot _a. The PL/LK log was 254,454 bytes with separate PL and LK sections. PL reports UFS power-off notification and boot_device_deinit. LK logs its Linux jump announcement before blackbox log persistence and a later UFS sense warning. The pinned LK instructions place the blackbox call between the announcement and the secure handoff call.
+- The bootprof snapshot adds no UFS handoff markers. The PL milestone does not establish final DMA queue drain, clock/PHY delegation, or cache ownership. The next evidence target is the UFS state after blackbox returns and before LK/BL31 enters the kernel. Nineteen local layout and ownership checks passed. Only derived evidence is in outputs/duchamp-ufs-pllk-20261110/verification.json. No physical XNU UFS read, MMIO/SMC probe, reboot, flash or partition write.
+
 ACTIVE HANDOFF - LK UFS boot metadata confirmed, XNU delegation still unproven (2026-11-10)
 
 - Replayed the pinned LK, Android Image and FDT layout audit. The captured LK writes a four-byte /chosen/atag,ufs property. The live Android FDT matched the saved property and bootmode phandle. The matched vendor module reads it through ufs_mtk_init. The pinned reference source defines the field as RPMB Region 2 key state. The FDT also identifies 12 clocks and the PHY, with no ownership grant established.
