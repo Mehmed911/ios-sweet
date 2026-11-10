@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Android boot verified on Duchamp Slot A (2026-11-11)
+
+- With user approval, refreshed the bootloader after the earlier accepted A selection. Fresh LK Fastboot reported current-slot a and slot-unbootable:a no. Normal reboot then returned OKAY. ADB confirmed duchamp, ro.boot.slot_suffix=_a, sys.boot_completed=1, Android 14 and build V816.0.17.0.UNLMIXM.
+- Left Android running on A. This verification issued no new slot-selection command, flash, manual partition write or data wipe.
+
 ACTIVE HANDOFF - Duchamp accepted Slot A selection in Fastboot (2026-11-11)
 
 - The user requested Slot A. Confirmed the connected Duchamp in LK Fastboot with B reported, and A marked successful and bootable. Sent set_active a once and Fastboot returned OKAY. Two immediate getvar queries still report B in the existing LK session. The earlier B selection showed the same stale readback until a new bootloader session. Slot A readback and Android boot remain unverified.
