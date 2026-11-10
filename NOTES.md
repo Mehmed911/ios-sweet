@@ -1,3 +1,10 @@
+ACTIVE HANDOFF - UniXNU and HakiOS review finds a reusable ramoops output, with Duchamp RAM entry unresolved (2026-11-11)
+
+- Reviewed the current UniXNU catalog and pinned MediaTek sources and documentation. Lenovo TB375FC is its only MT6897 entry and uses board-specific UEFI with boot_a/misc restoration and UFS mrdump logging. Dandelion uses a boot image write and eMMC logging; Merlinx writes its boot partition and uses a downstream MUSB diagnostic endpoint. Dali documents ramoops and a boot_b restore cycle. HakiOS MT6768 boots its loader from boot_a. The fresh Duchamp LK audit still exits 1 with --require-provider.
+- Ramoops is the useful receiving-side channel. The saved Duchamp FDT and read-only live Android parameters agree on the reserved region and sizes. The pinned GKI zone layout gives console 0x4811f000 + 0x40000, ECC zero. Android previously recovered its own console-ramoops-0 after a panic.
+- Compiled only the HakiOS console-ring writer for an isolated QEMU AArch64 guest. The first link placement overlapped the virt DTB, so it was moved to 0x40200000. Both the short and wrapped test payloads were recovered byte-for-byte from private RAM after QMP reset. The host decoder follows the GKI header/ring order, rejected an oversized header, and verified neighboring bytes. No Android guest was booted and this is not proof of XNU-written record retention on the phone.
+- Pinned source receipts, replay script, test reports and read-only parameter receipt are in outputs/duchamp-mediatek-upstream-20261111. No phone reboot, ramoops write, flash or partition change. Ramoops can carry a log after entry. A supported Duchamp caller and authoritative BL31 UFS state and delegation remain unresolved.
+
 ACTIVE HANDOFF - Diagnostic-channel search narrows uefilog to retained PL/LK data (2026-11-11)
 
 - Added --diagnostic-channels to the pinned LK RAM-launch audit. It verifies the registered oem uefilog handler's buffer getters, copy/send path and PL/LK label. This sender returns retained PL/LK bytes. It supplies no proved fresh UFS handoff measurement, ownership grant or RAM entry. Runtime execution of that OEM command remains unverified.

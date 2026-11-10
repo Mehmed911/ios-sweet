@@ -96,3 +96,47 @@ python tools/test-audit-unixnu-mediatek-reuse.py
 The closest immediately testable milestone remains a QEMU-only loader
 validation. UniXNU does not change the current requirement for an MT6897/LK
 RAM entry provider before another no-write phone trial.
+
+## Updated UniXNU and HakiOS review, 2026-11-11
+
+The UniXNU guide still enters BootShim through a device that accepts
+`fastboot boot`. The current device catalog, at
+`3fd6a3cf0e6f2eba5d3de3a4d1912e2db23a0fc4`, identifies the Lenovo TB375FC as
+its MT6897 entry. A fresh audit of the saved Duchamp LK still rejects
+`--require-provider`. No reviewed port documents a compatible no-write
+Duchamp entry. [UniXNU boot guide](https://unixnu.com/guide/boot)
+[Pinned catalog](https://github.com/UniXNU/UniXNU/blob/3fd6a3cf0e6f2eba5d3de3a4d1912e2db23a0fc4/devices.toml)
+
+| Port | Boot and diagnostic evidence |
+| --- | --- |
+| Lenovo TB375FC, MT6897 | The port documents UEFI handoff on its own hardware and restoration of `boot_a` and `misc`. Its persistent diagnostic recorder uses UFS writes to reserved mrdump slots. [Lenovo diagnostics](https://github.com/billyham07/UniXNU-tb375fc/blob/cc4da0eabe4a27825253e6332f33ca4760ebb359/package/Tb375fcDiag.md) |
+| Dandelion, MT6765 | The port flashes its boot image and records persistent diagnostic output through an eMMC writer. [Dandelion handoff](https://github.com/licg89/UniXNU-dandelion/blob/b74625d907696e2e340006998b20f1fd28db68bf/HANDOFF.md) |
+| Merlinx, MT6768 | The port writes the boot partition. Its USB log client requires a running XNU MUSB endpoint. The saved Duchamp FDT declares MTU3. [Merlinx boot notes](https://github.com/Dracen-W/UniXNU-merlinx/blob/b0563d97b47c674741112bfb3db439fe4fc63883/docs/devices/merlinx.md) |
+| Dali, MT6991 | The port describes ramoops with a fresh test token and a restore step for `boot_b`. The complete unattended cycle is still under qualification. [Dali reset qualification](https://github.com/localhosts-A/UniXNU-Dali/blob/1a9738d2ee37dbe1b73f1b2ff3134426a89d82f9/docs/unattended-cycle.md) |
+| HakiOS X6826B, MT6768 | The loader enters through `boot_a` and uses ramoops to pass early console text to Android. [HakiOS boot path](https://github.com/oosexgang/hakios-mt6768/blob/ad65e1f4b3ba479e9d7ada98f17398b83cc6f285/README.md) |
+
+**Ramoops is a candidate diagnostic output for Duchamp after entry.** The
+saved Duchamp FDT reserves `0x48090000 + 0xe0000` as `mediatek,pstore`. An
+earlier Android panic produced `console-ramoops-0`. After the local test, a
+read-only ADB query confirmed the live ramoops parameters: console
+`0x40000`, pmsg `0x10000`, ftrace and record `0x1000` each, ECC zero, and
+memory type zero. The pinned GKI zone order gives a calculated console
+start of `0x4811f000`. [Earlier phone result](diagnostics/dma-iommu-probe/PHONE-TEST-2026-11-01.md)
+[GKI ramoops layout](https://github.com/aosp-mirror/kernel_common/blob/cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6/fs/pstore/ram.c)
+
+The QEMU test compiled only the upstream HakiOS console-ring writer with
+the modeled console address. ARM64 guest code wrote a short record and a
+wrapped ring into private QEMU RAM. Both matched byte for byte after a
+paused QMP system reset and an independent host decoder recovered the
+expected payload using the GKI header and ring order. The test verified
+adjacent bytes and rejected an oversized header. It did not boot Android
+or verify physical retention of a record written by XNU. No code or
+diagnostic record was installed on the phone. [HakiOS writer](https://github.com/oosexgang/hakios-mt6768/blob/ad65e1f4b3ba479e9d7ada98f17398b83cc6f285/mtkloader/mtkdbg.h)
+[GKI ring reader](https://github.com/aosp-mirror/kernel_common/blob/cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6/fs/pstore/ram_core.c)
+
+The replay script, pinned source receipts, results and Android parameter
+receipt are in `outputs/duchamp-mediatek-upstream-20261111`. Use a fresh
+output directory when repeating the replay. Any later integration still
+requires a supported Duchamp entry and an owned console range. Ramoops can
+carry a record from the receiving loader; the UFS state and resource grant
+must still come from firmware at the handoff boundary.
