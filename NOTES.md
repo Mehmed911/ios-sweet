@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - Live Duchamp slot B has blank boot and vendor_boot (2026-11-11)
+
+- Read-only ADB reconfirmed Android V816.0.17.0.UNLMIXM on slot A, completed boot, and Virtual A/B. AOSP-format metadata at misc offset 2048 matched magic, version, count, and CRC. A reports successful with priority 7. B has priority 0, tries 0, and is not successful. The metadata prefix did not contain a recognized ASCII slot suffix. The running slot comes from Android boot properties.
+- Full live partition hashes confirm boot_b and vendor_boot_b are each 64 MiB of zeros. lk_b, dtbo_b and vbmeta_b match their A counterparts byte-for-byte. init_boot_b is present and matches its archived copy. boot_a and vendor_boot_a match the verified stock backups. init_boot_a differs from its saved stock copy and must be preserved as currently installed. There is one named userdata and no separate recovery partition. A's saved and live-identical vendor_boot has the recovery fragment. Recovery was not booted, and OrangeFox operation is unverified.
+- Report and reader are in outputs/duchamp-slot-inventory-20261111. Slot B requires a compatible vendor_boot and XNU boot image before a trial. The separate iOS root location and MT6897 storage path remain unresolved. No reboot, slot switch, flash or device write.
+
 ACTIVE HANDOFF - Duchamp Slot A stays Android; Slot B is the XNU boot target (2026-11-11)
 
 - User clarified the intended dual-boot layout. Preserve Android and its working recovery on A. Scope the future XNU loader image to boot_b and load the iOS root from separate storage that does not overwrite Android data. The root location and physical UFS path are still unresolved.
