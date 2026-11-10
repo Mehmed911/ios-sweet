@@ -34,6 +34,19 @@ static unsigned int status(void *core,int *witness) {
     *witness=seen && !failed;
     return value;
 }
+#if SWEET_VERIFY_SPRINGBOARD_RECORD || SWEET_REUSE_VERIFIED_APP_REGISTRY
+static int application_ready(const char *bundle, const char *expected_path) {
+    Class app_class=objc_getClass("LSApplicationProxy");
+    id app=[app_class applicationProxyForIdentifier:[NSString stringWithUTF8String:bundle]];
+    const char *identifier=[[app bundleIdentifier] UTF8String];
+    const char *path=[[[app bundleURL] path] UTF8String];
+    int installed=[app isInstalled],placeholder=[app isPlaceholder];
+    printf("REGISTRY APP identifier=%s installed=%d placeholder=%d path=%s\n",
+        identifier?identifier:"none",installed,placeholder,path?path:"none");fflush(0);
+    return identifier && !strcmp(identifier,bundle) && path && !strcmp(path,expected_path) &&
+        installed && !placeholder;
+}
+#endif
 static int registry(void) {
     void *core=dlopen("/System/Library/Frameworks/CoreServices.framework/CoreServices",2);
     if(!core)return 2;
@@ -43,6 +56,14 @@ static int registry(void) {
     int seen=0;unsigned int before=status(core,&seen);
     printf("REGISTRY BEFORE witnessed=%d status=%u\n",seen,before);fflush(0);
     if(!seen)return 4;
+#if SWEET_REUSE_VERIFIED_APP_REGISTRY
+    if((before&0x100) && !(before&0x200) &&
+        application_ready("com.apple.springboard","/System/Library/CoreServices/SpringBoard.app") &&
+        application_ready("com.apple.purplebuddy","/Applications/Setup.app")) {
+        printf("REGISTRY EXISTING RECORDS PASS\n");fflush(0);
+        return 0;
+    }
+#endif
     __block int replied=0,failed=0,rebuilt=0;
     __block long code=0;
     id proxy=factory(service,[domain defaultServiceDomainIndirect],1,^(NSError *error){
@@ -64,17 +85,12 @@ static int registry(void) {
         sleep(1);
     }
     if(replied && !failed && rebuilt && !code && complete) {
-#if SWEET_VERIFY_SPRINGBOARD_RECORD
-        Class app_class=objc_getClass("LSApplicationProxy");
-        id app=[app_class applicationProxyForIdentifier:[NSString stringWithUTF8String:"com.apple.springboard"]];
-        const char *identifier=[[app bundleIdentifier] UTF8String];
-        const char *path=[[[app bundleURL] path] UTF8String];
-        int installed=[app isInstalled],placeholder=[app isPlaceholder];
-        printf("REGISTRY APP identifier=%s installed=%d placeholder=%d path=%s\n",
-            identifier?identifier:"none",installed,placeholder,path?path:"none");fflush(0);
-        if(!identifier || strcmp(identifier,"com.apple.springboard") || !path ||
-            strcmp(path,"/System/Library/CoreServices/SpringBoard.app") || !installed || placeholder)return 6;
+#if SWEET_VERIFY_SPRINGBOARD_RECORD || SWEET_REUSE_VERIFIED_APP_REGISTRY
+        if(!application_ready("com.apple.springboard","/System/Library/CoreServices/SpringBoard.app"))return 6;
         printf("REGISTRY APP RECORD PASS\n");fflush(0);
+#endif
+#if SWEET_REUSE_VERIFIED_APP_REGISTRY
+        if(!application_ready("com.apple.purplebuddy","/Applications/Setup.app"))return 6;
 #endif
         printf("REGISTRY NATIVE COMPLETE PASS\n");fflush(0);return 0;
     }

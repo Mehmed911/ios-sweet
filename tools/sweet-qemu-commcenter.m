@@ -53,7 +53,20 @@ extern unsigned int alarm(unsigned int);
 @end
 
 @interface CTXPCServiceSubscriptionContext : NSObject
+- (id)initWithUUID:(NSUUID *)uuid andSlot:(long long)slot;
 - (long long)slotID;
+- (void)setIsSimPresent:(BOOL)present;
+- (void)setIsSimGood:(BOOL)good;
+@end
+
+@interface CTXPCServiceSubscriptionInfo : NSObject
+- (void)setSubscriptions:(NSArray *)subscriptions;
+- (void)setSubscriptionsInUse:(NSArray *)subscriptions;
+- (void)setSubscriptionsValid:(NSArray *)subscriptions;
+@end
+
+@interface CTDataConnectionAvailabilityStatus : NSObject
+- (void)setAvailable:(BOOL)available;
 @end
 
 @interface CTXPCContextInfo : NSObject
@@ -127,7 +140,11 @@ static void setup_probe(void) {
 @protocol SweetCommCenterReadOnly
 - (void)ping:(void (^)(NSError *))reply;
 - (void)getActiveContexts:(void (^)(CTXPCContexts *, NSError *))reply;
+- (void)getSubscriptionInfo:(void (^)(CTXPCServiceSubscriptionInfo *, NSError *))reply;
 - (void)registerForNotifications:(NSArray *)names completion:(void (^)(NSError *))reply;
+- (void)getConnectionAvailability:(CTXPCServiceSubscriptionContext *)context
+                   connectionType:(int)type completion:(void (^)(CTDataConnectionAvailabilityStatus *, NSError *))reply;
+- (void)usingBootstrapDataServiceWithCompletion:(void (^)(BOOL))reply;
 - (void)isAnySimReadyWithCompletion:(void (^)(BOOL, NSError *))reply;
 - (void)getSIMStatus:(CTXPCServiceSubscriptionContext *)context completion:(void (^)(NSString *, NSError *))reply;
 - (void)copyRegistrationStatus:(CTXPCServiceSubscriptionContext *)context completion:(void (^)(NSString *, NSError *))reply;
@@ -168,6 +185,8 @@ static BOOL accept_connection(id self, SEL command, NSXPCListener *listener, NSX
     NSSet *contexts = [NSSet setWithArray:[NSArray arrayWithObject:[CTXPCServiceSubscriptionContext class]]];
     [interface setClasses:contexts forSelector:@selector(getSIMStatus:completion:) argumentIndex:0 ofReply:0];
     [interface setClasses:contexts forSelector:@selector(copyRegistrationStatus:completion:) argumentIndex:0 ofReply:0];
+    [interface setClasses:contexts forSelector:@selector(getConnectionAvailability:connectionType:completion:)
+             argumentIndex:0 ofReply:0];
     [connection setExportedInterface:interface];
     [connection setExportedObject:handler];
     [handler release];
@@ -205,6 +224,40 @@ static void get_contexts(id self, SEL command, void (^reply)(CTXPCContexts *, NS
     [contexts release];
     [info release];
     [uuid release];
+}
+
+static void get_subscription_info(id self, SEL command, void (^reply)(CTXPCServiceSubscriptionInfo *, NSError *)) {
+    (void)command;
+    NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:@"44554348-414D-4000-8000-000000000001"];
+    CTXPCServiceSubscriptionContext *context = [[CTXPCServiceSubscriptionContext alloc] initWithUUID:uuid andSlot:1];
+    [context setIsSimPresent:1];
+    [context setIsSimGood:1];
+    NSArray *subscriptions = [NSArray arrayWithObject:context];
+    CTXPCServiceSubscriptionInfo *info = [[CTXPCServiceSubscriptionInfo alloc] init];
+    [info setSubscriptions:subscriptions];
+    [info setSubscriptionsInUse:subscriptions];
+    [info setSubscriptionsValid:subscriptions];
+    service_trace("getSubscriptionInfo", *peer_slot(self), "synthetic-slot-1-present-good");
+    reply(info, nil);
+    [info release];
+    [context release];
+    [uuid release];
+}
+
+static void get_connection_availability(id self, SEL command, CTXPCServiceSubscriptionContext *context,
+                                        int type, void (^reply)(CTDataConnectionAvailabilityStatus *, NSError *)) {
+    (void)command; (void)context; (void)type;
+    CTDataConnectionAvailabilityStatus *status = [[CTDataConnectionAvailabilityStatus alloc] init];
+    [status setAvailable:0];
+    service_trace("getConnectionAvailability", *peer_slot(self), "synthetic-unavailable");
+    reply(status, nil);
+    [status release];
+}
+
+static void using_bootstrap_data(id self, SEL command, void (^reply)(BOOL)) {
+    (void)command;
+    service_trace("usingBootstrapDataService", *peer_slot(self), "synthetic-no");
+    reply(0);
 }
 
 static void sim_ready(id self, SEL command, void (^reply)(BOOL, NSError *)) {
@@ -247,7 +300,10 @@ static BOOL make_handler_class(void) {
     if (!add_method("listener:shouldAcceptNewConnection:", (Implementation)accept_connection, "B@:@@") ||
         !add_method("ping:", (Implementation)ping, "v@:@?") ||
         !add_method("getActiveContexts:", (Implementation)get_contexts, "v@:@?") ||
+        !add_method("getSubscriptionInfo:", (Implementation)get_subscription_info, "v@:@?") ||
         !add_method("registerForNotifications:completion:", (Implementation)register_notifications, "v@:@@?") ||
+        !add_method("getConnectionAvailability:connectionType:completion:", (Implementation)get_connection_availability, "v@:@i@?") ||
+        !add_method("usingBootstrapDataServiceWithCompletion:", (Implementation)using_bootstrap_data, "v@:@?") ||
         !add_method("isAnySimReadyWithCompletion:", (Implementation)sim_ready, "v@:@?") ||
         !add_method("getSIMStatus:completion:", (Implementation)get_sim, "v@:@@?") ||
         !add_method("copyRegistrationStatus:completion:", (Implementation)get_registration, "v@:@@?")) return 0;

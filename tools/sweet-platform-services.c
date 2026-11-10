@@ -5,6 +5,9 @@
 #ifndef SWEET_LSD_QUERY_SECONDS
 #define SWEET_LSD_QUERY_SECONDS 20
 #endif
+#ifndef SWEET_UI_READINESS_SECONDS
+#define SWEET_UI_READINESS_SECONDS 60
+#endif
 extern int fork(void),dup2(int,int),waitpid(int,int *,int),execve(const char *,char *const [],char *const []);
 extern int setuid(unsigned int),setgid(unsigned int),setenv(const char *,const char *,int);
 extern char ***_NSGetEnviron(void);
@@ -25,7 +28,7 @@ struct bsd_info {
 _Static_assert(sizeof(struct bsd_info)==136,"Darwin proc_bsdinfo");
 static char output[65536];
 
-static int command(const char *tag,const char *path,char *const args[],int mobile) {
+static int command_with_timeout(const char *tag,const char *path,char *const args[],int mobile,int seconds) {
     char file[192]; snprintf(file,sizeof(file),"/private/var/tmp/platform-%s.txt",tag);
     int fd=open(file,0x601,0644);
     if(fd<0) return -1;
@@ -40,7 +43,7 @@ static int command(const char *tag,const char *path,char *const args[],int mobil
         execve(path,args,*_NSGetEnviron()); _exit(127);
     }
     int status=-1,reaped=0;
-    for(int i=0;i<20;i++) {
+    for(int i=0;i<seconds;i++) {
         int got=waitpid(pid,&status,1);
         if(got==pid) {reaped=1;break;}
         if(got<0 && *__error()!=4) break;
@@ -65,6 +68,9 @@ static int command(const char *tag,const char *path,char *const args[],int mobil
     output[at]=0;close(fd);
     return reaped && status==0 && at<sizeof(output)-1?0:-1;
 }
+static int command(const char *tag,const char *path,char *const args[],int mobile) {
+    return command_with_timeout(tag,path,args,mobile,20);
+}
 static int identity(int pid,const char *path,unsigned int uid,unsigned int gid) {
     struct bsd_info info={0};
     return proc_pidinfo(pid,3,0,&info,sizeof(info))==(int)sizeof(info) &&
@@ -76,7 +82,8 @@ static int query(void) {
     fsync(fresh);close(fresh);
     if(chown("/private/var/tmp/platform-native-query.txt",501,501))return 0;
     char *start[]={"launchctl","kickstart","-p","system/org.sweet.qemu.lsd-native",0};
-    if(command("native-start","/bin/launchctl",start,0)) return 0;
+    /* A repeated query can wait for native data migration in the guest. */
+    if(command_with_timeout("native-start","/bin/launchctl",start,0,120)) return 0;
     for(int i=0;i<SWEET_LSD_QUERY_SECONDS;i++) {
         int fd=open("/private/var/tmp/platform-native-query.txt",0);
         if(fd>=0) {
@@ -133,7 +140,7 @@ static int readiness(const char *kind) {
     if(chown(file,501,501))return 0;
     char *start[]={"launchctl","kickstart","-p",target,0};
     if(command(kind,"/bin/launchctl",start,0))return 0;
-    for(int i=0;i<60;i++) {
+    for(int i=0;i<SWEET_UI_READINESS_SECONDS;i++) {
         fd=open(file,0);
         if(fd>=0) {
             ssize_t n=read(fd,output,sizeof(output)-1);close(fd);
