@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - Matched Duchamp firmware and DMA evidence keep physical XNU UFS closed (2026-11-10)
+
+- Read-only Android recheck matched the complete active-slot tee_a hash and installed ufs_mediatek_mod build-ID note to the saved captures. Re-extracted the saved BL31 UFS dispatch evidence and matched its pinned audit after line-ending normalization. The saved client ABI verifier reproduced its pinned report byte-for-byte. A common zero return does not prove a successful effect or authorize XNU.
+- The newer passive PRDT v3 receipt proves raw DMA equals PA for the observed Android route. No SWIOTLB transfer appeared in 34,162 sampled segments. That receipt does not establish XNU firewall/delegation or the bounce disposition for its allocation. The saved XNU QEMU run confirms clean/flush-to-PoC and barriers in QEMU, with the MT6897 system cache path and owner unproven.
+- All 23 evidence tests passed. Resource ownership remains blocked with zero MMIO, SMC, DMA or UFS dispatch. No physical XNU read of LUN 2 / LBA 276480 was performed, and Setup was not mounted. No reboot, flash or partition write. The scoped decision, reports and exact reference digest are under outputs/duchamp-ufs-xnu-ownership-20261110.
+
 ACTIVE HANDOFF - Duchamp physical UFS block reference captured under Android (2026-11-10)
 
 - Read-only ADB on Duchamp/MT6897, Android V816.0.17.0.UNLMIXM, active slot _a. First 4 KiB of vendor_boot_a matched two independent reads from Linux SCSI LUN 2, LBA 276480, and the exact saved partition backup. Reference SHA-256 065f2cf024655ce86cd67efd58901ded708c34cf2e721778b6b3de67f5382fd6. Only the digest and geometry were retained.
