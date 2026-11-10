@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - Duchamp Setup root needs a separate transport (2026-11-10)
+
+- Rechecked the actual 3,355,443,200-byte HFS+ root from the verified QEMU Wi-Fi picker with the phone ADT extracted from the known boot_a service candidate. The current CI kernel, root and boot data require 3,394,748,416 bytes. The payload builder rejected them against the 536,870,912-byte phone window before loading the root or creating an image. The saved phone FDT describes 12 GiB total, which does not establish a safe larger XNU window.
+- Using the phone packer's LZ4 legacy format, a streamed prefix of the root alone exceeded the saved 67,108,864-byte boot_a container. The root hash matched before and after. Increasing the XNU window alone cannot make this root fit the existing boot_a transport.
+- All 48 phone readiness, layout, and virtual UFS profile tests passed. The large root needs a separate transport. The existing virtual qufs0 backend cannot provide it on MT6897, and physical UFS stays gated pending firmware/resource and DMA/cache proof. Receipt is outputs/duchamp-phone-setup-preflight-20261110/verification.json. No phone access, partition write, or new boot image.
+
 ACTIVE HANDOFF — QEMU Setup read synthetic SIM presence before scene creation (2026-11-10)
 
 - Retested original 20F66 Setup without the prior cellular dylib or control job. The original fixture rejected getSubscriptionInfo, getConnectionAvailability and usingBootstrapDataService. The updated QEMU-only fixture returns native CTXPCServiceSubscriptionInfo and CTDataConnectionAvailabilityStatus objects and a typed BOOL bootstrap response. Its synthetic slot is 1, availability is false, and bootstrap data service is false.
