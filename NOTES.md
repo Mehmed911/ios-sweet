@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - Xiaomi OTA comparison finds no additional Duchamp RAM entry (2026-11-11)
+
+- ADB read-only on V816.0.17.0.UNLMIXM, slot _a, confirmed the saved lk_a SHA-256 and disabled CONFIG_KEXEC and CONFIG_KEXEC_FILE. No reboot or write to the phone.
+- Reconstructed LK offline from Xiaomi full OTA range reads for OS3.0.10.0.WNLMIXM, OS3.0.307.0.WNLEUXM and OS3.0.305.0.WNLCNXM. Metadata, compressed operation and LK hashes matched their OTA records. The Global and China registries match the installed 35 names. EEA has 33 names, removing two OEM commands. All three lack a registered RAM execute command. The installed and Global continue callbacks were traced to storage boot.
+- AOSP Android 14 fastbootd lacks boot in its command map. The exact Xiaomi recovery binary was not tested. The provider remains unproven. Seven audit tests passed. The exact registries, source receipts and replay scripts are in outputs/duchamp-ram-entry-refresh-20261111.
+
 ACTIVE HANDOFF - UniXNU and HakiOS review finds a reusable ramoops output, with Duchamp RAM entry unresolved (2026-11-11)
 
 - Reviewed the current UniXNU catalog and pinned MediaTek sources and documentation. Lenovo TB375FC is its only MT6897 entry and uses board-specific UEFI with boot_a/misc restoration and UFS mrdump logging. Dandelion uses a boot image write and eMMC logging; Merlinx writes its boot partition and uses a downstream MUSB diagnostic endpoint. Dali documents ramoops and a boot_b restore cycle. HakiOS MT6768 boots its loader from boot_a. The fresh Duchamp LK audit still exits 1 with --require-provider.

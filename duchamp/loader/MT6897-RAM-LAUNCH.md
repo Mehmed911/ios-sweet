@@ -85,6 +85,42 @@ record and framebuffer checks. The guest reported PC `0x40200000`,
 required by the diagnostic. No phone boot or partition modification was
 performed for this check.
 
+## Xiaomi OTA and Android cross-check, 2026-11-11
+
+Read-only ADB on `V816.0.17.0.UNLMIXM` again confirmed Duchamp/MT6897,
+slot `_a`, the exact saved `lk_a` hash and both kexec options disabled.
+
+The offline comparison reconstructed the `lk` partition from bounded ranges
+of three Xiaomi full OTA downloads. The metadata hash, compressed operation
+hash and final partition hash matched the OTA records for each sample. The
+complete OTA signatures were outside the range check. Each main LK payload
+differed from the installed one.
+
+| OTA | Region | Main LK registrations | Difference from installed LK |
+| --- | --- | ---: | --- |
+| `OS3.0.10.0.WNLMIXM` | Global | 35 | Same names and order |
+| `OS3.0.307.0.WNLEUXM` | EEA | 33 | Two OEM commands removed |
+| `OS3.0.305.0.WNLCNXM` | China | 35 | Same names and order |
+
+The comparison decoded the OEM table addresses in each main LK payload.
+None registered a RAM execution command. The Global `continue` callback
+was separately traced to storage boot, as on the installed LK. The EEA and
+China checks covered the registry. No OTA image was executed or installed.
+The scope is the normal LK Fastboot registry in the sampled images.
+
+AOSP Android 14's userspace Fastboot command map likewise lacks `boot`.
+This is a source reference. The exact Xiaomi recovery binary was not tested.
+The documented stock bootloader transition to `fastbootd` uses a BCB
+message. Android's documented DSU path allocates temporary storage
+partitions. Neither source documents a Duchamp RAM-only boot provider.
+[AOSP Android 14 command map](https://github.com/aosp-mirror/platform_system_core/blob/android-14.0.0_r1/fastboot/device/fastboot_device.cpp#L93)
+[AOSP fastbootd](https://source.android.com/docs/core/architecture/bootloader/fastbootd#fastbootd)
+[AOSP DSU](https://source.android.com/docs/core/ota/dynamic-system-updates#hardware-requirements)
+
+The scripts, OTA URLs, digest receipts, and recovered registries are in
+`outputs/duchamp-ram-entry-refresh-20261111`. The no-write provider gate
+remains closed. No reboot or partition write was performed.
+
 ## MediaTek V6 candidate check
 
 On 2026-11-10 the published `DA_DUCHAMP_OS1.0.12.0.bin` candidate
