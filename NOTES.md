@@ -1,3 +1,10 @@
+ACTIVE HANDOFF - Staged verified Duchamp Slot B XNU and vendor boot images locally (2026-11-11)
+
+- Staged boot_b.img and vendor_boot_b.img, 64 MiB each, under outputs/duchamp-slot-b-candidate-20261111. boot_b is byte-identical to the phone-tested service image 54511250...8f6a8, with diagnostic HFS+ md0 and physical UFS disabled. The staged kernel round-trips via legacy LZ4 to the pinned shim Image. A fresh test of that exact unwrapped image with the saved final FDT reached XNU in QEMU. A separate fresh replay of the same services and payload passed all 74 checks.
+- vendor_boot_b is byte-identical to the known-good V816.0.17.0.UNLMIXM vendor_boot_a. Its AVB content hash matches the signed descriptor in the exact saved vbmeta_b. The vendor boot v4 load layout matches the measured kernel and FDT addresses, and the embedded DT table entry matches the saved DTB. The unsigned XNU boot footer verifies for integrity and does not satisfy the Xiaomi signed boot chain in vbmeta_b. Unlocked LK acceptance was previously observed on A and remains untested on B.
+- Live init_boot_b differs from the signed expected content digest, as does the older local init_boot_a archive. Extracted a clean 8 MiB init_boot reference from the official matching Xiaomi OTA using bounded HTTP ranges. OTA manifest and the current signed vbmeta_b digest both match it. Kept it separate as a reference, with no device write.
+- Read-only follow-up confirmed Android booted on A, both A boot images match stock, B boot images are still blank, and vbmeta_b is unchanged. No flash, slot switch, reboot, recovery boot or physical UFS access. Slot B hardware acceptance and storage-backed Setup remain unverified.
+
 ACTIVE HANDOFF - Live Duchamp slot B has blank boot and vendor_boot (2026-11-11)
 
 - Read-only ADB reconfirmed Android V816.0.17.0.UNLMIXM on slot A, completed boot, and Virtual A/B. AOSP-format metadata at misc offset 2048 matched magic, version, count, and CRC. A reports successful with priority 7. B has priority 0, tries 0, and is not successful. The metadata prefix did not contain a recognized ASCII slot suffix. The running slot comes from Android boot properties.
