@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - Duchamp Slot B accepted the XNU trial and the user saw XNU logs (2026-11-11)
+
+- The user authorized exactly vendor_boot_b, init_boot_b and boot_b, preserving A, recovery and userdata, with return to A if XNU failed. Verified A boot, unlock, 90 percent battery, all image pins and matching live backups of the three B partitions before flashing. Fastboot returned OKAY for all three writes. No write command targeted A, recovery, userdata, vbmeta, dtbo or LK.
+- After set_active b, the running Fastboot session continued reporting A and stale B state. Refreshed with reboot-bootloader, without a second set_active or flash. Fresh LK Fastboot reported current-slot b, slot-unbootable:b no and six tries. Normal reboot was accepted. The user then reported XNU logs visible. No picture or serial log was available when recording this checkpoint. The exact last XNU stage, launchd on B and Setup were not independently established.
+- Left B selected after the reported XNU entry. A was confirmed booted and its hashes captured before the trial. Post-trial Android/recovery verification was not performed because B remained running. No rollback requested. Trial log, backups, and result are under outputs/duchamp-slot-b-trial-20261111.
+
 ACTIVE HANDOFF - Staged verified Duchamp Slot B XNU and vendor boot images locally (2026-11-11)
 
 - Staged boot_b.img and vendor_boot_b.img, 64 MiB each, under outputs/duchamp-slot-b-candidate-20261111. boot_b is byte-identical to the phone-tested service image 54511250...8f6a8, with diagnostic HFS+ md0 and physical UFS disabled. The staged kernel round-trips via legacy LZ4 to the pinned shim Image. A fresh test of that exact unwrapped image with the saved final FDT reached XNU in QEMU. A separate fresh replay of the same services and payload passed all 74 checks.
