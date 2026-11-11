@@ -69,6 +69,22 @@ static void fresh_bus(void) {
     bm.locked=0;bm.lock_calls=0;bm.unlock_calls=0;
 }
 static void bus_tests(void) {
+    {
+        fresh_bus();
+        struct mb_pmif link = {0};
+        struct mb_io io = bio(&bm);
+        /* Measured on Duchamp through the stock MT6363 regmap. */
+        const uint8_t topstatus[] = {0x1e, 0x16, 0x1e, 0x1c, 0x1e};
+        CHECK(mb_pmif_bind(&link, &io, 0) == MB_OK);
+        for (size_t i = 0; i < sizeof(topstatus); i++) {
+            uint8_t status = 0;
+            bm.reg[0][0x1e] = topstatus[i];
+            CHECK(mb_pmif_transfer(&link, 4, 0x1e, &status, 1, 0) == MB_OK);
+            CHECK(status == topstatus[i] && bm.last_command == 0xc400001e);
+            CHECK(bm.reg[0][0x1e] == topstatus[i] && bm.state == 0);
+        }
+        CHECK(bm.commands == sizeof(topstatus) && bm.clears == bm.commands && bm.wdata == 0);
+    }
     for(unsigned n=1;n<=4;n++) {
         fresh_bus();struct mb_pmif p={0};struct mb_io io=bio(&bm);
         CHECK(mb_pmif_bind(&p,&io,0)==0 && !bm.calls);

@@ -5,6 +5,7 @@
  */
 enum { CAP=0, VER=8, IS=0x20, IE=0x24, HCS=0x30, HCE=0x34,
        LIST_LO=0x50, LIST_HI=0x54, DOORBELL=0x58, RUN=0x60,
+       TASK_DOORBELL=0x78, TASK_RUN=0x80,
        UIC=0x90, ARG1=0x94, ARG2=0x98, ARG3=0x9c };
 static void clear(void *p, size_t n) { uint8_t *b=p; while(n--) *b++=0; }
 static void copy(void *d, const void *s, size_t n) {
@@ -79,7 +80,8 @@ int dufs_start(struct dufs_host *h) {
     if(!h || h->state!=1) return DUFS_STATE;
     begin(h);
     /* Cold, exclusively assigned host only. Do not steal inherited queues. */
-    if(rd(h,HCE) || rd(h,DOORBELL) || rd(h,RUN)) return bad(h,DUFS_STATE);
+    if(rd(h,HCE) || rd(h,DOORBELL) || rd(h,RUN) ||
+       rd(h,TASK_DOORBELL) || rd(h,TASK_RUN)) return bad(h,DUFS_STATE);
     uint32_t cap=rd(h,CAP);
     h->version=rd(h,VER);
     if(h->version<0x100 || h->version>0x4ff) return bad(h,DUFS_STATE);

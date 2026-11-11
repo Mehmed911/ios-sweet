@@ -24,6 +24,7 @@
 extern vm_offset_t ml_io_map(vm_offset_t, vm_size_t);
 extern ppnum_t pmap_find_phys(pmap_t, addr64_t);
 int duchamp_qemu_ufs_rootdev(dev_t *);
+extern int duchamp_qemu_ufs_handoff_allows(void);
 
 #define QU_DMA_BYTES 0x60000u
 #define QU_BAR 0x10000000ull
@@ -240,6 +241,7 @@ static const struct cdevsw qu_cdevsw={
     .d_strategy=eno_strat,.d_reserved_1=eno_getc,.d_reserved_2=eno_putc,.d_type=D_DISK
 };
 int duchamp_qemu_ufs_rootdev(dev_t *device) {
+    if(!duchamp_qemu_ufs_handoff_allows()) return EPERM;
     if(!device) return EINVAL;
     if(qu.ready) { *device=qu.device; return 0; }
     if(qu.attempted) return ENXIO;
@@ -272,7 +274,8 @@ int duchamp_qemu_ufs_rootdev(dev_t *device) {
         .io={NULL,qu_read32,qu_write32,qu_dma_write,qu_dma_read,qu_barrier,qu_milliseconds},
         .dma_begin=qu.dma_pa,.dma_end=qu.dma_pa+QU_DMA_BYTES,
         .list_dma=qu.dma_pa,.command_dma=qu.dma_pa+0x1000,.data_dma=qu.dma_pa+0x10000,
-        .timeout_ms=3000,.exclusive_platform_ready=1,.lun=0,.poll_limit=DUFS_MAX_POLLS,
+        /* Host-backed I/O can stall while the guest is under debugger load. */
+        .timeout_ms=30000,.exclusive_platform_ready=1,.lun=0,.poll_limit=DUFS_MAX_POLLS,
         .descriptor_address_bits=64,.data_address_bits=64 /* QEMU-only private DMA pool */
     };
     int result=dufs_bind(&qu.host,&setup);

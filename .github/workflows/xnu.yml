@@ -67,7 +67,7 @@ jobs:
       - name: Fetch build script
         run: |
           shasum -a 256 -c .github/xnu-inputs-491ff8b.sha256
-          echo 'Baseline 491ff8b5695a44c0aa8caa1a55b4aa6b5408bf27 plus the SPI2 DMA diagnostic and qufs0 GPT root (313 verified inputs)'
+          echo 'Baseline 491ff8b5695a44c0aa8caa1a55b4aa6b5408bf27 plus the QEMU UFS handoff gate (314 verified inputs)'
           git init -q dxb
           git -C dxb fetch -q --depth 1 "$DXB_REPO" "$DXB_SHA"
           git -C dxb checkout -q FETCH_HEAD
@@ -133,9 +133,9 @@ jobs:
           curl --fail --location --retry 3 \
             --header "Authorization: Bearer $GH_TOKEN" \
             --header "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/Mehmed911/ios-sweet/actions/artifacts/13282566232/zip \
+            https://api.github.com/repos/Mehmed911/ios-sweet/actions/artifacts/13714817484/zip \
             -o "$RUNNER_TEMP/iig-buildtree.zip"
-          sed 's/1d9a9634d0abe7e3f0ddd43b1605bff77a5fb9b2abf734e762cdf96ed83fa7b7/be0517eacb845f541690fa06811dbfd9139f742bb1e9a95d4251035357205472/' tools/duchamp-frozen-iig.py > "$RUNNER_TEMP/duchamp-frozen-iig.py"
+          sed 's/1d9a9634d0abe7e3f0ddd43b1605bff77a5fb9b2abf734e762cdf96ed83fa7b7/d463795a854330f47d16f17c78285cbdec22fc54754419d9b8ad5bd12feeb965/' tools/duchamp-frozen-iig.py > "$RUNNER_TEMP/duchamp-frozen-iig.py"
           python3 "$RUNNER_TEMP/duchamp-frozen-iig.py" stage --archive "$RUNNER_TEMP/iig-buildtree.zip" --out "$RUNNER_TEMP/duchamp-iig-cache"
           chmod +x "$RUNNER_TEMP/duchamp-frozen-iig.py"
           echo "IIG=$RUNNER_TEMP/duchamp-frozen-iig.py" >> "$GITHUB_ENV"
@@ -182,6 +182,9 @@ jobs:
           cmp ../duchamp/drivers/ufs_gpt.c xnu/bsd/dev/duchamp_ufs_gpt.c
           cmp ../duchamp/drivers/ufs_gpt.h xnu/bsd/dev/ufs_gpt.h
           cmp ../duchamp/xnu/qemu_ufs.c xnu/bsd/dev/duchamp_qemu_ufs.c
+          cmp ../duchamp/xnu/qemu_ufs_handoff.c xnu/bsd/dev/duchamp_qemu_ufs_handoff.c
+          grep -Fq 'duchamp_qemu_ufs_handoff_enter();' xnu/osfmk/arm/arm_init.c
+          grep -Fq 'duchamp_qemu_ufs_handoff_allows()' xnu/bsd/dev/duchamp_qemu_ufs.c
           grep -Fq 'DUCHAMP QEMU backend selftest failed' xnu/iokit/bsddev/IOKitBSDInit.cpp
           grep -Fq 'QEMU XNU BACKENDS SELFTEST PASS' xnu/bsd/dev/duchamp_qemu_backends.c
           grep -Fq 'QEMU XNU UFS LEASE PROVIDER DEFAULT CLOSED' xnu/bsd/dev/duchamp_qemu_backends.c
@@ -254,7 +257,7 @@ jobs:
           cp -R dxb/fakeroot/System/Library/Kernels/. out/ 2>/dev/null || true
           cp .github/xnu-inputs-491ff8b.sha256 out/SOURCE-INPUTS.txt
           printf '%s\n' "$GITHUB_SHA" > out/SOURCE-COMMIT.txt
-          printf '%s\n' 'be0517eacb845f541690fa06811dbfd9139f742bb1e9a95d4251035357205472' > out/IIG-ARCHIVE-SHA256.txt
+          printf '%s\n' 'd463795a854330f47d16f17c78285cbdec22fc54754419d9b8ad5bd12feeb965' > out/IIG-ARCHIVE-SHA256.txt
           ls -la out
           (cd out && shasum -a 256 kernel.* > SHA256SUMS) || true
 
