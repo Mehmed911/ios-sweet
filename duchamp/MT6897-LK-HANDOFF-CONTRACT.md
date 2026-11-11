@@ -143,6 +143,29 @@ reports CPU entry state and has no UFS sampling or grant channel. The
 no-write entry provider for Duchamp. The optional BL31 audit records these
 scope limits and leaves the physical UFS gate closed.
 
+### Installed Slot B image and available capture routes, 2026-11-11
+
+Read-only ADB on Android A rehashed the installed `boot_b`,
+`vendor_boot_b`, `init_boot_b` and `lk_b`. The boot image matches the
+archived XNU services image. Unwrapping it and inspecting the embedded ADT
+confirmed `rd=md0`, a 32 MiB RAM root, and the absence of a UFS handoff
+receiver or UFS node. That exact image reached the XNU entry framebuffer
+marker in QEMU. The separate receiver logged `blockers=0xf` with both the
+generated QEMU FDT and the saved Duchamp FDT, keeping physical reads blocked.
+
+The installed Android ATF module exposes `/proc/atf_log/raw_dump_all`. The
+2 MiB export from Android A contained BL31 banners and lacked a boot
+identifier linking it to the prior B/XNU trial. The exact installed LK
+registry lacks a documented RAM entry, and Android has both kexec options
+disabled. The supported capture requires the firmware-side record described
+above, plus a correlated entry record from the same boot. The available
+images and trace endpoints have yet to supply either record for B.
+
+The next physical probe remains a single read of LUN 2, LBA 276480, after
+the handoff is established. The matching Android reference is already pinned.
+This check left Android on A without rebooting or writing partitions.
+Evidence is under `outputs/duchamp-slot-b-handoff-audit-20261111`.
+
 ### Live retained LK log on Slot B
 
 Fastboot identified Duchamp with B selected. The previously audited OEM log

@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - Installed Slot B image audited for same-boot UFS evidence (2026-11-11)
+
+- Read-only ADB on Android A rehashed boot_b, vendor_boot_b, init_boot_b and lk_b. They match the archived service image and supporting firmware. Unwrapping the matching boot_b yielded the pinned XNU image with rd=md0, a 32 MiB embedded root and no UFS node or handoff receiver. The exact unmodified image reached the XNU framebuffer marker in QEMU with 7 GiB.
+- The exact installed LK's 35-entry Fastboot registry offers no documented RAM launch. Android reports both kexec options disabled. The standalone UFS receiver rebuilt to the archived SHA-256 and recorded blockers=0xf on both QEMU-generated and saved Duchamp FDTs. Twenty-five local audit and ownership tests passed. The last live ATF export is from Android A and supplies no evidence tied to a B/XNU boot.
+- A vendor-supported record after final BL31 platform work and a correlated XNU entry record are still missing. Physical read of LUN 2 LBA 276480 remains pending. Phone stayed on Android A with no reboot, slot switch, flash, partition write, direct MMIO or firmware calls. Evidence is under outputs/duchamp-slot-b-handoff-audit-20261111.
+
 ACTIVE HANDOFF - Live Duchamp UFS GPT has no dedicated Setup space (2026-11-11)
 
 - Verified from stock Android V816.0.17.0.UNLMIXM on A via read-only ADB. The 4 KiB primary and backup GPT headers and entry tables on LUN 2 passed CRC and matched each other and all 90 sysfs partition geometries. The entries cover every usable LBA from 8 through 129155063. LUNs 0 and 1 expose 4 MiB each. Only Android super and shared userdata fit the 3.125 GiB Setup image. Both GPT headers have a zero disk GUID, while all 90 partition GUIDs are nonzero. The current QEMU UFS parser rejected a synthetic 4 KiB GPT with this single variation after recomputing CRCs. All 85 control and rejection checks passed.
