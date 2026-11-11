@@ -123,6 +123,22 @@ reads the pmsg ring after a QEMU guest reset, consumes complete requests in
 its valid data, and requests a return to A. The test compares the ring and
 adjacent bytes across resets. XNU dispatch in this preview is simulated.
 
+To rehearse a recovery request from Slot B in QEMU, provide the uncompressed
+stock Duchamp ARM64 Linux Image and the uncompressed OrangeFox recovery cpio:
+
+```sh
+out=$(realpath -m work/duchamp-recovery-chain)
+RECOVERY_CHAIN=1 BOOT_MENU=1 QEMU_ONLY=1 SHIM_OUT="$out/build" sh duchamp/bootshim/build.sh
+python3 duchamp/bootshim/test_recovery_chain_qemu.py "$out/build/Image" \
+  /path/to/stock.Image /path/to/orangefox-only.initramfs "$out/test"
+```
+
+The host models the firmware's slot selection and recovery request. On B the
+shim jumps to the stock kernel with a QEMU virt DTB and the recovery ramdisk.
+A separate PID 1 probe verifies the Linux reboot and Slot A kernel entry after
+simulated A readback. The packaged OrangeFox process runs in a separate guest
+without phone storage or a display backend for its UI.
+
 The build and entry guards restrict the profile to QEMU virt. Android on
 Duchamp advertises volume up through mtk-kpd, and volume down and power
 through mtk-pmic-keys. The archived LK log records keypad initialization

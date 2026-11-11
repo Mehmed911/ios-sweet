@@ -80,7 +80,7 @@ def expect_no_reset(stream):
 def verify_case(image, dtb, output, name, ring, outcome, readback):
     fixture = output / f"{name}.fixture.bin"
     fixture.write_bytes(ring)
-    with boot(image, output, name, dtb, ram_fixture=(fixture, FIXTURE_ADDRESS),
+    with boot(image, output, name, dtb, ram_fixtures=((fixture, FIXTURE_ADDRESS),),
               warm_reset=True) as (guest, qmp, temp, log):
         cursor = 0
 

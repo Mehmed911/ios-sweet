@@ -4,6 +4,9 @@
 #if defined(DUCHAMP_PHONE_CAPTURE) && (defined(DUCHAMP_PHONE_LAYOUT_ONLY) || defined(DUCHAMP_QEMU_ONLY))
 #error "phone capture is separate from fixed-layout and QEMU-only guards"
 #endif
+#if defined(DUCHAMP_QEMU_RECOVERY_CHAIN) && !defined(DUCHAMP_QEMU_ONLY)
+#error "the Linux recovery chain requires QEMU virt"
+#endif
 
 	.section .text.head, "ax"
 	.globl _head
@@ -133,6 +136,22 @@ exception_call:
 	mov	x4, sp
 	bl	duchamp_bootshim_exception
 	b	halt
+
+#if defined(DUCHAMP_QEMU_RECOVERY_CHAIN)
+	.globl duchamp_qemu_enter_linux
+duchamp_qemu_enter_linux:
+	msr	daifset, #0xf
+	dsb	sy
+	ic	iallu
+	dsb	sy
+	isb
+	mov	x16, x0
+	mov	x0, x1
+	mov	x1, xzr
+	mov	x2, xzr
+	mov	x3, xzr
+	br	x16
+#endif
 
 #if defined(DUCHAMP_XNU_JUMP)
 	.globl duchamp_enter_xnu

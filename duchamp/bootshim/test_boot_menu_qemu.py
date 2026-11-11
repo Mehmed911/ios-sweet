@@ -30,7 +30,7 @@ viewer_spec.loader.exec_module(viewer)
 
 @contextmanager
 def boot(image, output, name, dtb=None, entry_keys=None, *,
-         ram_fixture=None, warm_reset=False):
+         ram_fixtures=(), warm_reset=False):
     with tempfile.TemporaryDirectory(prefix="duchamp-menu-") as directory:
         qmp_path = Path(directory) / "qmp"
         command = [
@@ -48,8 +48,7 @@ def boot(image, output, name, dtb=None, entry_keys=None, *,
             fixture = Path(directory) / "entry-keys.bin"
             fixture.write_bytes(struct.pack("<4sHBB", b"DKEY", *entry_keys))
             command += ["-device", f"loader,file={fixture},addr={ENTRY_KEYS_ADDRESS:#x},force-raw=on"]
-        if ram_fixture is not None:
-            fixture, address = ram_fixture
+        for fixture, address in ram_fixtures:
             command += ["-device", f"loader,file={fixture},addr={address:#x},force-raw=on"]
         with (output / f"{name}.qemu.log").open("wb") as stderr:
             with subprocess.Popen(command,

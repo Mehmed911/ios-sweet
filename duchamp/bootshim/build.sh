@@ -33,6 +33,15 @@ pmif_probe_qemu=${PMIF_PROBE_QEMU:-}
 boot_menu=${BOOT_MENU:-}
 entry_keys=${BOOT_MENU_ENTRY_KEYS:-}
 boot_once=${BOOT_ONCE:-}
+recovery_chain=${RECOVERY_CHAIN:-}
+if [ -n "$recovery_chain" ]; then
+	if [ "$recovery_chain:$boot_menu:${QEMU_ONLY:-}" != 1:1:1 ] ||
+	    [ -n "${PAYLOAD:-}$entry_keys$boot_once" ]; then
+		echo "RECOVERY_CHAIN=1 requires the QEMU menu preview without other inputs" >&2
+		exit 2
+	fi
+	cflags="$cflags -DDUCHAMP_QEMU_RECOVERY_CHAIN=1"
+fi
 if [ -n "$boot_once" ]; then
 	if [ "$boot_once:$boot_menu:${QEMU_ONLY:-}" != 1:1:1 ] ||
 	    [ -n "${PAYLOAD:-}$entry_keys" ]; then

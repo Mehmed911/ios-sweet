@@ -98,6 +98,20 @@ counter(void)
 	return ticks;
 }
 
+#if defined(DUCHAMP_BOOT_ONCE) || defined(DUCHAMP_QEMU_RECOVERY_CHAIN)
+static uint32_t
+timed_input(uint64_t frequency)
+{
+	const uint64_t start = counter();
+	while (counter() - start < frequency * MENU_SECONDS) {
+		if (!(*uart(UART_FR) & UART_RX_EMPTY))
+			return *uart(UART_DR);
+		__asm__ volatile("yield");
+	}
+	return 0;
+}
+#endif
+
 static void
 qemu_reset(void)
 {
@@ -262,27 +276,15 @@ take_boot_request(volatile uint32_t *zone)
 	return found;
 }
 
-static uint32_t
-qemu_one_shot_input(uint64_t frequency)
-{
-	const uint64_t start = counter();
-	while (counter() - start < frequency * MENU_SECONDS) {
-		if (!(*uart(UART_FR) & UART_RX_EMPTY))
-			return *uart(UART_DR);
-		__asm__ volatile("yield");
-	}
-	return 0;
-}
-
 static void
 qemu_one_shot(const struct duchamp_framebuffer *fb, uint64_t frequency)
 {
 	volatile uint32_t *zone = (volatile uint32_t *)(uintptr_t)QEMU_PMSG_ADDRESS;
 	uart_log("DUCHAMP ONCE SELECT SLOT\n");
-	const uint32_t slot = qemu_one_shot_input(frequency);
+	const uint32_t slot = timed_input(frequency);
 	if (slot == 'A') {
 		uart_log("DUCHAMP ONCE ANDROID A READY\n");
-		if (qemu_one_shot_input(frequency) != 'W')
+		if (timed_input(frequency) != 'W')
 			return;
 		/* The test supplies an Android-compatible pmsg ring to the A model. */
 		const volatile uint32_t *fixture =
@@ -309,6 +311,45 @@ qemu_one_shot(const struct duchamp_framebuffer *fb, uint64_t frequency)
 }
 #endif
 
+#if defined(DUCHAMP_QEMU_RECOVERY_CHAIN)
+/* The QEMU runner stages all three objects in private guest RAM. */
+#define QEMU_LINUX_IMAGE UINT64_C(0x50000000)
+#define QEMU_RECOVERY_DTB UINT64_C(0x49000000)
+#define QEMU_ANDROID_DTB UINT64_C(0x49200000)
+#define ARM64_IMAGE_MAGIC UINT32_C(0x644d5241)
+#define FDT_MAGIC_LE UINT32_C(0xedfe0dd0)
+
+extern void duchamp_qemu_enter_linux(uint64_t image, uint64_t dtb)
+	__attribute__((noreturn));
+
+static void
+qemu_chain_recovery(uint64_t frequency)
+{
+	uart_log("DUCHAMP RECOVERY SELECT SLOT\n");
+	const uint32_t slot = timed_input(frequency);
+	if (slot == 'B') {
+		uart_log("DUCHAMP RECOVERY B WAITING FOR REQUEST\n");
+		if (timed_input(frequency) != 'R') {
+			uart_log("DUCHAMP RECOVERY B NO REQUEST\n");
+			return;
+		}
+	} else if (slot != 'A') {
+		return;
+	}
+
+	const uint64_t dtb = slot == 'B' ? QEMU_RECOVERY_DTB : QEMU_ANDROID_DTB;
+	const volatile uint32_t *image = (const volatile uint32_t *)(uintptr_t)QEMU_LINUX_IMAGE;
+	const volatile uint32_t *fdt = (const volatile uint32_t *)(uintptr_t)dtb;
+	if (image[56 / sizeof(*image)] != ARM64_IMAGE_MAGIC || *fdt != FDT_MAGIC_LE) {
+		uart_log("DUCHAMP RECOVERY INVALID QEMU PAYLOAD\n");
+		return;
+	}
+	uart_log(slot == 'B' ? "DUCHAMP RECOVERY B ENTER ANDROID KERNEL\n" :
+	    "DUCHAMP RECOVERY A ENTER ANDROID KERNEL\n");
+	duchamp_qemu_enter_linux(QEMU_LINUX_IMAGE, dtb);
+}
+#endif
+
 /* The only input is QEMU virt's PL011, standing in for the three phone keys. */
 int
 duchamp_boot_menu_qemu(const struct duchamp_framebuffer *fb, int xnu_available)
@@ -330,6 +371,10 @@ duchamp_boot_menu_qemu(const struct duchamp_framebuffer *fb, int xnu_available)
 
 #if defined(DUCHAMP_BOOT_ONCE)
 	qemu_one_shot(fb, frequency);
+	return 0;
+#endif
+#if defined(DUCHAMP_QEMU_RECOVERY_CHAIN)
+	qemu_chain_recovery(frequency);
 	return 0;
 #endif
 

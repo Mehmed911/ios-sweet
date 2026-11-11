@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Duchamp B-to-OrangeFox Linux chain and simulated A return verified in QEMU (2026-11-11)
+
+- Added RECOVERY_CHAIN=1 to the QEMU-only boot menu build. On a simulated B recovery request, the ARM64 shim passed a QEMU virt DTB and OrangeFox recovery ramdisk to the stock Duchamp Android 6.1.57 kernel from boot_a. Android init and the packaged recovery process ran. The full phone ramdisk combination hit a vendor aee_hangdet fault in virt, so the passing chain used the recovery ramdisk alone. Logs and results are under outputs/duchamp-orangefox-qemu-20261111/run.1JxF7B.
+- A separate Linux PID 1 probe requested A, checked simulated readback, caused a real guest reset and reached stock Android kernel and diagnostic PID 1 with slot _a. Wrong readback blocked reset. Five recovery-chain checks and all ten previous ramoops checks passed. Final shim and probe rebuilds matched tested binaries. Full Android userspace, OrangeFox UI and native Boot Control return are unverified. An isolated virtual UFS follow-up detected PCI 1b36:0013, but bootctl reads timed out and the MTK service reported missing /dev/block/by-name/misc. No phone commands, flash or partition changes.
+
 ACTIVE HANDOFF - OrangeFox Duchamp recovery and Slot B reviewed offline (2026-11-11)
 
 - Audited the SourceForge community OrangeFox R12.0 Duchamp ZIP, SHA-256 0d9e94518e27d8bacbc36d1dc6269beccda7e05e4fe3999fab8df86d34cd6ac8. ZIP CRC, standalone image header/table ranges and the embedded recovery ramdisk agree. The ZIP contains a vendor_boot v4 image, not a standalone kernel. Its recovery ramdisk includes the Reboot menu A/B switch, bootctl, the Android boot-control service and the MTK recovery service. No installer or recovery executable was run.
