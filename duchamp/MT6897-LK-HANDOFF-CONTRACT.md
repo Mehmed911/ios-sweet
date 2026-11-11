@@ -293,6 +293,24 @@ physical read requires same-boot firmware evidence of the controller and its
 active queue mode, empty transfer and task queues, the resource grant, and DMA
 address and cache ownership.
 
+### Same-boot correlation test in QEMU
+
+From the repository root, choose a fresh output directory.
+
+```sh
+python3 tools/test-duchamp-ufs-handoff-qemu.py work/ufs-handoff-correlation-v1
+```
+
+The standalone AArch64 test supplies synthetic BL31 and XNU entry records
+to the existing lease gate. Missing or stale records, incomplete legacy
+or MCQ queue evidence, and missing DMA or cache grants deny all six
+provider operations before PCI, MMIO, DMA or UFS command dispatch.
+The matching control reaches an emulated UFS controller and reads one
+synthetic 4 KiB block from LUN 2 at LBA 276480. The runner checks the QEMU
+controller trace, verifies the returned bytes in the guest, and rehashes the
+read-only fixture. Its report covers the model. Physical authorization
+still depends on the producer and receiver evidence described above.
+
 ## Still unknown
 
 - LK's own numeric internal PC has not been captured; the diagnostic observed

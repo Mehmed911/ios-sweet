@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - Same-boot BL31/XNU correlation blocks UFS reads in QEMU (2026-11-11)
+
+- Added tools/test-duchamp-ufs-handoff-qemu.py and a standalone AArch64 test linked to the existing MT6897 UFS gate/provider and read-only transport. Synthetic BL31 and XNU records are checked against the current boot generation and image identity, final-exit and controller samples, legacy or complete MCQ drain evidence, and explicit resource, DMA and cache grants. No production firmware or phone image was changed.
+- All 19 negative cases denied the lease. In each case all six provider operations were blocked and the PCI, MMIO, DMA and read counters stayed at zero. The matching control issued one READ(16) for LUN 2 LBA 276480 against a read-only synthetic image on QEMU virt, matched all 4096 bytes, and left the image hash unchanged. The QEMU controller trace confirmed the opcode, LUN and LBA. Native and ARM64 gate regressions passed 708 checks each and the ARM64 provider passed 107. The physical gate still denied access.
+- Evidence is under outputs/duchamp-ufs-handoff-qemu-20261111. The test uses synthetic records and media. The BL31 producer and correlated XNU entry on physical Slot B remain unverified. No phone access, flash or partition changes.
+
 ACTIVE HANDOFF - Installed Slot B image audited for same-boot UFS evidence (2026-11-11)
 
 - Read-only ADB on Android A rehashed boot_b, vendor_boot_b, init_boot_b and lk_b. They match the archived service image and supporting firmware. Unwrapping the matching boot_b yielded the pinned XNU image with rd=md0, a 32 MiB embedded root and no UFS node or handoff receiver. The exact unmodified image reached the XNU framebuffer marker in QEMU with 7 GiB.
