@@ -311,6 +311,33 @@ controller trace, verifies the returned bytes in the guest, and rehashes the
 read-only fixture. Its report covers the model. Physical authorization
 still depends on the producer and receiver evidence described above.
 
+### XNU entry and virtual UFS replay
+
+The opt-in `sweet-qemu-ufs-handoff=1` profile captures
+`sweet-qemu-boot-id` from boot args just after early platform
+initialization in `arm_init`. XNU compares it with the synthetic
+`qemu-bl31-ufs` record in `/chosen` and prints both IDs at stage 2.
+The virtual UFS adapter checks the saved verdict before PCI mapping.
+A refused boot shows the expected root error and the controller trace
+must remain empty. The existing QEMU fixture profile retains its
+behavior when this opt-in is absent.
+
+Run the replay with the pinned kernel from CI 42707402072 and a
+validated GPT PID 1 fixture. Use a fresh output directory.
+
+```sh
+python3 tools/test-duchamp-ufs-handoff-xnu.py \
+  --kernel /path/to/kernel.development.sweet \
+  --fixture /path/to/gpt-fixture \
+  --output work/ufs-xnu-handoff-replay
+```
+
+The local runner links the new code into a separate copy of that XNU
+artifact. The normal source staging hooks are also available for a
+full kernel build. The replay supplies a fresh XNU ID for each guest
+and exercises one matching pair plus six refusals. Firmware evidence
+on the physical phone remains a separate prerequisite.
+
 ## Still unknown
 
 - LK's own numeric internal PC has not been captured; the diagnostic observed

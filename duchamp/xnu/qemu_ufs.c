@@ -24,6 +24,7 @@
 extern vm_offset_t ml_io_map(vm_offset_t, vm_size_t);
 extern ppnum_t pmap_find_phys(pmap_t, addr64_t);
 int duchamp_qemu_ufs_rootdev(dev_t *);
+extern int duchamp_qemu_ufs_handoff_allows(void);
 
 #define QU_DMA_BYTES 0x60000u
 #define QU_BAR 0x10000000ull
@@ -240,6 +241,7 @@ static const struct cdevsw qu_cdevsw={
     .d_strategy=eno_strat,.d_reserved_1=eno_getc,.d_reserved_2=eno_putc,.d_type=D_DISK
 };
 int duchamp_qemu_ufs_rootdev(dev_t *device) {
+    if(!duchamp_qemu_ufs_handoff_allows()) return EPERM;
     if(!device) return EINVAL;
     if(qu.ready) { *device=qu.device; return 0; }
     if(qu.attempted) return ENXIO;

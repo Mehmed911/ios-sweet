@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - Actual XNU entry correlates the virtual UFS handoff (2026-11-12)
+
+- Added the opt-in sweet-qemu-ufs-handoff profile. arm_init captures its independent boot ID after early PE initialization and compares it with the synthetic BL31 ADT record. XNU logs both IDs at entry and reprints the saved decision before qufs0. The gate requires observed legacy queue drain and DMA/cache grants before the adapter reaches PCI mapping.
+- Full CI XNU from run 42707402072 was reused as the pinned base. The local replay linked the new source into a separate kernel copy through two checked ARM64 hooks. All three staged production translation units compiled to arm64 Mach-O objects and the full kernel was not rebuilt. QEMU/GDB captured the XNU stage-2 line at the return from the entry hook.
+- All seven QEMU boots passed. The matching pair reached PID 1 and verified reads from the unchanged read-only GPT disk. Different boot ID, missing BL31, missing queue evidence, busy queue, missing DMA, and missing cache each stopped at the expected EPERM root failure with an empty UFS MMIO/SCSI trace. The existing QEMU UFS profile without the opt-in also passed. Evidence is under outputs/duchamp-ufs-handoff-xnu-20261112. No phone access or physical authorization.
+
 ACTIVE HANDOFF - Same-boot BL31/XNU correlation blocks UFS reads in QEMU (2026-11-11)
 
 - Added tools/test-duchamp-ufs-handoff-qemu.py and a standalone AArch64 test linked to the existing MT6897 UFS gate/provider and read-only transport. Synthetic BL31 and XNU records are checked against the current boot generation and image identity, final-exit and controller samples, legacy or complete MCQ drain evidence, and explicit resource, DMA and cache grants. No production firmware or phone image was changed.

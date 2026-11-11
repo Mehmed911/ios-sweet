@@ -20,18 +20,29 @@ def stage(root):
         'bsd/dev/ufs_gpt.h':repo/'duchamp/drivers/ufs_gpt.h',
         'bsd/dev/duchamp_ufs_gpt.c':repo/'duchamp/drivers/ufs_gpt.c',
         'bsd/dev/duchamp_qemu_ufs.c':repo/'duchamp/xnu/qemu_ufs.c',
+        'bsd/dev/duchamp_qemu_ufs_handoff.c':repo/'duchamp/xnu/qemu_ufs_handoff.c',
     }
     config=root/'bsd/conf/files'
     iokit=root/'iokit/bsddev/IOKitBSDInit.cpp'
+    arm_init=root/'osfmk/arm/arm_init.c'
     original_config=config.read_text(); original_iokit=iokit.read_text()
+    original_arm=arm_init.read_text()
+    entry_call='duchamp_qemu_ufs_handoff_enter();'
+    def arm_hook(text, anchor, call):
+        symbol=call.split('(')[0]
+        return replace_once(text, anchor,
+            anchor + '\n#if defined(DUCHAMP)\n\textern void ' + symbol +
+            '(void);\n\t' + call + '\n#endif', symbol)
     marker='DUCHAMP QUFS ROOT SELECTED'
     additions=('bsd/dev/duchamp_ufs_core.c\t\tstandard\n'
                'bsd/dev/duchamp_ufs_gpt.c\t\tstandard\n'
-               'bsd/dev/duchamp_qemu_ufs.c\t\tstandard\n')
+               'bsd/dev/duchamp_qemu_ufs.c\t\tstandard\n'
+               'bsd/dev/duchamp_qemu_ufs_handoff.c\t\tstandard\n')
     hashes={name:hashlib.sha256(source.read_bytes()).hexdigest() for name,source in paths.items()}
     if marker in original_iokit:
-        if additions not in original_config or any(not (root/name).is_file() or
-                (root/name).read_bytes()!=source.read_bytes() for name,source in paths.items()):
+        if (additions not in original_config or original_arm.count(entry_call)!=1 or
+                any(not (root/name).is_file() or
+                (root/name).read_bytes()!=source.read_bytes() for name,source in paths.items())):
             raise ValueError('partial or changed existing QEMU UFS integration')
         return {'already_staged':True,'files':hashes}
     if 'QEMU RAM BLOCK READY' not in original_iokit or 'MT6897 BACKEND STUB' not in original_iokit:
@@ -57,10 +68,12 @@ def stage(root):
 #endif
 '''
     new_iokit=replace_once(original_iokit,anchor,branch+anchor,'opt-in root selector')
+    new_arm=arm_hook(original_arm, '\tPE_init_platform(FALSE, args); /* Get platform expert set up */',
+                     entry_call)
     # Validate every anchor before writing; no edits to the legacy UFS driver.
     for name,source in paths.items():
         (root/name).write_bytes(source.read_bytes())
-    config.write_text(new_config); iokit.write_text(new_iokit)
+    config.write_text(new_config); iokit.write_text(new_iokit); arm_init.write_text(new_arm)
     return {'already_staged':False,'files':hashes}
 
 
