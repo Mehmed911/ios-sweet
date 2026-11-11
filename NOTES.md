@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Duchamp volume-up capture window tested and B restored (2026-11-11)
+
+- The isolated bootshim shows D0=6 and then samples KP_MEM1 for 12 seconds. It latches a fresh press and release, with two samples per edge and an initial held-key guard. D2 records the three raw snapshots. Eight QEMU cases passed, including real-time fixture register changes, two timeout modes and a key held at entry. The old PC/x0 image remained byte-identical.
+- Packed and verified the exact tested Image, backed up the live boot_b, wrote the diagnostic only to boot_b and requested one diagnostic boot on B. Fastboot then restored the original boot_b and selected A. Android completed boot on A with all seven partition SHA-256 values matching preflight. Phone display evidence is pending. Logs and backup are in outputs/duchamp-kpd-window-20261111.TryCSB.
+
 ACTIVE HANDOFF - Slot B physically read the Duchamp volume-up release state (2026-11-11)
 
 - With the user present, verified a fresh boot_b backup and installed the isolated keypad diagnostic to boot_b only. Stock LK accepted Slot B. The user's photo shows PC=0x40000000, x0=0x47c80000, D0=4 and D1=0x0001ffff. The handoff matched and the bootshim physically read KP_EN=1 and KP_MEM1=0xffff, with volume up released. A physical press transition and PMIC access were not measured.

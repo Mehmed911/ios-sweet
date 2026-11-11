@@ -30,15 +30,32 @@ run()
 {
 	profile=$1
 	shift
-	python3 test_qemu.py --image "$out/$profile/Image" --pattern pc-x0 --wait 5 \
+	python3 test_qemu.py --image "$out/$profile/Image" --pattern pc-x0 --wait 16 \
 	    --capture-record-pa "$(record_pa "$profile" duchamp_bootshim_phone_capture_record)" \
 	    --expect-capture-pc 0x40200000 --expect-capture-x0 0x48000000 \
 	    --kpd-record-pa "$(record_pa "$profile" duchamp_bootshim_kpd_probe_record)" "$@"
 }
 
-run phone --kpd-expected 0 0 0
-run fixture --kpd-fixture 0 0xfffe --kpd-expected 2 0 0
-run fixture --kpd-fixture 0xffff 0xfffe --kpd-expected 2 0xffff 0
-run fixture --kpd-fixture 1 0xffff --kpd-expected 4 1 0xffff
-run fixture --kpd-fixture 1 0xfffe --kpd-expected 5 1 0xfffe
-echo "keypad-probe-qemu-suite: PASS 5 cases output=$out"
+run phone --kpd-expected 0 0 0 0 0 0
+run fixture --kpd-fixture 0 0xfffe --kpd-expected 2 0 0 0 0 0
+run fixture --kpd-fixture 0xffff 0xfffe --kpd-expected 2 0xffff 0 0 0 0
+run fixture --kpd-fixture 1 0xffff --kpd-expected 9 1 0xffff 0xffff 0 0 \
+    >"$out/no-press.log" 2>&1 &
+no_press=$!
+run fixture --kpd-fixture 1 0xfffe --kpd-expected 9 1 0xfffe 0xfffe 0 0 \
+    >"$out/held.log" 2>&1 &
+held=$!
+run fixture --kpd-fixture 1 0xffff --kpd-transitions press-only \
+    --kpd-expected 0xa 1 0xfffe 0xffff 0xfffe 0 >"$out/press-only.log" 2>&1 &
+press_only=$!
+result=0
+run fixture --kpd-fixture 1 0xffff --kpd-transitions press-release \
+    --kpd-expected 8 1 0xffff 0xffff 0xfffe 0xffff || result=1
+run fixture --kpd-fixture 1 0xfffe --kpd-transitions held-then-press \
+    --kpd-expected 8 1 0xffff 0xfffe 0xfffe 0xffff || result=1
+for pid in "$no_press" "$held" "$press_only"; do
+	wait "$pid" || result=1
+done
+cat "$out/no-press.log" "$out/held.log" "$out/press-only.log"
+test "$result" -eq 0
+echo "keypad-probe-qemu-suite: PASS 8 cases output=$out"

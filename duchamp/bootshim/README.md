@@ -151,18 +151,20 @@ For Duchamp, a phone provider still needs documented early keypad and PMIC
 access and a verified LK-compatible next-slot operation. The QEMU provider
 uses emulated input and a simulated readback.
 
-### Volume-up snapshot before XNU
+### Volume-up press and release before XNU
 
 `PHONE_CAPTURE=1 KPD_PROBE=1` adds an isolated keypad diagnostic to the
 PC/x0 capture. It uses the saved Duchamp FDT and
 [Xiaomi keypad driver](https://github.com/MiCode/MTK_kernel_device_modules/blob/bsp-duchamp-u-oss/drivers/input/keyboard/mtk-kpd.c)
 for the register layout. The archived LK log records `KP_EN=1`. This shows
-LK initialized the block before Fastboot. Availability at bootshim entry
-still needs a handset measurement.
+LK initialized the block before Fastboot. The first Slot B trial measured
+`KP_EN=1` and `KP_MEM1=0xffff` at bootshim entry with the button released.
 
 After the existing EL/MMU/cache check and exact phone PC/x0 match, the
-diagnostic reads `KP_EN` once. It reads `KP_MEM1` once if `KP_EN == 1`.
-The screen shows the progress marker before each access:
+diagnostic reads `KP_EN` once. With `KP_EN == 1`, it reads the initial
+`KP_MEM1` state and shows D0=6 before starting a 12-second window. It samples
+at about 200 Hz and requires two consecutive samples to confirm each edge.
+A button held at entry must be released before a new press can count.
 
 | D0 | Meaning |
 | --- | --- |
@@ -170,11 +172,19 @@ The screen shows the progress marker before each access:
 | 1 | About to read KP_EN |
 | 2 | KP_EN did not return 1 |
 | 3 | About to read KP_MEM1 |
-| 4 | Volume up released |
-| 5 | Volume up pressed |
+| 4 | Initial state released |
+| 5 | Initial state pressed |
+| 6 | Waiting for a new press |
+| 7 | Press recorded, waiting for release |
+| 8 | Press and release recorded |
+| 9 | Window ended without a new press |
+| A | Window ended after a press without a release |
+| B | Generic timer unavailable |
 
-`D1` packs the raw KP_EN halfword above the raw KP_MEM1 halfword. Values
-are meaningful once their read completes. The capture stops in the shim.
+`D1` packs the raw KP_EN halfword above the last confirmed KP_MEM1 halfword.
+The low 12 hex digits of `D2` show the initial, press and release snapshots
+as three four-digit values. Use D0 to tell whether an edge was recorded.
+The result remains on screen when the capture stops in the shim.
 Volume down and power require a separate early
 [PMIC provider](https://github.com/MiCode/MTK_kernel_device_modules/blob/bsp-duchamp-u-oss/drivers/input/keyboard/mtk-pmic-keys.c).
 The current profile performs no PMIC access or keypad register writes.
@@ -187,8 +197,9 @@ sh duchamp/bootshim/test_kpd_probe_qemu.sh \
 ```
 
 The suite checks the phone binary rejects QEMU's entry addresses. A separate
-fixture binary uses RAM instead of keypad registers to verify disabled,
-all-ones, released and pressed readings and the diagnostic framebuffer.
+fixture binary uses RAM instead of keypad registers. The harness updates MEM1
+while the ARM64 image is running to verify press/release, a button held at
+entry, a press without release, timeouts and the diagnostic framebuffer.
 
 `payload_preflight.c` is the next-stage no-copy/no-jump boundary. It runs the
 existing FDT/payload guard and additionally requires the measured Duchamp XNU

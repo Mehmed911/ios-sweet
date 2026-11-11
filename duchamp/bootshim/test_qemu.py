@@ -44,6 +44,8 @@ PHONE_CAPTURE_SIZE = struct.calcsize(PHONE_CAPTURE_FORMAT)
 PHONE_CAPTURE_MAGIC = 0x3130435048435544
 UFS_HANDOFF_FORMAT = "<QIIQII"
 UFS_HANDOFF_SIZE = struct.calcsize(UFS_HANDOFF_FORMAT)
+KPD_RECORD_FORMAT = "<I5H2x"
+KPD_RECORD_SIZE = struct.calcsize(KPD_RECORD_FORMAT)
 
 
 def mutation_receipt(data, value=1469598103934665603):
@@ -117,6 +119,40 @@ def qmp_call(stream, execute, **arguments):
             raise RuntimeError(reply["error"])
 
 
+def exercise_keypad(qmp, qtest_path, record_pa, raw, scenario):
+    def await_stage(stage, mem1):
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            qmp_call(qmp, "pmemsave", val=record_pa, size=KPD_RECORD_SIZE,
+                     filename=str(raw))
+            record = struct.unpack(KPD_RECORD_FORMAT, raw.read_bytes())
+            if record[:3] == (stage, 1, mem1):
+                return
+            time.sleep(0.02)
+        raise RuntimeError(f"keypad did not reach stage={stage} MEM1={mem1:#x}: {record}")
+
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+        client.settimeout(5)
+        client.connect(str(qtest_path))
+        with client.makefile("rwb") as registers:
+            def set_mem1(value):
+                registers.write(f"writew 0x41000004 {value:#x}\n".encode())
+                registers.flush()
+                if registers.readline().strip() != b"OK":
+                    raise RuntimeError("QEMU rejected keypad fixture update")
+
+            if scenario == "held-then-press":
+                await_stage(6, 0xfffe)
+                set_mem1(0xffff)
+                await_stage(6, 0xffff)
+            else:
+                await_stage(6, 0xffff)
+            set_mem1(0xfffe)
+            await_stage(7, 0xfffe)
+            if scenario != "press-only":
+                set_mem1(0xffff)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--image", type=Path, default=Path("out/Image"))
@@ -156,10 +192,11 @@ def main():
                         type=lambda value: int(value, 0))
     parser.add_argument("--ufs-handoff-record-pa", type=lambda value: int(value, 0))
     parser.add_argument("--kpd-record-pa", type=lambda value: int(value, 0))
-    parser.add_argument("--kpd-expected", nargs=3, type=lambda value: int(value, 0),
-                        metavar=("STAGE", "ENABLE", "MEM1"))
+    parser.add_argument("--kpd-expected", nargs=6, type=lambda value: int(value, 0),
+                        metavar=("STAGE", "ENABLE", "MEM1", "INITIAL", "PRESSED", "RELEASED"))
     parser.add_argument("--kpd-fixture", nargs=2, type=lambda value: int(value, 0),
                         metavar=("ENABLE", "MEM1"))
+    parser.add_argument("--kpd-transitions", choices=("press-release", "held-then-press", "press-only"))
     args = parser.parse_args()
     if ((args.kpd_record_pa is not None) != (args.kpd_expected is not None) or
             (args.kpd_record_pa is not None and
@@ -168,6 +205,8 @@ def main():
         parser.error("keypad verification requires the PC/x0 capture, record and expectation")
     if args.kpd_fixture and any(not 0 <= value <= 0xffff for value in args.kpd_fixture):
         parser.error("keypad fixture values must be halfwords")
+    if args.kpd_transitions and not args.kpd_fixture:
+        parser.error("keypad transitions require a keypad fixture")
     if args.ufs_handoff_record_pa is not None and (
             args.capture_record_pa is None or args.pattern != "pc-x0"):
         parser.error("--ufs-handoff-record-pa requires the PC/x0 capture")
@@ -210,6 +249,7 @@ def main():
         ufs_handoff_raw = Path(temp) / "ufs-handoff-record.raw"
         ufs_fdt_raw = Path(temp) / "ufs-fdt.raw"
         kpd_raw = Path(temp) / "keypad.raw"
+        qtest_path = Path(temp) / "keypad-qtest"
         exception_raw = Path(temp) / "exception-record.raw"
         qemu_stderr = Path(temp) / "qemu.stderr"
         command = [
@@ -224,6 +264,9 @@ def main():
             enable, mem1 = args.kpd_fixture
             command += ["-device", f"loader,addr=0x41000024,data={enable:#x},data-len=2",
                         "-device", f"loader,addr=0x41000004,data={mem1:#x},data-len=2"]
+        if args.kpd_transitions:
+            command += ["-qtest", f"unix:{qtest_path},server=on,wait=off",
+                        "-qtest-log", "/dev/null"]
         stderr_stream = qemu_stderr.open("w", encoding="utf-8")
         process = subprocess.Popen(
             command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
@@ -247,6 +290,9 @@ def main():
             with connection, connection.makefile("rwb") as stream:
                 json.loads(stream.readline())
                 qmp_call(stream, "qmp_capabilities")
+                if args.kpd_transitions:
+                    exercise_keypad(stream, qtest_path, args.kpd_record_pa,
+                                    kpd_raw, args.kpd_transitions)
                 if args.lk_report_pa is not None:
                     deadline = time.time() + args.wait
                     while True:
@@ -298,13 +344,15 @@ def main():
                              size=PHONE_CAPTURE_SIZE,
                              filename=str(capture_record_raw))
                 if args.kpd_record_pa is not None:
-                    qmp_call(stream, "pmemsave", val=args.kpd_record_pa, size=8,
+                    qmp_call(stream, "pmemsave", val=args.kpd_record_pa, size=KPD_RECORD_SIZE,
                              filename=str(kpd_raw))
-                    kpd = struct.unpack("<IHH", kpd_raw.read_bytes())
+                    kpd = struct.unpack(KPD_RECORD_FORMAT, kpd_raw.read_bytes())
                     if kpd != tuple(args.kpd_expected):
                         raise SystemExit(f"incorrect keypad record: {kpd}")
-                    print(f"bootshim-keypad: PASS stage={kpd[0]} "
-                          f"KP_EN={kpd[1]:#06x} KP_MEM1={kpd[2]:#06x}")
+                    stage, enable, mem1, initial, pressed, released = kpd
+                    print(f"bootshim-keypad: PASS stage={stage:#x} "
+                          f"KP_EN={enable:#06x} KP_MEM1={mem1:#06x} "
+                          f"initial={initial:#06x} pressed={pressed:#06x} released={released:#06x}")
                 if args.ufs_handoff_record_pa is not None:
                     qmp_call(stream, "pmemsave", val=args.ufs_handoff_record_pa,
                              size=UFS_HANDOFF_SIZE, filename=str(ufs_handoff_raw))
@@ -568,6 +616,8 @@ def main():
                 line_step = (7 + 4) * 8
                 samples["diagnostic-d0-glyph"] = (start_x, second_y + line_step, 0xFFFFFFFF)
                 samples["diagnostic-d1-glyph"] = (start_x, second_y + 2 * line_step, 0xFFFFFFFF)
+                if args.kpd_record_pa is not None:
+                    samples["diagnostic-d2-glyph"] = (start_x, second_y + 3 * line_step, 0xFFFFFFFF)
             for name, (x, y, expected) in samples.items():
                 actual = framebuffer_pixel(x, y)
                 if actual != expected:
