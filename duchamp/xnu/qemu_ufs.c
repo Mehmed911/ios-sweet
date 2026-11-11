@@ -13,6 +13,7 @@
 #include <miscfs/devfs/devfs.h>
 #include <kern/locks.h>
 #include <kern/clock.h>
+#include <libkern/crypto/sha2.h>
 #include <machine/machine_routines.h>
 #include <arm/caches_internal.h>
 #include <vm/pmap.h>
@@ -20,11 +21,14 @@
 #include <pexpert/pexpert.h>
 #include <pexpert/device_tree.h>
 #include "ufs_gpt.h"
+#include "mt6897_ufs_probe.h"
 
 extern vm_offset_t ml_io_map(vm_offset_t, vm_size_t);
 extern ppnum_t pmap_find_phys(pmap_t, addr64_t);
 int duchamp_qemu_ufs_rootdev(dev_t *);
 extern int duchamp_qemu_ufs_handoff_allows(void);
+extern int duchamp_qemu_ufs_handoff_probe_lease(struct mt6897_ufs_gate *,
+    struct mt6897_ufs_gate_lease *);
 
 #define QU_DMA_BYTES 0x60000u
 #define QU_BAR 0x10000000ull
@@ -240,16 +244,9 @@ static const struct cdevsw qu_cdevsw={
     .d_stop=eno_stop,.d_reset=eno_reset,.d_ttys=NULL,.d_select=eno_select,.d_mmap=eno_mmap,
     .d_strategy=eno_strat,.d_reserved_1=eno_getc,.d_reserved_2=eno_putc,.d_type=D_DISK
 };
-int duchamp_qemu_ufs_rootdev(dev_t *device) {
-    if(!duchamp_qemu_ufs_handoff_allows()) return EPERM;
-    if(!device) return EINVAL;
-    if(qu.ready) { *device=qu.device; return 0; }
-    if(qu.attempted) return ENXIO;
-    qu.attempted=1;
-    struct qu_gpt_profile gpt={0};
-    int error=qu_profile(&gpt);
-    if(error) { printf("DUCHAMP QUFS PROFILE REJECTED\n"); return error; }
-    printf("DUCHAMP QUFS PROFILE VERIFIED\n");
+static int
+qu_prepare(__unused void *context, struct dufs_config *setup)
+{
     vm_offset_t config=ml_io_map(QU_ECAM+(4u<<15),0x1000);
     if(!config) return ENOMEM;
     volatile uint32_t *pci=(void *)config;
@@ -270,7 +267,7 @@ int duchamp_qemu_ufs_rootdev(dev_t *device) {
     qu.dma_pa=ptoa_64(first);
     for(vm_size_t offset=0;offset<QU_DMA_BYTES;offset+=PAGE_SIZE)
         if(ptoa_64(pmap_find_phys(kernel_pmap,(addr64_t)qu.dma+offset))!=qu.dma_pa+offset) return EIO;
-    struct dufs_config setup={
+    *setup=(struct dufs_config){
         .io={NULL,qu_read32,qu_write32,qu_dma_write,qu_dma_read,qu_barrier,qu_milliseconds},
         .dma_begin=qu.dma_pa,.dma_end=qu.dma_pa+QU_DMA_BYTES,
         .list_dma=qu.dma_pa,.command_dma=qu.dma_pa+0x1000,.data_dma=qu.dma_pa+0x10000,
@@ -278,6 +275,75 @@ int duchamp_qemu_ufs_rootdev(dev_t *device) {
         .timeout_ms=30000,.exclusive_platform_ready=1,.lun=0,.poll_limit=DUFS_MAX_POLLS,
         .descriptor_address_bits=64,.data_address_bits=64 /* QEMU-only private DMA pool */
     };
+    return 0;
+}
+
+static void
+qu_probe_stop(const struct qu_gpt_profile *gpt)
+{
+    static struct mt6897_ufs_gate gate;
+    static struct mt6897_ufs_probe probe;
+    static uint8_t block[MT6897_UFS_PROBE_BYTES];
+    struct mt6897_ufs_gate_lease lease = { 0 };
+    uint64_t blockers;
+
+    if (gpt->sector || !duchamp_qemu_ufs_handoff_probe_lease(&gate, &lease)) {
+        printf("DUCHAMP UFS PROBE BLOCKED\n");
+    } else {
+        const struct mt6897_ufs_probe_ops ops = { NULL, qu_prepare };
+        enum mt6897_ufs_provider_result status = mt6897_ufs_probe_bind(&probe,
+            &gate, &lease, &qu.host, &ops, &blockers);
+        if (status == MT6897_UFS_PROVIDER_OK) {
+            status = mt6897_ufs_probe_read(&probe, block, sizeof(block), &blockers);
+        }
+        if (status == MT6897_UFS_PROVIDER_OK) {
+            static const char hex[] = "0123456789abcdef";
+            SHA256_CTX sha;
+            uint8_t hash[SHA256_DIGEST_LENGTH];
+            char digest[SHA256_DIGEST_LENGTH * 2 + 1];
+            SHA256_Init(&sha);
+            SHA256_Update(&sha, block, sizeof(block));
+            SHA256_Final(hash, &sha);
+            for (unsigned i = 0; i < sizeof(hash); ++i) {
+                digest[2 * i] = hex[hash[i] >> 4];
+                digest[2 * i + 1] = hex[hash[i] & 15];
+            }
+            digest[sizeof(digest) - 1] = '\0';
+            printf("DUCHAMP UFS PROBE SHA256 %s\n", digest);
+            printf("DUCHAMP UFS PROBE DONE\n");
+        } else {
+            printf("DUCHAMP UFS PROBE FAILED status=%d\n", status);
+        }
+    }
+    /* This profile intentionally has no root volume. Leave its DMA reserved
+     * and stop here so the fixture cannot service any later storage request.
+     */
+    for (;;) {
+        __asm__ volatile("wfe");
+    }
+}
+
+int duchamp_qemu_ufs_rootdev(dev_t *device) {
+    uint32_t probe_mode = 0;
+    const int probe_requested =
+        PE_parse_boot_argn("sweet-qemu-ufs-probe", &probe_mode, sizeof(probe_mode));
+    if ((!probe_requested && !duchamp_qemu_ufs_handoff_allows()) ||
+        (probe_requested && probe_mode != 1)) return EPERM;
+    if(!device) return EINVAL;
+    if(qu.ready) { *device=qu.device; return 0; }
+    if(qu.attempted) return ENXIO;
+    qu.attempted=1;
+    struct qu_gpt_profile gpt={0};
+    int error=qu_profile(&gpt);
+    if(error) { printf("DUCHAMP QUFS PROFILE REJECTED\n"); return error; }
+    printf("DUCHAMP QUFS PROFILE VERIFIED\n");
+    if (probe_requested) {
+        qu_probe_stop(&gpt);
+        __builtin_unreachable();
+    }
+    struct dufs_config setup;
+    error=qu_prepare(NULL,&setup);
+    if(error) return error;
     int result=dufs_bind(&qu.host,&setup);
     if(!result) result=dufs_start(&qu.host);
     if(!result) result=dufs_nop(&qu.host);
