@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Duchamp MT6363 TOPSTATUS key bits verified through stock Android (2026-11-11)
+
+- Read only register 0x001e of SID 4 through the live MT6363 regmap in a temporary private read-only debugfs mount. Matched 1,000 samples to the stock PMIC input device. Two volume-down cycles changed 0x1e → 0x16 → 0x1e (active-low bit 3). One power cycle changed 0x1e → 0x1c → 0x1e (active-low bit 1). The ARM64 QEMU backend replayed the measured values and passed 122 PMIF checks.
+- The vendor driver uses SWINF2 and serializes its own transfers. PL/LK shows SPMI initialization and the earlier B capture shows INIT_DONE=1 and FSM idle. These establish routing and readiness at the sampled instant. No reviewed firmware record establishes exclusive bootshim ownership of SWINF2, so no bootshim transaction was issued. Android A remained booted and debugfs was absent from the parent namespace after the capture. No reboot, flash or partition changes. Evidence is under outputs/duchamp-mt6363-topstatus-20261111.
+
 ACTIVE HANDOFF - PMIF SWINF2 is initialized and idle at a measured Slot B entry (2026-11-11)
 
 - The Duchamp DTB and MiCode driver match PMIF bank 0, SWINF2 and MT6363 SID 4. The stock Android read selector measured INIT_DONE=1 and SWINF2_STA=0x8441. The isolated read-only bootshim reproduced both values on B (photo D0=4, D1=0x0000000100008441), with FSM=0 at the sampled instant.
