@@ -109,6 +109,20 @@ issuing the QEMU PSCI reset. A wrong slot or missing readback leaves an error
 on screen and halts at the shim. The harness observes the QMP guest-reset
 event after a simulated A readback.
 
+For a one-shot XNU request via ramoops, build the QEMU preview with
+`BOOT_ONCE=1` and give the test the saved Duchamp DTB:
+
+```sh
+out=$(realpath -m work/duchamp-boot-once)
+BOOT_ONCE=1 BOOT_MENU=1 QEMU_ONLY=1 SHIM_OUT="$out/build" sh duchamp/bootshim/build.sh
+python3 duchamp/bootshim/test_boot_once_qemu.py "$out/build/Image" /path/to/phone-fdt.bin "$out/test"
+```
+
+The test models the Android writer and the slot selector. The ARM64 bootshim
+reads the pmsg ring after a QEMU guest reset, consumes complete requests in
+its valid data, and requests a return to A. The test compares the ring and
+adjacent bytes across resets. XNU dispatch in this preview is simulated.
+
 The build and entry guards restrict the profile to QEMU virt. Android on
 Duchamp advertises volume up through mtk-kpd, and volume down and power
 through mtk-pmic-keys. The archived LK log records keypad initialization

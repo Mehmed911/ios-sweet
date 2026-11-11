@@ -98,6 +98,13 @@ counter(void)
 	return ticks;
 }
 
+static void
+qemu_reset(void)
+{
+	register uint64_t function __asm__("x0") = UINT64_C(0x84000009);
+	__asm__ volatile("dsb sy; hvc #0" : "+r"(function) :: "memory");
+}
+
 static enum duchamp_menu_key
 sample_qemu_keys(struct duchamp_menu_keys *keys, unsigned pressed)
 {
@@ -200,8 +207,7 @@ request_android(const struct duchamp_framebuffer *fb, unsigned y, uint64_t frequ
 		const uint32_t readback = *uart(UART_DR);
 		if (readback == 'A') {
 			uart_log("DUCHAMP ANDROID NEXT SLOT VERIFIED A\n");
-			register uint64_t function __asm__("x0") = UINT64_C(0x84000009);
-			__asm__ volatile("dsb sy; hvc #0" : "+r"(function) :: "memory");
+			qemu_reset();
 			failure = "DUCHAMP ANDROID BLOCKED RESET RETURNED\n";
 			break;
 		}
@@ -215,6 +221,93 @@ request_android(const struct duchamp_framebuffer *fb, unsigned y, uint64_t frequ
 	__asm__ volatile("dsb sy" ::: "memory");
 	uart_log(failure);
 }
+
+#if defined(DUCHAMP_BOOT_ONCE)
+/* QEMU RAM at the pmsg address derived from the saved Duchamp GKI layout. */
+#define QEMU_PMSG_ADDRESS UINT64_C(0x48160000)
+#define QEMU_PMSG_FIXTURE UINT64_C(0x41000000)
+#define QEMU_PMSG_SIZE 0x10000U
+#define RAMOOPS_HEADER_SIZE 12U
+#define PMSG_CAPACITY (QEMU_PMSG_SIZE - RAMOOPS_HEADER_SIZE)
+#define RAMOOPS_SIGNATURE UINT32_C(0x43474244)
+
+static int
+take_boot_request(volatile uint32_t *zone)
+{
+	static const char request[] = "\nDUCHAMP:BOOT-XNU-ONCE\n";
+	const uint32_t end = zone[1];
+	const uint32_t size = zone[2];
+	const unsigned length = sizeof(request) - 1;
+	if (zone[0] != RAMOOPS_SIGNATURE || end >= PMSG_CAPACITY ||
+	    size > PMSG_CAPACITY || (size < PMSG_CAPACITY && end != size))
+		return -1;
+	if (size < length)
+		return 0;
+
+	/* Ignore bytes outside the live ring. Consume duplicate requests together. */
+	volatile unsigned char *data = (volatile unsigned char *)(zone + 3);
+	const unsigned start = (end + PMSG_CAPACITY - size) % PMSG_CAPACITY;
+	int found = 0;
+	for (unsigned pos = 0; pos <= size - length; pos++) {
+		unsigned i = 0;
+		while (i < length && data[(start + pos + i) % PMSG_CAPACITY] ==
+		    (unsigned char)request[i])
+			i++;
+		if (i == length) {
+			data[(start + pos + 1) % PMSG_CAPACITY] = '!';
+			found = 1;
+		}
+	}
+	__asm__ volatile("dsb sy" ::: "memory");
+	return found;
+}
+
+static uint32_t
+qemu_one_shot_input(uint64_t frequency)
+{
+	const uint64_t start = counter();
+	while (counter() - start < frequency * MENU_SECONDS) {
+		if (!(*uart(UART_FR) & UART_RX_EMPTY))
+			return *uart(UART_DR);
+		__asm__ volatile("yield");
+	}
+	return 0;
+}
+
+static void
+qemu_one_shot(const struct duchamp_framebuffer *fb, uint64_t frequency)
+{
+	volatile uint32_t *zone = (volatile uint32_t *)(uintptr_t)QEMU_PMSG_ADDRESS;
+	uart_log("DUCHAMP ONCE SELECT SLOT\n");
+	const uint32_t slot = qemu_one_shot_input(frequency);
+	if (slot == 'A') {
+		uart_log("DUCHAMP ONCE ANDROID A READY\n");
+		if (qemu_one_shot_input(frequency) != 'W')
+			return;
+		/* The test supplies an Android-compatible pmsg ring to the A model. */
+		const volatile uint32_t *fixture =
+		    (const volatile uint32_t *)(uintptr_t)QEMU_PMSG_FIXTURE;
+		for (unsigned i = 0; i < QEMU_PMSG_SIZE / sizeof(*zone); i++)
+			zone[i] = fixture[i];
+		__asm__ volatile("dsb sy" ::: "memory");
+		uart_log("DUCHAMP ONCE ANDROID A PMSG PUBLISHED\n");
+		qemu_reset();
+		return;
+	}
+	if (slot != 'B')
+		return;
+
+	const int request = take_boot_request(zone);
+	if (request > 0) {
+		uart_log("DUCHAMP ONCE B CONSUMED REQUEST\n");
+		uart_log("DUCHAMP ONCE B XNU DISPATCH SIMULATED\n");
+	} else {
+		uart_log(request == 0 ? "DUCHAMP ONCE B NO REQUEST\n" :
+		    "DUCHAMP ONCE B INVALID PMSG\n");
+	}
+	request_android(fb, 32, frequency);
+}
+#endif
 
 /* The only input is QEMU virt's PL011, standing in for the three phone keys. */
 int
@@ -234,6 +327,11 @@ duchamp_boot_menu_qemu(const struct duchamp_framebuffer *fb, int xnu_available)
 	*uart(UART_FBRD) = 1;
 	*uart(UART_LCRH) = 0x70;
 	*uart(UART_CR) = 0x301;
+
+#if defined(DUCHAMP_BOOT_ONCE)
+	qemu_one_shot(fb, frequency);
+	return 0;
+#endif
 
 #if defined(DUCHAMP_BOOT_MENU_ENTRY_KEYS)
 	if (entry_pressed < 0) {

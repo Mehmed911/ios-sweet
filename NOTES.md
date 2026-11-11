@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Duchamp one-shot pmsg request verified through QEMU warm resets (2026-11-11)
+
+- Added the BOOT_ONCE=1 QEMU menu preview. The saved FDT and earlier live Android parameters place the no-ECC pmsg ring at 0x48160000, size 0x10000. The simulated Android A writer publishes the test ring in QEMU RAM. A guest PSCI reset preserves it, and the ARM64 bootshim on simulated B consumes complete requests only inside the valid ring. It preserves headers, other log bytes and adjacent RAM. A replay after reset does not dispatch XNU a second time.
+- Ten QEMU cases passed, including wrap, duplicate requests, later logs, stale data, truncation, an invalid header and blocked return on wrong or absent A readback. The existing menu passed six regression cases. QMP observed guest reset and reentry as simulated A after verified readback. Evidence is under outputs/duchamp-ramoops-boot-once-20261111.Mq2otw. Android, XNU dispatch and firmware slot selection were simulated in this test. Physical retention and slot selection remain unverified. No phone commands or partition changes.
+
 ACTIVE HANDOFF - HakiOS MT6768 one-shot boot comparison (2026-11-11)
 
 - Reviewed upstream oosexgang/hakios-mt6768 ad65e1f4b3ba479e9d7ada98f17398b83cc6f285. Its mtkloader and Android kernel share boot_a. The standard build consumes a one-shot Android /dev/pmsg0 request in ramoops to choose XNU, and chains to Android by default. Its XNU key driver reads both volume keys from KPD and power from MT6358 TOPSTATUS through PWRAP WACS2. This hardware path supplies no MT6897 SWINF2 delegation evidence.

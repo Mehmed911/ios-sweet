@@ -32,6 +32,15 @@ pmif_probe=${PMIF_PROBE:-}
 pmif_probe_qemu=${PMIF_PROBE_QEMU:-}
 boot_menu=${BOOT_MENU:-}
 entry_keys=${BOOT_MENU_ENTRY_KEYS:-}
+boot_once=${BOOT_ONCE:-}
+if [ -n "$boot_once" ]; then
+	if [ "$boot_once:$boot_menu:${QEMU_ONLY:-}" != 1:1:1 ] ||
+	    [ -n "${PAYLOAD:-}$entry_keys" ]; then
+		echo "BOOT_ONCE=1 requires the QEMU menu preview without a payload or entry-key fixture" >&2
+		exit 2
+	fi
+	cflags="$cflags -DDUCHAMP_BOOT_ONCE=1"
+fi
 if [ -n "$entry_keys" ]; then
 	if [ "$entry_keys:$boot_menu:${QEMU_ONLY:-}" != 1:1:1 ] || [ -n "${PAYLOAD:-}" ]; then
 		echo "BOOT_MENU_ENTRY_KEYS=1 requires the QEMU menu preview without a payload" >&2

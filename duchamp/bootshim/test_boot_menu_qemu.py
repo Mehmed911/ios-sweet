@@ -29,7 +29,8 @@ viewer_spec.loader.exec_module(viewer)
 
 
 @contextmanager
-def boot(image, output, name, dtb=None, entry_keys=None):
+def boot(image, output, name, dtb=None, entry_keys=None, *,
+         ram_fixture=None, warm_reset=False):
     with tempfile.TemporaryDirectory(prefix="duchamp-menu-") as directory:
         qmp_path = Path(directory) / "qmp"
         command = [
@@ -37,14 +38,19 @@ def boot(image, output, name, dtb=None, entry_keys=None):
             "-cpu", "cortex-a76", "-m", "8G", "-smp", "1",
             "-nodefaults", "-display", "none", "-monitor", "none",
             "-serial", "stdio", "-qmp", f"unix:{qmp_path},server=on,wait=off",
-            "-kernel", str(image), "-no-reboot",
+            "-kernel", str(image),
         ]
+        if not warm_reset:
+            command.append("-no-reboot")
         if dtb is not None:
             command += ["-dtb", str(dtb.resolve())]
         if entry_keys is not None:
             fixture = Path(directory) / "entry-keys.bin"
             fixture.write_bytes(struct.pack("<4sHBB", b"DKEY", *entry_keys))
             command += ["-device", f"loader,file={fixture},addr={ENTRY_KEYS_ADDRESS:#x},force-raw=on"]
+        if ram_fixture is not None:
+            fixture, address = ram_fixture
+            command += ["-device", f"loader,file={fixture},addr={address:#x},force-raw=on"]
         with (output / f"{name}.qemu.log").open("wb") as stderr:
             with subprocess.Popen(command,
                     stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -63,10 +69,10 @@ def boot(image, output, name, dtb=None, entry_keys=None):
                     (output / f"{name}.serial.log").write_bytes(transcript)
 
 
-def expect(process, transcript, line, timeout=5):
+def expect(process, transcript, line, timeout=5, *, after=0):
     marker = line.encode() + b"\n"
     deadline = time.monotonic() + timeout
-    while marker not in transcript:
+    while (position := transcript.find(marker, after)) == -1:
         remaining = deadline - time.monotonic()
         if remaining <= 0 or not select.select([process.stdout], [], [], remaining)[0]:
             raise RuntimeError(f"Timed out waiting for {line!r}: {transcript[-600:]!r}")
@@ -74,6 +80,7 @@ def expect(process, transcript, line, timeout=5):
         if not chunk:
             raise RuntimeError(f"QEMU stopped before {line!r}: {transcript[-600:]!r}")
         transcript.extend(chunk)
+    return position + len(marker)
 
 
 def press(process, keys):
