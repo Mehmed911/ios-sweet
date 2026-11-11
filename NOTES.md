@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - OrangeFox Duchamp recovery and Slot B reviewed offline (2026-11-11)
+
+- Audited the SourceForge community OrangeFox R12.0 Duchamp ZIP, SHA-256 0d9e94518e27d8bacbc36d1dc6269beccda7e05e4fe3999fab8df86d34cd6ac8. ZIP CRC, standalone image header/table ranges and the embedded recovery ramdisk agree. The ZIP contains a vendor_boot v4 image, not a standalone kernel. Its recovery ramdisk includes the Reboot menu A/B switch, bootctl, the Android boot-control service and the MTK recovery service. No installer or recovery executable was run.
+- Last verified boot_b matches the XNU service fixture and last verified vendor_boot_b matches the stock Android vendor_boot_a. The exact LK audit finds no fastboot boot command and all seven audit tests passed. No reviewed no-write path starts this OrangeFox build while B contains XNU, and on-device B to A via recovery remains unverified. The known return to Android A used LK Fastboot. Evidence is under outputs/duchamp-orangefox-offline-20261111. No phone commands, slot changes or partition writes.
+
 ACTIVE HANDOFF - Duchamp one-shot pmsg request verified through QEMU warm resets (2026-11-11)
 
 - Added the BOOT_ONCE=1 QEMU menu preview. The saved FDT and earlier live Android parameters place the no-ECC pmsg ring at 0x48160000, size 0x10000. The simulated Android A writer publishes the test ring in QEMU RAM. A guest PSCI reset preserves it, and the ARM64 bootshim on simulated B consumes complete requests only inside the valid ring. It preserves headers, other log bytes and adjacent RAM. A replay after reset does not dispatch XNU a second time.
