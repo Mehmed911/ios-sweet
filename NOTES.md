@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Slot B captured a physical volume-up press (2026-11-11)
+
+- The trial photo shows PC=0x40000000, x0=0x47c80000, D0=0xa, D1=0x0001fdfe, and D2=0x0000fffffdfe0000. KP_EN was 1. The initial MEM1 was 0xffff and the accepted press was 0xfdfe. The deadline expired without a confirmed release. D1 is the last confirmed sample, so the display cannot establish the physical button state at the deadline or the cause of the missing release.
+- Archived the photo and decoded values alongside the existing verified restoration in outputs/duchamp-kpd-window-20261111.TryCSB/hardware-trial. Android A booted and all seven checked hashes matched preflight. For the next diagnostic, start a bounded release window when the press is confirmed and record the last raw MEM1 separately from the last confirmed sample.
+
 ACTIVE HANDOFF - Duchamp volume-up capture window tested and B restored (2026-11-11)
 
 - The isolated bootshim shows D0=6 and then samples KP_MEM1 for 12 seconds. It latches a fresh press and release, with two samples per edge and an initial held-key guard. D2 records the three raw snapshots. Eight QEMU cases passed, including real-time fixture register changes, two timeout modes and a key held at entry. The old PC/x0 image remained byte-identical.
