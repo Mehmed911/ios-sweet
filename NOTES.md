@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Duchamp SWINF2 delegation remains unverified (2026-11-11)
+
+- The saved Duchamp DTB and Xiaomi Android driver identify SWINF2 and SID 4. The Android driver serializes its own transactions. The prior Slot B capture proves INIT_DONE=1 and FSM=0 at the sampled instant. A TOPSTATUS read through this channel requires issuing a PMIF command and acknowledging valid data.
+- The offline audit reproduced the LK handoff layout and found PMIF initialization references in the archived firmware. The retained LK log does not capture the target handoff, and the reviewed inputs establish no SWINF2 grant or cross-firmware serialization contract. Nine LK audit and four BL31 identity tests passed. Evidence is under outputs/duchamp-swinf2-handoff-audit-20261111. The user gated the new QEMU run and Slot B trial on proof of delegation, so neither ran. No phone access or partition changes. Last verified phone state was Android on A with B restored.
+
 ACTIVE HANDOFF - Duchamp MT6363 TOPSTATUS key bits verified through stock Android (2026-11-11)
 
 - Read only register 0x001e of SID 4 through the live MT6363 regmap in a temporary private read-only debugfs mount. Matched 1,000 samples to the stock PMIC input device. Two volume-down cycles changed 0x1e → 0x16 → 0x1e (active-low bit 3). One power cycle changed 0x1e → 0x1c → 0x1e (active-low bit 1). The ARM64 QEMU backend replayed the measured values and passed 122 PMIF checks.
