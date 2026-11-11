@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - HakiOS MT6768 one-shot boot comparison (2026-11-11)
+
+- Reviewed upstream oosexgang/hakios-mt6768 ad65e1f4b3ba479e9d7ada98f17398b83cc6f285. Its mtkloader and Android kernel share boot_a. The standard build consumes a one-shot Android /dev/pmsg0 request in ramoops to choose XNU, and chains to Android by default. Its XNU key driver reads both volume keys from KPD and power from MT6358 TOPSTATUS through PWRAP WACS2. This hardware path supplies no MT6897 SWINF2 delegation evidence.
+- The saved Duchamp FDT describes mediatek,pstore at 0x48090000, size 0xe0000, with no pmsg-size property on that node. The existing Fastboot lpmsg export proves a retained pmsg slice is readable there. An Android-to-B reboot marker and its consumption at bootshim entry remain unverified. A marker-based one-shot design would also need a verified stock Slot A selection or return mechanism, because Duchamp keeps Android and XNU on separate slots. Source and FDT review only. No QEMU, phone or partition operation.
+
 ACTIVE HANDOFF - Archived Slot B logs do not establish SWINF2 delegation (2026-11-11)
 
 - Rechecked the retained PL/LK log, both pstore exports, the identity-matched Android BL31 log and five archived ATF probe outputs. Four primary capture hashes match their receipts. The PL/LK log reports SPMI initialization, a pre-reboot PMIF command list containing only channel 0 entries, BL31 load and Fastboot entry. No saved log supplies a SWINF2 grant tied to the XNU Slot B entry. Xiaomi's public ATF reader exposes the reserved log buffer on Android, and the published source reviewed contains no matching LK/BL31 channel grant. Coverage report is under outputs/duchamp-swinf2-handoff-audit-20261111/slot-b-log-coverage.json.
