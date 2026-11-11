@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Duchamp vendor UFS handoff diagnostics (2026-11-12)
+
+- Reviewed the published MiCode tfa_debug driver. runtime_snapshot reads a subrange of raw_dump_all and does not take a controller sample. Found no public final-exit UFS trace producer for the observed BL31 lts-v2.8.6(release):2fbca47 on the audited V816.0.17.0.UNLMIXM release.
+- Prepared a request for Xiaomi firmware engineering for a supported read-only trace with the shared Slot B boot identifier, drained queues and DMA/cache ownership. Xiaomi Global Support is the public intake and MediaTek Online directs technical questions through the company representative. No request was sent and no phone commands were issued.
+
 ACTIVE HANDOFF - Full XNU build passes all seven QEMU UFS handoff cases (2026-11-12)
 
 - Built XNU DEVELOPMENT SWEET on macOS CI run 43105108152, isolated commit 99513047545793c352596c5807ab774f0efa8690. The 314 pinned build inputs match duchamp-bootstrap 3bf3e12. Replaced the expired IIG artifact with retained 13714817484 after matching all 39 input and 34 generated-output hashes.

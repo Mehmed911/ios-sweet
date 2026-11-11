@@ -198,6 +198,17 @@ or UFS handoff fields in ASCII or UTF-16. These are the exported console
 and pmsg slices only. LK omits zone-header bytes, and other pstore zones and
 the ATF ring were not read. See outputs/duchamp-slot-b-pstore-20261111.
 
+### Published ATF snapshot path
+
+The Duchamp Android driver serves runtime_snapshot from the RUNTIME_LOG
+entry within the same reserved ATF buffer served by raw_dump_all. Opening
+the snapshot selects that existing byte range. The read handler copies its
+bytes without sampling UFS or recording a new handoff. The saved Android A
+export was 2 MiB and contained BL31 banners without a correlated Slot B
+record or UFS handoff fields. A documented producer at the final EL3 exit
+is still needed. [Duchamp tfa_debug driver](https://github.com/MiCode/MTK_kernel_device_modules/blob/bsp-duchamp-u-oss/drivers/misc/mediatek/atf/tfa_debug.c)
+
+
 ## RAM and reserved memory
 
 The final FDT declares one 12 GiB RAM range:
