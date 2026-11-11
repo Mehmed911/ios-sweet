@@ -14,6 +14,9 @@ struct duchamp_menu_keys {
 	int armed;
 };
 
+/* Return the pressed-key mask, or -1 for an invalid PMIC sample. */
+int duchamp_menu_keys_decode(uint16_t kpd_mem1, unsigned pmic_pressed);
+
 /* The caller supplies one complete sample. PMIC levels are already decoded. */
 enum duchamp_menu_key duchamp_menu_key_sample(struct duchamp_menu_keys *keys,
     uint16_t kpd_mem1, unsigned pmic_pressed);

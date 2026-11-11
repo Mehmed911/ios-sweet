@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Duchamp menu entry samples verified in QEMU (2026-11-11)
+
+- Added a QEMU-only preview that consumes an injected keypad and PMIC sample at menu entry, before drawing or reading UART. All seven entry cases passed: neutral, each key held, incomplete, invalid PMIC and missing. After release, fresh volume up/down and power selected B, A and confirmed A. All seven menu regressions passed, including simulated A readback followed by a QMP guest reset and B dispatch to XNU. Three incompatible build configurations were rejected. Host checks passed and the phone PC/x0 diagnostic remains byte-identical.
+- Stock LK Fastboot is the verified route to A. The reviewed LK Linux handoff exposes no documented next-slot operation callable from the shim. HakiOS's redwood menu changes its own slot bootability and relies on Qualcomm ABL to choose Android. A documented Duchamp slot provider and physical early key reads remain open. This run issued no phone commands. Results: outputs/duchamp-boot-menu-entry-20261111.ehCBiY/verified/verification.json.
+
 ACTIVE HANDOFF - Duchamp keypad and PMIC button samples feed the boot menu (2026-11-11)
 
 - Added the menu's button decoder. The saved Duchamp FDT maps volume up to active-low KPD MEM1 bit 0. The decoder accepts normalized PMIC levels for volume down and power. QEMU replays held-on-entry power, repeated samples, a chord, an invalid PMIC sample and fresh individual presses. Seven QEMU cases pass, including Slot A reset after a simulated readback and real XNU dispatch after a volume-down and power replay. Host and PC/x0 regressions pass.

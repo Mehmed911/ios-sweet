@@ -19,6 +19,7 @@ from test_qemu import FB_BASE, FB_HEIGHT, FB_STRIDE, FB_WIDTH, qmp_call
 ACCENT = 0xFF62DDD2
 ROWS = FB_HEIGHT // 2 - 350 + 196
 SECOND_ROW = ROWS + 172
+ENTRY_KEYS_ADDRESS = 0x41000000
 
 tools_dir = Path(__file__).resolve().parents[2] / "tools"
 sys.path.insert(0, str(tools_dir))
@@ -28,7 +29,7 @@ viewer_spec.loader.exec_module(viewer)
 
 
 @contextmanager
-def boot(image, output, name, dtb=None):
+def boot(image, output, name, dtb=None, entry_keys=None):
     with tempfile.TemporaryDirectory(prefix="duchamp-menu-") as directory:
         qmp_path = Path(directory) / "qmp"
         command = [
@@ -40,6 +41,10 @@ def boot(image, output, name, dtb=None):
         ]
         if dtb is not None:
             command += ["-dtb", str(dtb.resolve())]
+        if entry_keys is not None:
+            fixture = Path(directory) / "entry-keys.bin"
+            fixture.write_bytes(struct.pack("<4sHBB", b"DKEY", *entry_keys))
+            command += ["-device", f"loader,file={fixture},addr={ENTRY_KEYS_ADDRESS:#x},force-raw=on"]
         with (output / f"{name}.qemu.log").open("wb") as stderr:
             with subprocess.Popen(command,
                     stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -113,12 +118,46 @@ def save_screen(output, name, raw):
                      {"width": FB_WIDTH, "height": FB_HEIGHT, "stride": FB_STRIDE})
 
 
+def verify_entry_keys(image, output):
+    cases = (
+        ("neutral", (0xffff, 0, 3), "0 ARMED 1", b""),
+        ("volume-up", (0xfffe, 0, 3), "1 ARMED 0", b"\x81\x80"),
+        ("volume-down", (0xffff, 2, 3), "2 ARMED 0", b"\x82\x80"),
+        ("power", (0xffff, 4, 3), "4 ARMED 0", b"\x84\x80"),
+        ("incomplete", (0xffff, 0, 1), "UNAVAILABLE", b"\x84\x80"),
+        ("invalid-pmic", (0xffff, 8, 3), "UNAVAILABLE", b"\x84\x80"),
+        ("missing", None, "UNAVAILABLE", b"\x84\x80"),
+    )
+    results = {}
+    for name, fixture, state, initial_keys in cases:
+        marker = f"DUCHAMP ENTRY KEYS {state}"
+        with boot(image, output, f"entry-{name}", entry_keys=fixture) as (guest, _qmp, _temp, log):
+            expect(guest, log, "DUCHAMP MENU READY")
+            if log.splitlines()[:2] != [marker.encode(), b"DUCHAMP MENU READY"]:
+                raise RuntimeError(f"Incorrect entry sample for {name}: {log!r}")
+            # Fresh volume up, fresh volume down, then fresh power on Android.
+            press(guest, initial_keys + bytes.fromhex("81 80 82 80 84"))
+            expect(guest, log, "DUCHAMP ANDROID NEXT SLOT REQUEST A")
+            press(guest, b"!")
+            expect(guest, log, "DUCHAMP ANDROID BLOCKED NEXT SLOT")
+
+        actions = [line for line in log.splitlines() if
+                   line.startswith((b"DUCHAMP MENU FOCUS", b"DUCHAMP MENU CHOICE"))]
+        if actions != [b"DUCHAMP MENU FOCUS B", b"DUCHAMP MENU FOCUS A",
+                       b"DUCHAMP MENU CHOICE A CONFIRMED"]:
+            raise RuntimeError(f"Unexpected button actions for {name}: {actions!r}")
+        results[name] = {"entry_state": state, "fresh_key_actions": ["B", "A", "confirm A"]}
+        print(f"entry-{name}: PASS {state}", flush=True)
+    return results
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("preview", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--with-xnu", type=Path)
     parser.add_argument("--xnu-dtb", type=Path)
+    parser.add_argument("--entry-keys-image", type=Path)
     args = parser.parse_args()
     if bool(args.with_xnu) != bool(args.xnu_dtb):
         parser.error("--with-xnu and --xnu-dtb must be supplied together")
@@ -211,6 +250,9 @@ def main():
                 raise RuntimeError("XNU kernel PC and framebuffer output were not observed")
         results["xnu"] = {"choice": "B XNU", "high_kernel_pc": True, "framebuffer_output": True}
         print("xnu: PASS Slot B entered the XNU kernel", flush=True)
+
+    if args.entry_keys_image:
+        results["entry_keys"] = verify_entry_keys(args.entry_keys_image.resolve(), args.output)
 
     (args.output / "verification.json").write_text(json.dumps(results, indent=2) + "\n")
     return 0

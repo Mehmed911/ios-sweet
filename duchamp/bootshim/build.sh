@@ -27,6 +27,14 @@ phone_layout=${PHONE_LAYOUT:-}
 phone_capture=${PHONE_CAPTURE:-}
 ufs_handoff_probe=${UFS_HANDOFF_PROBE:-}
 boot_menu=${BOOT_MENU:-}
+entry_keys=${BOOT_MENU_ENTRY_KEYS:-}
+if [ -n "$entry_keys" ]; then
+	if [ "$entry_keys:$boot_menu:${QEMU_ONLY:-}" != 1:1:1 ] || [ -n "${PAYLOAD:-}" ]; then
+		echo "BOOT_MENU_ENTRY_KEYS=1 requires the QEMU menu preview without a payload" >&2
+		exit 2
+	fi
+	cflags="$cflags -DDUCHAMP_BOOT_MENU_ENTRY_KEYS=1"
+fi
 if [ -n "$ufs_handoff_probe" ]; then
 	if [ "$ufs_handoff_probe" != 1 ] || [ "$phone_capture" != 1 ]; then
 		echo "UFS_HANDOFF_PROBE=1 requires PHONE_CAPTURE=1" >&2

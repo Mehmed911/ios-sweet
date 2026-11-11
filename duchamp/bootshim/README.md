@@ -118,13 +118,38 @@ The input decoder consumes the active-low volume-up bit from the saved keypad
 mapping and decoded PMIC levels for volume down and power. It waits for all
 keys to be released before accepting a single fresh press, and ignores
 held-at-entry buttons, repeated samples, invalid PMIC samples and chords.
-The QEMU replay feeds these snapshots through the same menu path as the
-interactive keys.
+The QEMU-only preview can also read a keypad/PMIC fixture from guest RAM as
+soon as the menu starts, before drawing the framebuffer or reading UART:
 
-Android exposes its Boot Control HAL after startup. The stock LK Linux
-entry path has no documented next-slot provider for the shim. Reading all
-three keys and requesting a verified next-slot change at bootshim entry
-remain open. The QEMU provider uses no phone slot metadata or storage.
+```sh
+BOOT_MENU=1 QEMU_ONLY=1 BOOT_MENU_ENTRY_KEYS=1 SHIM_OUT="$out/entry" \
+  sh duchamp/bootshim/build.sh
+python3 duchamp/bootshim/test_boot_menu_qemu.py "$out/preview/Image" "$out/entry-test" \
+  --entry-keys-image "$out/entry/Image"
+```
+
+The suite starts separate guests with a neutral sample, each of the three
+buttons held, an incomplete sample, an invalid PMIC value and no sample.
+After a held or unavailable sample, it verifies that the menu requires a
+release before fresh presses can move B → A and confirm A. This exercises
+the keypad decoder and menu logic with injected input.
+
+### Android selection on Duchamp
+
+The verified recovery path uses stock LK Fastboot to select A before Android
+boots. Android exposes its Boot Control HAL once Android is running. Both
+are defined by [AOSP's slot selection contract](https://source.android.com/docs/core/architecture/bootloader/updating#support-for-slots).
+The reviewed stock LK Linux handoff exposes no documented next-slot operation
+that the shim can call.
+
+On Qualcomm redwood, the [HakiOS menu](https://hackios-web.vercel.app/en/docs/u-boot#installed-beside-android-a-menu-at-every-start)
+marks its own slot unbootable and reboots so ABL chooses the Android slot.
+This depends on redwood's ABL and updates boot metadata. Upstream
+[U-Boot A/B selection](https://docs.u-boot.org/en/latest/android/ab.html)
+also requires a board port with storage and boot-control metadata support.
+For Duchamp, a phone provider still needs documented early keypad and PMIC
+access and a verified LK-compatible next-slot operation. The QEMU provider
+uses emulated input and a simulated readback.
 
 `payload_preflight.c` is the next-stage no-copy/no-jump boundary. It runs the
 existing FDT/payload guard and additionally requires the measured Duchamp XNU

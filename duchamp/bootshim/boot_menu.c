@@ -32,6 +32,35 @@
 #define ROW_GAP 20U
 #define MARGIN 90U
 
+#if defined(DUCHAMP_BOOT_MENU_ENTRY_KEYS)
+/* Populated by QEMU's generic loader before the preview image runs. */
+#define QEMU_ENTRY_KEYS_ADDRESS UINT64_C(0x41000000)
+#define QEMU_ENTRY_KEYS_MAGIC UINT32_C(0x59454b44) /* DKEY */
+#define QEMU_ENTRY_KEYS_COMPLETE 3U
+
+struct qemu_entry_keys {
+	uint32_t magic;
+	uint16_t kpd_mem1;
+	uint8_t pmic_pressed;
+	uint8_t valid_sources;
+};
+
+static int
+sample_qemu_entry_keys(struct duchamp_menu_keys *keys)
+{
+	const volatile struct qemu_entry_keys *sample =
+	    (const volatile struct qemu_entry_keys *)(uintptr_t)QEMU_ENTRY_KEYS_ADDRESS;
+	if (sample->magic != QEMU_ENTRY_KEYS_MAGIC ||
+	    sample->valid_sources != QEMU_ENTRY_KEYS_COMPLETE)
+		return -1;
+
+	const uint16_t kpd_mem1 = sample->kpd_mem1;
+	const unsigned pmic_pressed = sample->pmic_pressed;
+	(void)duchamp_menu_key_sample(keys, kpd_mem1, pmic_pressed);
+	return duchamp_menu_keys_decode(kpd_mem1, pmic_pressed);
+}
+#endif
+
 #if defined(DUCHAMP_XNU_JUMP)
 /* Clang can lower the loader's boot-argument struct copy to a libc call. */
 void *
@@ -191,6 +220,10 @@ request_android(const struct duchamp_framebuffer *fb, unsigned y, uint64_t frequ
 int
 duchamp_boot_menu_qemu(const struct duchamp_framebuffer *fb, int xnu_available)
 {
+	struct duchamp_menu_keys keys = {0};
+#if defined(DUCHAMP_BOOT_MENU_ENTRY_KEYS)
+	const int entry_pressed = sample_qemu_entry_keys(&keys);
+#endif
 	uint64_t frequency;
 	__asm__ volatile("mrs %0, cntfrq_el0" : "=r"(frequency));
 	if (frequency == 0)
@@ -202,9 +235,20 @@ duchamp_boot_menu_qemu(const struct duchamp_framebuffer *fb, int xnu_available)
 	*uart(UART_LCRH) = 0x70;
 	*uart(UART_CR) = 0x301;
 
+#if defined(DUCHAMP_BOOT_MENU_ENTRY_KEYS)
+	if (entry_pressed < 0) {
+		uart_log("DUCHAMP ENTRY KEYS UNAVAILABLE\n");
+	} else {
+		char state[] = "0 ARMED 0\n";
+		state[0] += entry_pressed;
+		state[8] += keys.armed;
+		uart_log("DUCHAMP ENTRY KEYS ");
+		uart_log(state);
+	}
+#endif
+
 	const unsigned top = (unsigned)fb->height / 2 - 350;
 	const unsigned rows = top + 196;
-	struct duchamp_menu_keys keys = {0};
 	unsigned focus = 0;
 	rectangle(fb, 0, 0, (unsigned)fb->width, (unsigned)fb->height, BACKGROUND);
 	draw_text(fb, MARGIN, top, 6, "Choose a system", TEXT);
