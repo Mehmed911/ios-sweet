@@ -190,5 +190,14 @@ class Tests(unittest.TestCase):
         p=bytearray(self.payload()); struct.pack_into('<Q',p,0x20,len(p)+1)
         with self.assertRaises(ValueError): profile.runner_options(p,self.image,'cortex-a76','duchamp')
 
+    def test_one_block_probe_rejects_short_or_ambiguous_profiles(self):
+        base = 'rd=qufs0 sweet-qemu-ufs=1 rootrw=0 sweet-qemu-ufs-probe=1'
+        with self.assertRaisesRegex(ValueError, 'reference LBA'):
+            profile.runner_options(self.payload(args=base), self.image, 'cortex-a76', 'duchamp')
+        self.reject(self.gpt_tree(), args=base)
+        for suffix in (' sweet-qemu-ufs-probe=1', ' pmd0=0x40000000.0x1000'):
+            with self.subTest(suffix=suffix), self.assertRaisesRegex(ValueError, 'one-block probe'):
+                profile.runner_options(self.payload(args=base+suffix), self.image, 'cortex-a76', 'duchamp')
+
 
 if __name__=='__main__': unittest.main()

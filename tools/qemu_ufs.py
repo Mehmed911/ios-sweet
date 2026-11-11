@@ -12,6 +12,9 @@ COMPATIBLE=b'qemu,ufs-test-only\0'
 BAR=(0x10000000,0x1000)
 ECAM=(0x3f000000,0x1000000)
 GPT_ROOT_GUID=uuid.UUID('a1f31536-d200-4eb6-b196-530f8768ea63')
+PROBE_LUN=2
+PROBE_LBA=276480
+PROBE_BYTES=4096
 
 
 def child(node,name):
@@ -128,6 +131,12 @@ def runner_options(payload,image,cpu,framebuffer, *, var_ramdisk=False):
            x.startswith('sweet-qemu-ufs=') and x!='sweet-qemu-ufs=1' or
            x.startswith('ufsrw=') and x!='ufsrw=0' for x in args):
         raise ValueError('ambiguous root or writable storage boot arguments')
+    probe_args = [x for x in args if x == 'sweet-qemu-ufs-probe' or
+                  x.startswith('sweet-qemu-ufs-probe=')]
+    if probe_args and (probe_args != ['sweet-qemu-ufs-probe=1'] or gpt or var_ramdisk or
+                       args.count('rootrw=0') != 1 or
+                       any(x.startswith(('pmd', 'vmd')) for x in args)):
+        raise ValueError('one-block probe requires one opt-in and a read-only disk without a root volume')
     if var_ramdisk and (args.count('rootrw=0') != 1
             or any(x.startswith(('pmd', 'vmd')) for x in args)):
         raise ValueError('data RAMDisk requires explicit read-only root and no alternate memory devices')
@@ -142,7 +151,10 @@ def runner_options(payload,image,cpu,framebuffer, *, var_ramdisk=False):
     with path.open('rb') as source:
         if before.st_size%4096 or before.st_size<1024*1024:
             raise ValueError('UFS fixture must be aligned and at least 1 MiB')
-        if gpt:
+        if probe_args:
+            if before.st_size < (PROBE_LBA + 1) * PROBE_BYTES:
+                raise ValueError('UFS probe image does not contain the reference LBA')
+        elif gpt:
             source.seek(gpt[0])
             if source.read(8)!=b'EFI PART':
                 raise ValueError('GPT fixture must contain a whole disk with a primary GPT header')
@@ -164,7 +176,11 @@ def runner_options(payload,image,cpu,framebuffer, *, var_ramdisk=False):
         metadata['data_ramdisk'] = var_layout
     if gpt:
         metadata['gpt']={'sector_bytes':gpt[0],'root_guid':str(gpt[1])}
-    options=['-drive',f'file={path},format=raw,if=none,id=duchamp_lu0,readonly=on',
+    lun = PROBE_LUN if probe_args else 0
+    if probe_args:
+        metadata['probe'] = {'lun': lun, 'lba': PROBE_LBA, 'bytes': PROBE_BYTES}
+    drive_id = f'duchamp_lu{lun}'
+    options=['-drive',f'file={path},format=raw,if=none,id={drive_id},readonly=on',
              '-device','ufs,id=duchamp_ufs,addr=04.0,mcq=off',
-             '-device','ufs-lu,drive=duchamp_lu0,bus=duchamp_ufs,lun=0']
+             '-device',f'ufs-lu,drive={drive_id},bus=duchamp_ufs,lun={lun}']
     return options,metadata

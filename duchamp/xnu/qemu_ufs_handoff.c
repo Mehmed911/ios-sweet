@@ -13,6 +13,7 @@ extern int SecureDTGetProperty(DTEntry, const char *, const void **, unsigned *)
 #else
 #include <pexpert/pexpert.h>
 #include <pexpert/device_tree.h>
+#include "mt6897_ufs_gate.h"
 #endif
 
 enum handoff_verdict {
@@ -36,6 +37,9 @@ struct bl31_fixture {
 static struct {
     uint64_t entry_id, bl31_id;
     enum handoff_verdict verdict;
+#if !defined(DUCHAMP_HANDOFF_PINNED_QEMU_REPLAY)
+    uint64_t dma_owner, cache_owner;
+#endif
 } handoff;
 
 void duchamp_qemu_ufs_handoff_enter(void);
@@ -110,6 +114,12 @@ capture_entry(void)
 
     handoff.bl31_id = record.boot_id;
     handoff.verdict = check_record(&record);
+#if !defined(DUCHAMP_HANDOFF_PINNED_QEMU_REPLAY)
+    if (handoff.verdict == HANDOFF_ALLOW) {
+        handoff.dma_owner = record.dma_owner;
+        handoff.cache_owner = record.cache_owner;
+    }
+#endif
 }
 
 static void
@@ -148,4 +158,59 @@ duchamp_qemu_ufs_handoff_allows(void)
     report_entry(163);
     return handoff.verdict == HANDOFF_ALLOW;
 }
+
+#if !defined(DUCHAMP_HANDOFF_PINNED_QEMU_REPLAY)
+int duchamp_qemu_ufs_handoff_probe_lease(struct mt6897_ufs_gate *,
+    struct mt6897_ufs_gate_lease *);
+
+static enum mt6897_ufs_gate_verdict
+probe_verifier(void *context __attribute__((unused)),
+    const struct mt6897_ufs_gate_verifier_request *request,
+    struct mt6897_ufs_gate_lease *lease)
+{
+    if (handoff.verdict != HANDOFF_ALLOW ||
+        request->evidence.boot_generation != handoff.entry_id ||
+        request->route != MT6897_UFS_GATE_ROUTE_DIRECT_DMA) {
+        return MT6897_UFS_GATE_VERIFY_DENY;
+    }
+    *lease = (struct mt6897_ufs_gate_lease) {
+        .version = MT6897_UFS_GATE_LEASE_VERSION,
+        .flags = MT6897_UFS_LEASE_REQUIRED_FLAGS,
+        .boot_generation = handoff.entry_id,
+        .evidence_fingerprint = request->evidence_fingerprint,
+        .lease_id = 1,
+        .provider_epoch = 1,
+        .controller_owner_id = 2,
+        .phy_owner_id = 3,
+        .firmware_owner_id = 4,
+        .dma_owner_id = handoff.dma_owner,
+        .cache_owner_id = handoff.cache_owner
+    };
+    return MT6897_UFS_GATE_VERIFY_APPROVE;
+}
+
+/* Call only after the virtual CPU, ADT and PCI apertures have been checked. */
+int
+duchamp_qemu_ufs_handoff_probe_lease(struct mt6897_ufs_gate *gate,
+    struct mt6897_ufs_gate_lease *lease)
+{
+    if (handoff.verdict != HANDOFF_OFF) {
+        report_entry(163);
+    }
+    if (handoff.verdict != HANDOFF_ALLOW ||
+        mt6897_ufs_gate_init(gate, handoff.entry_id) != MT6897_UFS_GATE_INIT_OK) {
+        return 0;
+    }
+
+    /* Model only. The emulated host uses its own contiguous direct DMA pool. */
+    struct mt6897_ufs_gate_evidence evidence =
+        mt6897_ufs_gate_duchamp_known_evidence(handoff.entry_id);
+    evidence.asserted |= MT6897_UFS_E_COMMON_REQUIRED |
+        MT6897_UFS_E_DIRECT_BASE_REQUIRED | MT6897_UFS_E_BOUNCE_NOT_REQUIRED;
+    evidence.known = evidence.asserted;
+    uint64_t blockers;
+    return mt6897_ufs_gate_authorize(gate, &evidence, probe_verifier, NULL,
+        lease, &blockers) == MT6897_UFS_GATE_LEASED;
+}
+#endif
 #endif

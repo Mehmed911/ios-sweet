@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - Full XNU verifies the MT6897 one-block probe in QEMU (2026-11-12)
+
+- macOS CI run 43115466836 built DEVELOPMENT SWEET at 9db1c1580e41173aa37229ad358797f8b75efc9e from 059b84b plus the opt-in QEMU call site and same-boot synthetic lease bridge. The unchanged artifact SHA-256 is 57ba8b32dd1b7a5ed7c70ed65d7a4aec107d12b85147f236c439cd309672fda0.
+- The matching proof issued one READ(16), LUN 2 LBA 276480, length 4096. The XNU BSD log and independent hash of its guest RAM buffer both matched the saved Android digest 065f2cf024655ce86cd67efd58901ded708c34cf2e721778b6b3de67f5382fd6. A one-byte change produced a different digest.
+- Seven denials had no controller MMIO or SCSI events and left the output zeroed. The same kernel booted the normal read-only qufs0 GPT root to PID 1. All 27 host profile tests passed. Evidence is under outputs/duchamp-ufs-probe-full-xnu-20261112. The handoff is synthetic. No phone commands or partition changes.
+
 ACTIVE HANDOFF - MT6897 one-block UFS probe wired through the provider (2026-11-12)
 
 - Added the one-shot read-only adapter in duchamp/drivers/mt6897_ufs_probe.c. The provider validates its lease before the prepare callback, then the adapter uses the existing UFS core to read exactly 4096 bytes from LUN 2 LBA 276480. Failed authorization leaves the destination untouched. Included the adapter in XNU source staging and compiled the staged ARM64 Mach-O object.
