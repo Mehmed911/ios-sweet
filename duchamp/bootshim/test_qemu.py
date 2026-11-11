@@ -205,6 +205,11 @@ def main():
                         metavar=("ENABLE", "MEM1"))
     parser.add_argument("--kpd-transitions", choices=("press-release", "held-then-press",
                                                      "press-only", "late-press-release"))
+    parser.add_argument("--pmif-record-pa", type=lambda value: int(value, 0))
+    parser.add_argument("--pmif-expected", nargs=3, type=lambda value: int(value, 0),
+                        metavar=("STAGE", "INIT", "SWINF2"))
+    parser.add_argument("--pmif-fixture", nargs=2, type=lambda value: int(value, 0),
+                        metavar=("INIT", "SWINF2"))
     args = parser.parse_args()
     if ((args.kpd_record_pa is not None) != (args.kpd_expected is not None) or
             (args.kpd_record_pa is not None and
@@ -215,6 +220,14 @@ def main():
         parser.error("keypad fixture values must be halfwords")
     if args.kpd_transitions and not args.kpd_fixture:
         parser.error("keypad transitions require a keypad fixture")
+    if ((args.pmif_record_pa is not None) != (args.pmif_expected is not None) or
+            (args.pmif_record_pa is not None and
+             (args.pattern != "pc-x0" or args.capture_record_pa is None or
+              args.kpd_record_pa is not None or args.ufs_handoff_record_pa is not None)) or
+            (args.pmif_fixture is not None and args.pmif_record_pa is None)):
+        parser.error("PMIF verification requires an isolated PC/x0 capture and expectation")
+    if args.pmif_fixture and any(not 0 <= value <= 0xffffffff for value in args.pmif_fixture):
+        parser.error("PMIF fixture values must be 32-bit")
     if args.ufs_handoff_record_pa is not None and (
             args.capture_record_pa is None or args.pattern != "pc-x0"):
         parser.error("--ufs-handoff-record-pa requires the PC/x0 capture")
@@ -257,6 +270,7 @@ def main():
         ufs_handoff_raw = Path(temp) / "ufs-handoff-record.raw"
         ufs_fdt_raw = Path(temp) / "ufs-fdt.raw"
         kpd_raw = Path(temp) / "keypad.raw"
+        pmif_raw = Path(temp) / "pmif.raw"
         qtest_path = Path(temp) / "keypad-qtest"
         exception_raw = Path(temp) / "exception-record.raw"
         qemu_stderr = Path(temp) / "qemu.stderr"
@@ -275,6 +289,10 @@ def main():
         if args.kpd_transitions:
             command += ["-qtest", f"unix:{qtest_path},server=on,wait=off",
                         "-qtest-log", "/dev/null"]
+        if args.pmif_fixture is not None:
+            init, swinf2 = args.pmif_fixture
+            command += ["-device", f"loader,addr=0x41000000,data={init:#x},data-len=4",
+                        "-device", f"loader,addr=0x410008a8,data={swinf2:#x},data-len=4"]
         stderr_stream = qemu_stderr.open("w", encoding="utf-8")
         process = subprocess.Popen(
             command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
@@ -362,6 +380,14 @@ def main():
                           f"KP_EN={enable:#06x} KP_MEM1={mem1:#06x} "
                           f"initial={initial:#06x} pressed={pressed:#06x} "
                           f"released={released:#06x} last_raw={last_raw:#06x}")
+                if args.pmif_record_pa is not None:
+                    qmp_call(stream, "pmemsave", val=args.pmif_record_pa, size=12,
+                             filename=str(pmif_raw))
+                    pmif = struct.unpack("<III", pmif_raw.read_bytes())
+                    if pmif != tuple(args.pmif_expected):
+                        raise SystemExit(f"incorrect PMIF record: {pmif}")
+                    stage, init, swinf2 = pmif
+                    print(f"bootshim-pmif: PASS stage={stage} INIT={init:#010x} SWINF2={swinf2:#010x}")
                 if args.ufs_handoff_record_pa is not None:
                     qmp_call(stream, "pmemsave", val=args.ufs_handoff_record_pa,
                              size=UFS_HANDOFF_SIZE, filename=str(ufs_handoff_raw))
@@ -621,7 +647,8 @@ def main():
                 "x0-glyph": (start_x, second_y, 0xFFFFFFFF),
                 "pc-glyph-gap": (start_x + 4 * 8, first_y, 0xFF000000),
             }
-            if args.ufs_handoff_record_pa is not None or args.kpd_record_pa is not None:
+            if any(address is not None for address in (
+                    args.ufs_handoff_record_pa, args.kpd_record_pa, args.pmif_record_pa)):
                 line_step = (7 + 4) * 8
                 samples["diagnostic-d0-glyph"] = (start_x, second_y + line_step, 0xFFFFFFFF)
                 samples["diagnostic-d1-glyph"] = (start_x, second_y + 2 * line_step, 0xFFFFFFFF)

@@ -103,7 +103,7 @@ def inspect_arm64_image(image):
     }
 
 
-def inspect_build(elf, image, ufs_handoff_probe=False, kpd_probe=False):
+def inspect_build(elf, image, ufs_handoff_probe=False, kpd_probe=False, pmif_probe=False):
     image_report = inspect_arm64_image(image)
     symbols = read_symbols(elf)
     required = (
@@ -127,7 +127,9 @@ def inspect_build(elf, image, ufs_handoff_probe=False, kpd_probe=False):
             "UFS handoff probe selection differs from the linked image")
     require(("duchamp_bootshim_kpd_probe_record" in symbols) == kpd_probe,
             "keypad probe selection differs from the linked image")
-    if ufs_handoff_probe or kpd_probe:
+    require(("duchamp_bootshim_pmif_probe_record" in symbols) == pmif_probe,
+            "PMIF probe selection differs from the linked image")
+    if ufs_handoff_probe or kpd_probe or pmif_probe:
         instructions = subprocess.check_output(
             ["llvm-objdump", "-d", str(elf)], text=True)
         require(not re.search(r"\b(?:smc|hvc)\s+#", instructions),
@@ -173,6 +175,7 @@ def inspect_build(elf, image, ufs_handoff_probe=False, kpd_probe=False):
         "fdt_dereference_linked": ufs_handoff_probe,
         "watchdog_access_linked": False,
         "keypad_probe_linked": kpd_probe,
+        "pmif_status_probe_linked": pmif_probe,
     }
 
 
@@ -185,10 +188,11 @@ def main():
     profile = parser.add_mutually_exclusive_group()
     profile.add_argument("--ufs-handoff-probe", action="store_true")
     profile.add_argument("--kpd-probe", action="store_true")
+    profile.add_argument("--pmif-probe", action="store_true")
     arguments = parser.parse_args()
     if (arguments.elf is None) != (arguments.image is None):
         parser.error("--elf and --image must be supplied together")
-    if (arguments.ufs_handoff_probe or arguments.kpd_probe) and arguments.elf is None:
+    if (arguments.ufs_handoff_probe or arguments.kpd_probe or arguments.pmif_probe) and arguments.elf is None:
         parser.error("capture probes require --elf and --image")
     if arguments.json_out and arguments.json_out.exists():
         parser.error("preserve existing output")
@@ -197,7 +201,8 @@ def main():
             encoding="utf-8"))
         result = {
             "result": "PASS",
-            "mode": ("keypad-capture-offline-verification" if arguments.kpd_probe
+            "mode": ("pmif-status-offline-verification" if arguments.pmif_probe
+                     else "keypad-capture-offline-verification" if arguments.kpd_probe
                      else "ufs-handoff-receiver-offline-verification"
                      if arguments.ufs_handoff_probe
                      else "runtime-pc-x0-capture-offline-verification"),
@@ -205,7 +210,7 @@ def main():
             "build": None,
             "safety": {
                 "position_independent": True,
-                "ram_record_only": not arguments.kpd_probe,
+                "ram_record_only": not (arguments.kpd_probe or arguments.pmif_probe),
                 "framebuffer_write_linked": True,
                 "fdt_dereference_linked": arguments.ufs_handoff_probe,
                 "watchdog_access_linked": False,
@@ -221,7 +226,7 @@ def main():
         if arguments.elf:
             result["build"] = inspect_build(
                 arguments.elf.resolve(), arguments.image.resolve().read_bytes(),
-                arguments.ufs_handoff_probe, arguments.kpd_probe)
+                arguments.ufs_handoff_probe, arguments.kpd_probe, arguments.pmif_probe)
         if arguments.json_out:
             arguments.json_out.parent.mkdir(parents=True, exist_ok=True)
             with arguments.json_out.open("x", encoding="utf-8") as output:

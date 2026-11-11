@@ -205,6 +205,34 @@ while the ARM64 image is running to verify a release beyond the original
 press deadline, a button held at entry, timeouts, a raw value distinct from
 the last confirmed sample and the diagnostic framebuffer.
 
+### PMIF status at bootshim entry
+
+`PHONE_CAPTURE=1 PMIF_PROBE=1` adds a two-register snapshot to the isolated
+PC/x0 image. The saved Duchamp DTB maps `pmif` at `0x1cc04000` and routes
+MT6363 SID 4 through that bank. The
+[MiCode PMIF driver](https://raw.githubusercontent.com/MiCode/MTK_kernel_device_modules/bsp-duchamp-u-oss/drivers/spmi/spmi-mtk-pmif-core.c)
+selects the mt6xxx layout and SWINF2 on MT6897. The entry guard requires
+the measured phone PC/x0 and the existing EL/MMU/cache checks.
+
+`D1` packs the raw INIT_DONE word above the raw SWINF2 status word.
+`D0` is 0 on a handoff mismatch, 1 before the INIT_DONE read, 2 when
+initialization is unavailable, 3 before the SWINF2 read, 4 for an idle
+channel snapshot, 5 for a non-idle state, or 6 for an all-ones status.
+An idle snapshot establishes the visible state at that instant. PMIF
+transactions remain subject to channel ownership and serialization.
+
+The image issues only MMIO loads to PMIF. The existing backend's modeled
+TOPSTATUS read separately checks the command and acknowledgement for one
+byte from SID 4 at 0x001e. Button bit assignments still need validation
+against physical samples, since the
+[MiCode MT6363 key driver](https://github.com/MiCode/MTK_kernel_device_modules/blob/bsp-duchamp-u-oss/drivers/input/keyboard/mtk-pmic-keys.c)
+uses separate press and release IRQs for its normal input path.
+
+```sh
+sh duchamp/bootshim/test_pmif_probe_qemu.sh \
+  work/lk-handoff-audit-v1/report.json work/pmif-probe-test
+```
+
 `payload_preflight.c` is the next-stage no-copy/no-jump boundary. It runs the
 existing FDT/payload guard and additionally requires the measured Duchamp XNU
 window (`0x1c0000000` + `0x20000000`), a bounded entry/top, and 1-32 segments.

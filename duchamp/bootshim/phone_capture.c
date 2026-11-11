@@ -294,6 +294,82 @@ capture_kpd(volatile unsigned char *base, size_t stride, size_t x,
 }
 #endif
 
+#if defined(DUCHAMP_PMIF_PROBE)
+#if defined(DUCHAMP_PMIF_PROBE_QEMU)
+#define PMIF_PROBE_BASE UINT64_C(0x41000000)
+#define PMIF_ENTRY_PC UINT64_C(0x40200000)
+#define PMIF_ENTRY_X0 UINT64_C(0x48000000)
+#else
+#define PMIF_PROBE_BASE UINT64_C(0x1cc04000)
+#define PMIF_ENTRY_PC UINT64_C(0x40000000)
+#define PMIF_ENTRY_X0 UINT64_C(0x47c80000)
+#endif
+#define PMIF_INIT_DONE 0x000U
+#define PMIF_SWINF2_STA 0x8a8U
+
+enum pmif_probe_stage {
+	PMIF_LAYOUT_REJECTED,
+	PMIF_READING_INIT,
+	PMIF_INIT_UNAVAILABLE,
+	PMIF_READING_SWINF2,
+	PMIF_SWINF2_IDLE,
+	PMIF_SWINF2_NONIDLE,
+	PMIF_SWINF2_UNAVAILABLE,
+};
+
+volatile struct pmif_probe_record {
+	uint32_t stage;
+	uint32_t init_done;
+	uint32_t swinf2_status;
+} duchamp_bootshim_pmif_probe_record;
+
+static void
+show_pmif_stage(volatile unsigned char *base, size_t stride, size_t x,
+	size_t y, enum pmif_probe_stage stage)
+{
+	char line[LINE_CHARACTERS];
+	const size_t step = (GLYPH_HEIGHT + 4U) * GLYPH_SCALE;
+	const uint64_t raw =
+	    ((uint64_t)duchamp_bootshim_pmif_probe_record.init_done << 32) |
+	    duchamp_bootshim_pmif_probe_record.swinf2_status;
+
+	fill_screen(base + y * stride + x * sizeof(uint32_t),
+	    stride, LINE_WIDTH, 2U * step, COLOR_BLACK);
+	format_line(line, 'D', '0', stage);
+	draw_line(base, stride, x, y, line);
+	format_line(line, 'D', '1', raw);
+	draw_line(base, stride, x, y + step, line);
+	duchamp_bootshim_pmif_probe_record.stage = stage;
+	__asm__ volatile("dsb sy" ::: "memory");
+}
+
+static void
+capture_pmif(volatile unsigned char *base, size_t stride, size_t x,
+	size_t y, uint64_t entry_pc, uint64_t entry_x0)
+{
+	enum pmif_probe_stage stage = PMIF_LAYOUT_REJECTED;
+
+	if (entry_pc == PMIF_ENTRY_PC && entry_x0 == PMIF_ENTRY_X0) {
+		show_pmif_stage(base, stride, x, y, PMIF_READING_INIT);
+		const uint32_t init =
+		    *(const volatile uint32_t *)(uintptr_t)(PMIF_PROBE_BASE + PMIF_INIT_DONE);
+		duchamp_bootshim_pmif_probe_record.init_done = init;
+		stage = PMIF_INIT_UNAVAILABLE;
+		if (init != UINT32_MAX && (init & 1U) != 0) {
+			show_pmif_stage(base, stride, x, y, PMIF_READING_SWINF2);
+			const uint32_t status =
+			    *(const volatile uint32_t *)(uintptr_t)(PMIF_PROBE_BASE + PMIF_SWINF2_STA);
+			duchamp_bootshim_pmif_probe_record.swinf2_status = status;
+			stage = PMIF_SWINF2_UNAVAILABLE;
+			if (status != UINT32_MAX)
+				stage = ((status >> 1) & 7U) == 0 ?
+				    PMIF_SWINF2_IDLE : PMIF_SWINF2_NONIDLE;
+		}
+	}
+	show_pmif_stage(base, stride, x, y, stage);
+}
+#endif
+
 #if defined(DUCHAMP_UFS_HANDOFF_PROBE)
 #define UFS_PROBE_FDT_BEGIN UINT64_C(0x40000000)
 #define UFS_PROBE_FDT_END UINT64_C(0x80000000)
@@ -420,6 +496,12 @@ duchamp_phone_capture_run(volatile void *framebuffer, size_t stride,
 	second_y = first_y + GLYPH_HEIGHT * GLYPH_SCALE + 4U * GLYPH_SCALE;
 	draw_line(base, stride, start_x, first_y, pc_line);
 	draw_line(base, stride, start_x, second_y, x0_line);
+#if defined(DUCHAMP_PMIF_PROBE)
+	const size_t pmif_step = (GLYPH_HEIGHT + 4U) * GLYPH_SCALE;
+	if (second_y + 3U * pmif_step <= height)
+		capture_pmif(base, stride, start_x, second_y + pmif_step,
+		    entry_pc, entry_x0);
+#endif
 #if defined(DUCHAMP_KPD_PROBE)
 	const size_t kpd_step = (GLYPH_HEIGHT + 4U) * GLYPH_SCALE;
 	if (second_y + 5U * kpd_step <= height)

@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - PMIF SWINF2 is initialized and idle at a measured Slot B entry (2026-11-11)
+
+- The Duchamp DTB and MiCode driver match PMIF bank 0, SWINF2 and MT6363 SID 4. The stock Android read selector measured INIT_DONE=1 and SWINF2_STA=0x8441. The isolated read-only bootshim reproduced both values on B (photo D0=4, D1=0x0000000100008441), with FSM=0 at the sampled instant.
+- Six ARM64 QEMU snapshot cases and 110 PMIF backend model checks passed. The one-byte TOPSTATUS read from SID 4 at 0x001e passed in the model with the expected read command and acknowledgement. The phone diagnostic issued no SPMI transaction. Physical TOPSTATUS, its key bit mapping and exclusive channel ownership remain unverified.
+- Only boot_b received image writes. The original boot_b was restored and Android completed boot from A with seven matching partition hashes. Evidence is under outputs/duchamp-pmif-keys-20261111.
+
 ACTIVE HANDOFF - Slot B captured both physical volume-up edges (2026-11-11)
 
 - Kept the 12-second press window and started a separate five-second release window on confirmed press. D3 records the latest raw KP_MEM1 and is refreshed at timeout. Nine QEMU cases passed, including release beyond the original press deadline and a timeout where the raw and confirmed readings differ. The baseline PC/x0 image remains byte-identical.
