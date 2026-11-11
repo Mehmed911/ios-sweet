@@ -1,3 +1,10 @@
+ACTIVE HANDOFF - Full XNU build passes all seven QEMU UFS handoff cases (2026-11-12)
+
+- Built XNU DEVELOPMENT SWEET on macOS CI run 43105108152, isolated commit 99513047545793c352596c5807ab774f0efa8690. The 314 pinned build inputs match duchamp-bootstrap 3bf3e12. Replaced the expired IIG artifact with retained 13714817484 after matching all 39 input and 34 generated-output hashes.
+- Booted the verified Mach-O SHA-256 0b2397db58d8fd59a406ee00efcef572c0fee62f1be3d248b039c2e7427c35f1 directly, without replay hooks. GDB paused arm_init on return from the compiled handoff call and captured both boot IDs and the verdict from the stage-2 framebuffer in each of seven separate entry checks.
+- The matching boot reached PID 1 and verified reads through qufs0 on unchanged read-only GPT media. Each of six denials stopped with EPERM before virtual UFS access. Different boot, missing BL31, missing queues, busy queue, missing DMA and missing cache produced zero controller MMIO/SCSI events. Logs are under outputs/duchamp-ufs-handoff-full-build-20261112.
+- Physical UFS still requires a documented BL31 final-exit record from the same Slot B boot as XNU, with queue drain and explicit DMA/cache ownership. All records used here were synthetic. No phone access or partition changes.
+
 ACTIVE HANDOFF - Actual XNU entry correlates the virtual UFS handoff (2026-11-12)
 
 - Added the opt-in sweet-qemu-ufs-handoff profile. arm_init captures its independent boot ID after early PE initialization and compares it with the synthetic BL31 ADT record. XNU logs both IDs at entry and reprints the saved decision before qufs0. The gate requires observed legacy queue drain and DMA/cache grants before the adapter reaches PCI mapping.

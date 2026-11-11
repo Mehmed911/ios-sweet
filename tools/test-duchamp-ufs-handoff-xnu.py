@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Boot a pinned XNU replay and verify the opt-in handoff gate against QEMU UFS."""
+"""Verify the opt-in handoff gate in an XNU replay or a full build against QEMU UFS."""
 import argparse
 import concurrent.futures
 import json
@@ -13,7 +13,7 @@ import subprocess
 import sys
 
 import adt
-from duchamp_ufs_xnu_replay import build_replay, digest
+from duchamp_ufs_xnu_replay import build_replay, digest, symbols
 import mkpayload
 import qemu_ufs
 
@@ -123,6 +123,10 @@ def run_case(name, spec, ids, output, kernel, base_adt, disk, qemu, seconds):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--kernel", type=Path, required=True)
+    parser.add_argument("--full-build-sha256",
+                        help="verify and boot the full-build Mach-O without applying replay hooks")
+    parser.add_argument("--ci-run", type=int, help="provenance of the full-build artifact")
+    parser.add_argument("--ci-head", help="source commit from the full-build artifact")
     parser.add_argument("--fixture", type=Path, required=True,
                         help="existing GPT UFS PID1 fixture directory")
     parser.add_argument("--output", type=Path, required=True)
@@ -143,7 +147,22 @@ def main():
     assert disk_sha == manifest["sha256"][disk.name]
     assert digest(base_adt) == manifest["sha256"]["qemu-ufs.adt"]
     base = args.kernel.resolve()
-    kernel, build = build_replay(base, output)
+    base_sha = digest(base.read_bytes())
+    full_build = args.full_build_sha256 is not None
+    if full_build:
+        if base_sha != args.full_build_sha256:
+            parser.error("full-build kernel SHA-256 differs from the pinned artifact")
+        required = {"_arm_init", "_duchamp_qemu_ufs_handoff_enter",
+                    "_duchamp_qemu_ufs_handoff_allows", "_duchamp_qemu_ufs_rootdev"}
+        if not required <= symbols(base).keys():
+            parser.error("full-build artifact lacks the staged XNU handoff integration")
+        kernel = base
+        build = dict(kernel_sha256=base_sha, ci_run=args.ci_run, ci_head=args.ci_head,
+                     replay_hooks_applied=False)
+    else:
+        if args.ci_run is not None or args.ci_head is not None:
+            parser.error("CI provenance flags require --full-build-sha256")
+        kernel, build = build_replay(base, output)
     cases = args.case or list(CASES)
     if len(cases) != len(set(cases)):
         parser.error("select each case at most once")
@@ -157,10 +176,10 @@ def main():
             name = pending[future]
             results[name] = future.result()
             print(name, json.dumps(results[name]), flush=True)
-    assert digest(base.read_bytes()) == build["base_sha256"]
+    assert digest(base.read_bytes()) == base_sha
     assert digest(disk.read_bytes()) == disk_sha
     report = dict(passed=True, full_matrix=set(cases) == CASES.keys(), cases=results,
-                  build=build, synthetic_bl31=True, actual_xnu=True, full_kernel_rebuild=False,
+                  build=build, synthetic_bl31=True, actual_xnu=True, full_kernel_rebuild=full_build,
                   disk_readonly_unchanged=True, phone_access=False, partition_write=False)
     (output / "verification.json").write_text(json.dumps(report, indent=2) + "\n")
 
