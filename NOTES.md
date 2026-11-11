@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Duchamp keypad and PMIC button samples feed the boot menu (2026-11-11)
+
+- Added the menu's button decoder. The saved Duchamp FDT maps volume up to active-low KPD MEM1 bit 0. The decoder accepts normalized PMIC levels for volume down and power. QEMU replays held-on-entry power, repeated samples, a chord, an invalid PMIC sample and fresh individual presses. Seven QEMU cases pass, including Slot A reset after a simulated readback and real XNU dispatch after a volume-down and power replay. Host and PC/x0 regressions pass.
+- The running Android A exposes android.hardware.boot.IBootControl/default. The stock LK Linux handoff still has no documented next-slot provider for this bootshim. Real button sampling at shim entry and selection of A from that entry remain unverified. No phone reboot, slot change, flash or partition write. Report under outputs/duchamp-boot-menu-keys-20261111.
+
 ACTIVE HANDOFF - Android menu return rehearsed with verified QEMU reset (2026-11-11)
 
 - Read-only Android A identifies volume up through mtk-kpd and volume down/power through mtk-pmic-keys. The saved Duchamp DT and pinned Xiaomi driver sources agree. The archived LK trace observes keypad initialization, a power-key status read and a PMIC home/volume-down press on the way to Fastboot. All three button edges at bootshim entry remain unverified.

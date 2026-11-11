@@ -147,7 +147,8 @@ else
 fi
 if [ -n "$boot_menu" ]; then
 	$cc $cflags -c boot_menu.c -o "$out/boot_menu.o"
-	objects="$objects $out/boot_menu.o"
+	$cc $cflags -c boot_menu_keys.c -o "$out/boot_menu_keys.o"
+	objects="$objects $out/boot_menu.o $out/boot_menu_keys.o"
 fi
 
 if [ -n "$lk_ram" ]; then

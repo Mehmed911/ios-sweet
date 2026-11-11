@@ -112,8 +112,18 @@ event after a simulated A readback.
 The build and entry guards restrict the profile to QEMU virt. Android on
 Duchamp advertises volume up through mtk-kpd, and volume down and power
 through mtk-pmic-keys. The archived LK log records keypad initialization
-and a PMIC volume-down press during boot. Reading all three keys at
-bootshim entry and requesting a verified next-slot change from that entry
+and a PMIC volume-down press during boot.
+
+The input decoder consumes the active-low volume-up bit from the saved keypad
+mapping and decoded PMIC levels for volume down and power. It waits for all
+keys to be released before accepting a single fresh press, and ignores
+held-at-entry buttons, repeated samples, invalid PMIC samples and chords.
+The QEMU replay feeds these snapshots through the same menu path as the
+interactive keys.
+
+Android exposes its Boot Control HAL after startup. The stock LK Linux
+entry path has no documented next-slot provider for the shim. Reading all
+three keys and requesting a verified next-slot change at bootshim entry
 remain open. The QEMU provider uses no phone slot metadata or storage.
 
 `payload_preflight.c` is the next-stage no-copy/no-jump boundary. It runs the

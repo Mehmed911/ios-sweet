@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include "boot_menu.h"
+#include "boot_menu_keys.h"
 #include "../../shim/font.h"
 
 #if !defined(DUCHAMP_QEMU_ONLY)
@@ -66,6 +67,43 @@ counter(void)
 	uint64_t ticks;
 	__asm__ volatile("mrs %0, cntpct_el0" : "=r"(ticks));
 	return ticks;
+}
+
+static enum duchamp_menu_key
+sample_qemu_keys(struct duchamp_menu_keys *keys, unsigned pressed)
+{
+	const uint16_t kp_mem1 = pressed & DUCHAMP_MENU_VOLUME_UP ?
+	    UINT16_C(0xfffe) : UINT16_MAX;
+	return duchamp_menu_key_sample(keys, kp_mem1, pressed & ~DUCHAMP_MENU_VOLUME_UP);
+}
+
+static enum duchamp_menu_key
+qemu_menu_key(struct duchamp_menu_keys *keys, uint32_t input)
+{
+	/* QEMU's test harness can deliver individual press/release snapshots. */
+	if (input >= 0x80 && input <= 0x8f)
+		return sample_qemu_keys(keys, input - 0x80);
+
+	unsigned pressed;
+	switch (input) {
+	case 'w':
+		pressed = DUCHAMP_MENU_VOLUME_UP;
+		break;
+	case 's':
+		pressed = DUCHAMP_MENU_VOLUME_DOWN;
+		break;
+	case '\r':
+	case '\n':
+		pressed = DUCHAMP_MENU_POWER;
+		break;
+	default:
+		return DUCHAMP_MENU_NO_KEY;
+	}
+	/* Keyboard characters represent complete taps in the interactive preview. */
+	(void)sample_qemu_keys(keys, 0);
+	enum duchamp_menu_key action = sample_qemu_keys(keys, pressed);
+	(void)sample_qemu_keys(keys, 0);
+	return action;
 }
 
 static void
@@ -166,6 +204,7 @@ duchamp_boot_menu_qemu(const struct duchamp_framebuffer *fb, int xnu_available)
 
 	const unsigned top = (unsigned)fb->height / 2 - 350;
 	const unsigned rows = top + 196;
+	struct duchamp_menu_keys keys = {0};
 	unsigned focus = 0;
 	rectangle(fb, 0, 0, (unsigned)fb->width, (unsigned)fb->height, BACKGROUND);
 	draw_text(fb, MARGIN, top, 6, "Choose a system", TEXT);
@@ -182,13 +221,13 @@ duchamp_boot_menu_qemu(const struct duchamp_framebuffer *fb, int xnu_available)
 			__asm__ volatile("yield");
 			continue;
 		}
-		const uint32_t input = *uart(UART_DR);
-		if (input == 'w' || input == 's') {
+		const enum duchamp_menu_key key = qemu_menu_key(&keys, *uart(UART_DR));
+		if (key == DUCHAMP_MENU_VOLUME_UP || key == DUCHAMP_MENU_VOLUME_DOWN) {
 			focus ^= 1;
 			draw_choices(fb, rows, focus);
 			__asm__ volatile("dsb sy" ::: "memory");
 			uart_log(focus ? "DUCHAMP MENU FOCUS B\n" : "DUCHAMP MENU FOCUS A\n");
-		} else if (input == '\r' || input == '\n') {
+		} else if (key == DUCHAMP_MENU_POWER) {
 			goto confirmed;
 		}
 	}

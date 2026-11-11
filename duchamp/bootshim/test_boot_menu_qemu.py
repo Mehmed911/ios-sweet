@@ -125,11 +125,14 @@ def main():
     args.output.mkdir()
     results = {}
     active_image = args.with_xnu or args.preview
+    # Held power, bad sample, held volume up, chord, volume down, then fresh power.
+    key_edges = bytes.fromhex("84 84 80 88 84 80 81 81 80 86 84 80 82 82 80 84")
     cases = (
         ("confirm-a", active_image, args.xnu_dtb, b"swx\r", "A CONFIRMED", "A"),
         ("confirm-b", args.preview, None, b"s\r", "B PREVIEW", "B"),
         ("timeout", active_image, args.xnu_dtb, b"s", "A TIMEOUT", "A"),
         ("buffered-readback", active_image, args.xnu_dtb, b"\rA", "A CONFIRMED", "A"),
+        ("key-edges", active_image, args.xnu_dtb, key_edges, "A CONFIRMED", "A"),
     )
     for name, image, dtb, keys, choice, focus in cases:
         with boot(image.resolve(), args.output, name, dtb) as (guest, qmp, temp, log):
@@ -151,6 +154,10 @@ def main():
                 raise RuntimeError("The menu did not highlight Slot B")
             if name == "confirm-a" and b"DUCHAMP MENU FOCUS A\n" not in log:
                 raise RuntimeError("The menu did not return focus to Slot A")
+            if name == "key-edges":
+                focus_events = [line for line in log.splitlines() if b"MENU FOCUS" in line]
+                if focus_events != [b"DUCHAMP MENU FOCUS B", b"DUCHAMP MENU FOCUS A"]:
+                    raise RuntimeError(f"Unexpected actions from button samples: {focus_events}")
             raw, regs = framebuffer(qmp, temp)
             verify_focus(raw, focus)
             if "PC=fffffe" in regs:
@@ -163,6 +170,8 @@ def main():
         results[name] = {"choice": choice, "framebuffer_focus": focus}
         if focus == "A":
             results[name]["return_blocked"] = "wrong slot" if name == "confirm-a" else "no readback"
+        if name == "key-edges":
+            results[name]["focus_events"] = ["B", "A"]
         print(f"{name}: PASS {choice}", flush=True)
 
     with boot(active_image.resolve(), args.output, "android-reset", args.xnu_dtb) as (
@@ -187,7 +196,7 @@ def main():
     if args.with_xnu:
         with boot(args.with_xnu.resolve(), args.output, "xnu", args.xnu_dtb) as (guest, qmp, temp, log):
             expect(guest, log, "DUCHAMP MENU READY")
-            press(guest, b"s\r")
+            press(guest, bytes.fromhex("80 82 80 84"))
             expect(guest, log, "DUCHAMP MENU CHOICE B XNU")
             deadline = time.monotonic() + 15
             while time.monotonic() < deadline:
