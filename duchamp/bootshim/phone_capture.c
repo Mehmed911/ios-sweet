@@ -133,7 +133,8 @@ draw_line(volatile unsigned char *base, size_t stride, size_t x, size_t y,
 #endif
 #define KP_MEM1 0x04U
 #define KP_EN 0x24U
-#define KPD_WINDOW_SECONDS 12U
+#define KPD_PRESS_WINDOW_SECONDS 12U
+#define KPD_RELEASE_WINDOW_SECONDS 5U
 #define KPD_SAMPLES_PER_SECOND 200U
 #define KPD_STALLED_COUNTER_LIMIT 200000U
 
@@ -160,7 +161,7 @@ volatile struct kpd_probe_record {
 	uint16_t initial;
 	uint16_t pressed;
 	uint16_t released;
-	uint16_t reserved;
+	uint16_t last_raw;
 } duchamp_bootshim_kpd_probe_record;
 
 static uint64_t
@@ -185,13 +186,15 @@ show_kpd_stage(volatile unsigned char *base, size_t stride, size_t x,
 	    duchamp_bootshim_kpd_probe_record.released;
 
 	fill_screen(base + y * stride + x * sizeof(uint32_t),
-	    stride, LINE_WIDTH, 3U * step, COLOR_BLACK);
+	    stride, LINE_WIDTH, 4U * step, COLOR_BLACK);
 	format_line(line, 'D', '0', stage);
 	draw_line(base, stride, x, y, line);
 	format_line(line, 'D', '1', raw);
 	draw_line(base, stride, x, y + step, line);
 	format_line(line, 'D', '2', sequence);
 	draw_line(base, stride, x, y + 2U * step, line);
+	format_line(line, 'D', '3', duchamp_bootshim_kpd_probe_record.last_raw);
+	draw_line(base, stride, x, y + 3U * step, line);
 	duchamp_bootshim_kpd_probe_record.stage = stage;
 	__asm__ volatile("dsb sy" ::: "memory");
 }
@@ -207,11 +210,11 @@ watch_kpd(volatile unsigned char *base, size_t stride, size_t x, size_t y,
 
 	/* The countdown starts after the wait marker is visible. */
 	show_kpd_stage(base, stride, x, y, KPD_WAIT_PRESS);
-	const uint64_t start = kpd_counter();
-	const uint64_t duration = frequency * KPD_WINDOW_SECONDS;
+	uint64_t phase_start = kpd_counter();
+	uint64_t duration = frequency * KPD_PRESS_WINDOW_SECONDS;
 	const uint64_t interval = frequency / KPD_SAMPLES_PER_SECOND;
-	uint64_t last_sample = start;
-	uint64_t previous_tick = start;
+	uint64_t last_sample = phase_start;
+	uint64_t previous_tick = phase_start;
 	unsigned stalled = 0;
 	unsigned changed = 0;
 	unsigned stable_released = initial & 1U;
@@ -220,8 +223,10 @@ watch_kpd(volatile unsigned char *base, size_t stride, size_t x, size_t y,
 
 	for (;;) {
 		const uint64_t now = kpd_counter();
-		if (now - start >= duration)
+		if (now - phase_start >= duration) {
+			duchamp_bootshim_kpd_probe_record.last_raw = *mem1_register;
 			return saw_press ? KPD_PRESS_ONLY : KPD_NO_PRESS;
+		}
 		stalled = now == previous_tick ? stalled + 1U : 0;
 		if (stalled == KPD_STALLED_COUNTER_LIMIT)
 			return KPD_COUNTER_UNAVAILABLE;
@@ -232,6 +237,7 @@ watch_kpd(volatile unsigned char *base, size_t stride, size_t x, size_t y,
 		}
 		last_sample = now;
 		const uint16_t mem1 = *mem1_register;
+		duchamp_bootshim_kpd_probe_record.last_raw = mem1;
 		const unsigned released = mem1 & 1U;
 		if (released == stable_released) {
 			changed = 0;
@@ -251,6 +257,8 @@ watch_kpd(volatile unsigned char *base, size_t stride, size_t x, size_t y,
 			show_kpd_stage(base, stride, x, y, KPD_WAIT_PRESS);
 		} else if (armed) {
 			saw_press = 1;
+			phase_start = now;
+			duration = frequency * KPD_RELEASE_WINDOW_SECONDS;
 			duchamp_bootshim_kpd_probe_record.pressed = mem1;
 			show_kpd_stage(base, stride, x, y, KPD_WAIT_RELEASE);
 		}
@@ -276,6 +284,7 @@ capture_kpd(volatile unsigned char *base, size_t stride, size_t x,
 			const uint16_t mem1 = *mem1_register;
 			duchamp_bootshim_kpd_probe_record.mem1 = mem1;
 			duchamp_bootshim_kpd_probe_record.initial = mem1;
+			duchamp_bootshim_kpd_probe_record.last_raw = mem1;
 			stage = (mem1 & 1U) ? KPD_VOLUME_UP_RELEASED : KPD_VOLUME_UP_PRESSED;
 			show_kpd_stage(base, stride, x, y, stage);
 			stage = watch_kpd(base, stride, x, y, mem1_register, mem1);
@@ -413,7 +422,7 @@ duchamp_phone_capture_run(volatile void *framebuffer, size_t stride,
 	draw_line(base, stride, start_x, second_y, x0_line);
 #if defined(DUCHAMP_KPD_PROBE)
 	const size_t kpd_step = (GLYPH_HEIGHT + 4U) * GLYPH_SCALE;
-	if (second_y + 4U * kpd_step <= height)
+	if (second_y + 5U * kpd_step <= height)
 		capture_kpd(base, stride, start_x, second_y + kpd_step,
 		    entry_pc, entry_x0);
 #endif

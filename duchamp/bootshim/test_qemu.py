@@ -44,7 +44,7 @@ PHONE_CAPTURE_SIZE = struct.calcsize(PHONE_CAPTURE_FORMAT)
 PHONE_CAPTURE_MAGIC = 0x3130435048435544
 UFS_HANDOFF_FORMAT = "<QIIQII"
 UFS_HANDOFF_SIZE = struct.calcsize(UFS_HANDOFF_FORMAT)
-KPD_RECORD_FORMAT = "<I5H2x"
+KPD_RECORD_FORMAT = "<I6H"
 KPD_RECORD_SIZE = struct.calcsize(KPD_RECORD_FORMAT)
 
 
@@ -147,9 +147,16 @@ def exercise_keypad(qmp, qtest_path, record_pa, raw, scenario):
                 await_stage(6, 0xffff)
             else:
                 await_stage(6, 0xffff)
+            if scenario == "late-press-release":
+                time.sleep(9)
             set_mem1(0xfffe)
             await_stage(7, 0xfffe)
-            if scenario != "press-only":
+            if scenario == "press-only":
+                # Change an unrelated bit while volume up remains pressed.
+                set_mem1(0xfdfe)
+            else:
+                if scenario == "late-press-release":
+                    time.sleep(4)
                 set_mem1(0xffff)
 
 
@@ -192,11 +199,12 @@ def main():
                         type=lambda value: int(value, 0))
     parser.add_argument("--ufs-handoff-record-pa", type=lambda value: int(value, 0))
     parser.add_argument("--kpd-record-pa", type=lambda value: int(value, 0))
-    parser.add_argument("--kpd-expected", nargs=6, type=lambda value: int(value, 0),
-                        metavar=("STAGE", "ENABLE", "MEM1", "INITIAL", "PRESSED", "RELEASED"))
+    parser.add_argument("--kpd-expected", nargs=7, type=lambda value: int(value, 0),
+                        metavar=("STAGE", "ENABLE", "MEM1", "INITIAL", "PRESSED", "RELEASED", "RAW"))
     parser.add_argument("--kpd-fixture", nargs=2, type=lambda value: int(value, 0),
                         metavar=("ENABLE", "MEM1"))
-    parser.add_argument("--kpd-transitions", choices=("press-release", "held-then-press", "press-only"))
+    parser.add_argument("--kpd-transitions", choices=("press-release", "held-then-press",
+                                                     "press-only", "late-press-release"))
     args = parser.parse_args()
     if ((args.kpd_record_pa is not None) != (args.kpd_expected is not None) or
             (args.kpd_record_pa is not None and
@@ -349,10 +357,11 @@ def main():
                     kpd = struct.unpack(KPD_RECORD_FORMAT, kpd_raw.read_bytes())
                     if kpd != tuple(args.kpd_expected):
                         raise SystemExit(f"incorrect keypad record: {kpd}")
-                    stage, enable, mem1, initial, pressed, released = kpd
+                    stage, enable, mem1, initial, pressed, released, last_raw = kpd
                     print(f"bootshim-keypad: PASS stage={stage:#x} "
                           f"KP_EN={enable:#06x} KP_MEM1={mem1:#06x} "
-                          f"initial={initial:#06x} pressed={pressed:#06x} released={released:#06x}")
+                          f"initial={initial:#06x} pressed={pressed:#06x} "
+                          f"released={released:#06x} last_raw={last_raw:#06x}")
                 if args.ufs_handoff_record_pa is not None:
                     qmp_call(stream, "pmemsave", val=args.ufs_handoff_record_pa,
                              size=UFS_HANDOFF_SIZE, filename=str(ufs_handoff_raw))
@@ -618,6 +627,7 @@ def main():
                 samples["diagnostic-d1-glyph"] = (start_x, second_y + 2 * line_step, 0xFFFFFFFF)
                 if args.kpd_record_pa is not None:
                     samples["diagnostic-d2-glyph"] = (start_x, second_y + 3 * line_step, 0xFFFFFFFF)
+                    samples["diagnostic-d3-glyph"] = (start_x, second_y + 4 * line_step, 0xFFFFFFFF)
             for name, (x, y, expected) in samples.items():
                 actual = framebuffer_pixel(x, y)
                 if actual != expected:

@@ -162,7 +162,8 @@ LK initialized the block before Fastboot. The first Slot B trial measured
 
 After the existing EL/MMU/cache check and exact phone PC/x0 match, the
 diagnostic reads `KP_EN` once. With `KP_EN == 1`, it reads the initial
-`KP_MEM1` state and shows D0=6 before starting a 12-second window. It samples
+`KP_MEM1` state and shows D0=6 before starting a 12-second press window.
+Confirming a press starts a separate five-second release window. It samples
 at about 200 Hz and requires two consecutive samples to confirm each edge.
 A button held at entry must be released before a new press can count.
 
@@ -177,13 +178,15 @@ A button held at entry must be released before a new press can count.
 | 6 | Waiting for a new press |
 | 7 | Press recorded, waiting for release |
 | 8 | Press and release recorded |
-| 9 | Window ended without a new press |
-| A | Window ended after a press without a release |
+| 9 | Press window ended without a new press |
+| A | Release window ended without a confirmed release |
 | B | Generic timer unavailable |
 
 `D1` packs the raw KP_EN halfword above the last confirmed KP_MEM1 halfword.
 The low 12 hex digits of `D2` show the initial, press and release snapshots
 as three four-digit values. Use D0 to tell whether an edge was recorded.
+`D3` shows the latest raw KP_MEM1 value. At either timeout the shim reads
+it once more without treating that single sample as a confirmed edge.
 The result remains on screen when the capture stops in the shim.
 Volume down and power require a separate early
 [PMIC provider](https://github.com/MiCode/MTK_kernel_device_modules/blob/bsp-duchamp-u-oss/drivers/input/keyboard/mtk-pmic-keys.c).
@@ -198,8 +201,9 @@ sh duchamp/bootshim/test_kpd_probe_qemu.sh \
 
 The suite checks the phone binary rejects QEMU's entry addresses. A separate
 fixture binary uses RAM instead of keypad registers. The harness updates MEM1
-while the ARM64 image is running to verify press/release, a button held at
-entry, a press without release, timeouts and the diagnostic framebuffer.
+while the ARM64 image is running to verify a release beyond the original
+press deadline, a button held at entry, timeouts, a raw value distinct from
+the last confirmed sample and the diagnostic framebuffer.
 
 `payload_preflight.c` is the next-stage no-copy/no-jump boundary. It runs the
 existing FDT/payload guard and additionally requires the measured Duchamp XNU

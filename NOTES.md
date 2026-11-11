@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Slot B captured both physical volume-up edges (2026-11-11)
+
+- Kept the 12-second press window and started a separate five-second release window on confirmed press. D3 records the latest raw KP_MEM1 and is refreshed at timeout. Nine QEMU cases passed, including release beyond the original press deadline and a timeout where the raw and confirmed readings differ. The baseline PC/x0 image remains byte-identical.
+- Installed only boot_b for one diagnostic boot. The photo shows D0=8, D1=0x0001ffff, D2=0x0000fffffdfeffff, and D3=0xffff. The hardware sequence was 0xffff → 0xfdfe → 0xffff. Both press and release are confirmed. Restored the previous boot_b and verified Android completed boot on A and all seven partition hashes matched preflight. Evidence is under outputs/duchamp-kpd-release-20261111. PMIC access and slot selection from the menu remain unverified.
+
 ACTIVE HANDOFF - Slot B captured a physical volume-up press (2026-11-11)
 
 - The trial photo shows PC=0x40000000, x0=0x47c80000, D0=0xa, D1=0x0001fdfe, and D2=0x0000fffffdfe0000. KP_EN was 1. The initial MEM1 was 0xffff and the accepted press was 0xfdfe. The deadline expired without a confirmed release. D1 is the last confirmed sample, so the display cannot establish the physical button state at the deadline or the cause of the missing release.
