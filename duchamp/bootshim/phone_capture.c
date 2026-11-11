@@ -121,6 +121,78 @@ draw_line(volatile unsigned char *base, size_t stride, size_t x, size_t y,
 		    line[index]);
 }
 
+#if defined(DUCHAMP_KPD_PROBE)
+#if defined(DUCHAMP_KPD_PROBE_QEMU)
+#define KPD_BASE UINT64_C(0x41000000)
+#define KPD_ENTRY_PC UINT64_C(0x40200000)
+#define KPD_ENTRY_X0 UINT64_C(0x48000000)
+#else
+#define KPD_BASE UINT64_C(0x1c00e000)
+#define KPD_ENTRY_PC UINT64_C(0x40000000)
+#define KPD_ENTRY_X0 UINT64_C(0x47c80000)
+#endif
+#define KP_MEM1 0x04U
+#define KP_EN 0x24U
+
+enum kpd_probe_stage {
+	KPD_LAYOUT_REJECTED,
+	KPD_READING_ENABLE,
+	KPD_NOT_ENABLED,
+	KPD_READING_MEM1,
+	KPD_VOLUME_UP_RELEASED,
+	KPD_VOLUME_UP_PRESSED,
+};
+
+/* D0 is the stage; D1 packs the two raw halfwords, EN then MEM1. */
+volatile struct kpd_probe_record {
+	uint32_t stage;
+	uint16_t enable;
+	uint16_t mem1;
+} duchamp_bootshim_kpd_probe_record;
+
+static void
+show_kpd_stage(volatile unsigned char *base, size_t stride, size_t x,
+	size_t y, enum kpd_probe_stage stage)
+{
+	char line[LINE_CHARACTERS];
+	const size_t step = (GLYPH_HEIGHT + 4U) * GLYPH_SCALE;
+	const uint32_t raw = ((uint32_t)duchamp_bootshim_kpd_probe_record.enable << 16) |
+	    duchamp_bootshim_kpd_probe_record.mem1;
+
+	fill_screen(base + y * stride + x * sizeof(uint32_t),
+	    stride, LINE_WIDTH, 2U * step, COLOR_BLACK);
+	format_line(line, 'D', '0', stage);
+	draw_line(base, stride, x, y, line);
+	format_line(line, 'D', '1', raw);
+	draw_line(base, stride, x, y + step, line);
+	duchamp_bootshim_kpd_probe_record.stage = stage;
+	__asm__ volatile("dsb sy" ::: "memory");
+}
+
+static void
+capture_kpd(volatile unsigned char *base, size_t stride, size_t x,
+	size_t y, uint64_t entry_pc, uint64_t entry_x0)
+{
+	enum kpd_probe_stage stage = KPD_LAYOUT_REJECTED;
+
+	if (entry_pc == KPD_ENTRY_PC && entry_x0 == KPD_ENTRY_X0) {
+		show_kpd_stage(base, stride, x, y, KPD_READING_ENABLE);
+		const uint16_t enabled =
+		    *(const volatile uint16_t *)(uintptr_t)(KPD_BASE + KP_EN);
+		duchamp_bootshim_kpd_probe_record.enable = enabled;
+		stage = KPD_NOT_ENABLED;
+		if (enabled == 1U) {
+			show_kpd_stage(base, stride, x, y, KPD_READING_MEM1);
+			const uint16_t mem1 =
+			    *(const volatile uint16_t *)(uintptr_t)(KPD_BASE + KP_MEM1);
+			duchamp_bootshim_kpd_probe_record.mem1 = mem1;
+			stage = (mem1 & 1U) ? KPD_VOLUME_UP_RELEASED : KPD_VOLUME_UP_PRESSED;
+		}
+	}
+	show_kpd_stage(base, stride, x, y, stage);
+}
+#endif
+
 #if defined(DUCHAMP_UFS_HANDOFF_PROBE)
 #define UFS_PROBE_FDT_BEGIN UINT64_C(0x40000000)
 #define UFS_PROBE_FDT_END UINT64_C(0x80000000)
@@ -247,6 +319,12 @@ duchamp_phone_capture_run(volatile void *framebuffer, size_t stride,
 	second_y = first_y + GLYPH_HEIGHT * GLYPH_SCALE + 4U * GLYPH_SCALE;
 	draw_line(base, stride, start_x, first_y, pc_line);
 	draw_line(base, stride, start_x, second_y, x0_line);
+#if defined(DUCHAMP_KPD_PROBE)
+	const size_t kpd_step = (GLYPH_HEIGHT + 4U) * GLYPH_SCALE;
+	if (second_y + 3U * kpd_step <= height)
+		capture_kpd(base, stride, start_x, second_y + kpd_step,
+		    entry_pc, entry_x0);
+#endif
 #if defined(DUCHAMP_UFS_HANDOFF_PROBE)
 	const size_t line_step = (GLYPH_HEIGHT + 4U) * GLYPH_SCALE;
 	const size_t fourth_y = second_y + 2U * line_step;

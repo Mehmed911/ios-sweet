@@ -26,6 +26,8 @@ lk_ram=${LK_RAM_TRANSPORT:-}
 phone_layout=${PHONE_LAYOUT:-}
 phone_capture=${PHONE_CAPTURE:-}
 ufs_handoff_probe=${UFS_HANDOFF_PROBE:-}
+kpd_probe=${KPD_PROBE:-}
+kpd_probe_qemu=${KPD_PROBE_QEMU:-}
 boot_menu=${BOOT_MENU:-}
 entry_keys=${BOOT_MENU_ENTRY_KEYS:-}
 if [ -n "$entry_keys" ]; then
@@ -41,6 +43,20 @@ if [ -n "$ufs_handoff_probe" ]; then
 		exit 2
 	fi
 	cflags="$cflags -DDUCHAMP_UFS_HANDOFF_PROBE=1"
+fi
+if [ -n "$kpd_probe$kpd_probe_qemu" ]; then
+	if [ "$kpd_probe:$phone_capture" != 1:1 ] || [ -n "$ufs_handoff_probe" ]; then
+		echo "KPD_PROBE=1 requires the isolated PHONE_CAPTURE=1 profile" >&2
+		exit 2
+	fi
+	cflags="$cflags -DDUCHAMP_KPD_PROBE=1"
+	if [ -n "$kpd_probe_qemu" ]; then
+		if [ "$kpd_probe_qemu" != 1 ]; then
+			echo "KPD_PROBE_QEMU must be exactly 1" >&2
+			exit 2
+		fi
+		cflags="$cflags -DDUCHAMP_KPD_PROBE_QEMU=1"
+	fi
 fi
 ldflags="-Wl,--defsym,DUCHAMP_IMAGE_BASE=0"
 
@@ -240,6 +256,9 @@ if [ -n "$phone_capture" ]; then
 		--elf "$out/duchamp-diagnostic.elf" --image "$out/Image"
 	if [ -n "$ufs_handoff_probe" ]; then
 		set -- "$@" --ufs-handoff-probe
+	fi
+	if [ -n "$kpd_probe" ]; then
+		set -- "$@" --kpd-probe
 	fi
 	python3 ../../tools/verify-duchamp-phone-capture.py "$@"
 fi

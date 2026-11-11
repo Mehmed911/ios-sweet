@@ -155,7 +155,19 @@ def main():
     parser.add_argument("--expect-capture-x0",
                         type=lambda value: int(value, 0))
     parser.add_argument("--ufs-handoff-record-pa", type=lambda value: int(value, 0))
+    parser.add_argument("--kpd-record-pa", type=lambda value: int(value, 0))
+    parser.add_argument("--kpd-expected", nargs=3, type=lambda value: int(value, 0),
+                        metavar=("STAGE", "ENABLE", "MEM1"))
+    parser.add_argument("--kpd-fixture", nargs=2, type=lambda value: int(value, 0),
+                        metavar=("ENABLE", "MEM1"))
     args = parser.parse_args()
+    if ((args.kpd_record_pa is not None) != (args.kpd_expected is not None) or
+            (args.kpd_record_pa is not None and
+             (args.pattern != "pc-x0" or args.capture_record_pa is None)) or
+            (args.kpd_fixture is not None and args.kpd_record_pa is None)):
+        parser.error("keypad verification requires the PC/x0 capture, record and expectation")
+    if args.kpd_fixture and any(not 0 <= value <= 0xffff for value in args.kpd_fixture):
+        parser.error("keypad fixture values must be halfwords")
     if args.ufs_handoff_record_pa is not None and (
             args.capture_record_pa is None or args.pattern != "pc-x0"):
         parser.error("--ufs-handoff-record-pa requires the PC/x0 capture")
@@ -197,6 +209,7 @@ def main():
         capture_record_raw = Path(temp) / "phone-capture-record.raw"
         ufs_handoff_raw = Path(temp) / "ufs-handoff-record.raw"
         ufs_fdt_raw = Path(temp) / "ufs-fdt.raw"
+        kpd_raw = Path(temp) / "keypad.raw"
         exception_raw = Path(temp) / "exception-record.raw"
         qemu_stderr = Path(temp) / "qemu.stderr"
         command = [
@@ -207,6 +220,10 @@ def main():
         ]
         if args.dtb:
             command += ["-dtb", str(args.dtb.resolve())]
+        if args.kpd_fixture is not None:
+            enable, mem1 = args.kpd_fixture
+            command += ["-device", f"loader,addr=0x41000024,data={enable:#x},data-len=2",
+                        "-device", f"loader,addr=0x41000004,data={mem1:#x},data-len=2"]
         stderr_stream = qemu_stderr.open("w", encoding="utf-8")
         process = subprocess.Popen(
             command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
@@ -280,6 +297,14 @@ def main():
                     qmp_call(stream, "pmemsave", val=args.capture_record_pa,
                              size=PHONE_CAPTURE_SIZE,
                              filename=str(capture_record_raw))
+                if args.kpd_record_pa is not None:
+                    qmp_call(stream, "pmemsave", val=args.kpd_record_pa, size=8,
+                             filename=str(kpd_raw))
+                    kpd = struct.unpack("<IHH", kpd_raw.read_bytes())
+                    if kpd != tuple(args.kpd_expected):
+                        raise SystemExit(f"incorrect keypad record: {kpd}")
+                    print(f"bootshim-keypad: PASS stage={kpd[0]} "
+                          f"KP_EN={kpd[1]:#06x} KP_MEM1={kpd[2]:#06x}")
                 if args.ufs_handoff_record_pa is not None:
                     qmp_call(stream, "pmemsave", val=args.ufs_handoff_record_pa,
                              size=UFS_HANDOFF_SIZE, filename=str(ufs_handoff_raw))
@@ -539,10 +564,10 @@ def main():
                 "x0-glyph": (start_x, second_y, 0xFFFFFFFF),
                 "pc-glyph-gap": (start_x + 4 * 8, first_y, 0xFF000000),
             }
-            if args.ufs_handoff_record_pa is not None:
+            if args.ufs_handoff_record_pa is not None or args.kpd_record_pa is not None:
                 line_step = (7 + 4) * 8
-                samples["ufs-fingerprint-glyph"] = (start_x, second_y + line_step, 0xFFFFFFFF)
-                samples["ufs-blockers-glyph"] = (start_x, second_y + 2 * line_step, 0xFFFFFFFF)
+                samples["diagnostic-d0-glyph"] = (start_x, second_y + line_step, 0xFFFFFFFF)
+                samples["diagnostic-d1-glyph"] = (start_x, second_y + 2 * line_step, 0xFFFFFFFF)
             for name, (x, y, expected) in samples.items():
                 actual = framebuffer_pixel(x, y)
                 if actual != expected:

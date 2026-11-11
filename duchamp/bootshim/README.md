@@ -151,6 +151,45 @@ For Duchamp, a phone provider still needs documented early keypad and PMIC
 access and a verified LK-compatible next-slot operation. The QEMU provider
 uses emulated input and a simulated readback.
 
+### Volume-up snapshot before XNU
+
+`PHONE_CAPTURE=1 KPD_PROBE=1` adds an isolated keypad diagnostic to the
+PC/x0 capture. It uses the saved Duchamp FDT and
+[Xiaomi keypad driver](https://github.com/MiCode/MTK_kernel_device_modules/blob/bsp-duchamp-u-oss/drivers/input/keyboard/mtk-kpd.c)
+for the register layout. The archived LK log records `KP_EN=1`. This shows
+LK initialized the block before Fastboot. Availability at bootshim entry
+still needs a handset measurement.
+
+After the existing EL/MMU/cache check and exact phone PC/x0 match, the
+diagnostic reads `KP_EN` once. It reads `KP_MEM1` once if `KP_EN == 1`.
+The screen shows the progress marker before each access:
+
+| D0 | Meaning |
+| --- | --- |
+| 0 | Entry address or x0 mismatch |
+| 1 | About to read KP_EN |
+| 2 | KP_EN did not return 1 |
+| 3 | About to read KP_MEM1 |
+| 4 | Volume up released |
+| 5 | Volume up pressed |
+
+`D1` packs the raw KP_EN halfword above the raw KP_MEM1 halfword. Values
+are meaningful once their read completes. The capture stops in the shim.
+Volume down and power require a separate early
+[PMIC provider](https://github.com/MiCode/MTK_kernel_device_modules/blob/bsp-duchamp-u-oss/drivers/input/keyboard/mtk-pmic-keys.c).
+The current profile performs no PMIC access or keypad register writes.
+
+Run the local test with an unused output directory:
+
+```sh
+sh duchamp/bootshim/test_kpd_probe_qemu.sh \
+  work/lk-handoff-audit-v1/report.json work/kpd-probe-test
+```
+
+The suite checks the phone binary rejects QEMU's entry addresses. A separate
+fixture binary uses RAM instead of keypad registers to verify disabled,
+all-ones, released and pressed readings and the diagnostic framebuffer.
+
 `payload_preflight.c` is the next-stage no-copy/no-jump boundary. It runs the
 existing FDT/payload guard and additionally requires the measured Duchamp XNU
 window (`0x1c0000000` + `0x20000000`), a bounded entry/top, and 1-32 segments.

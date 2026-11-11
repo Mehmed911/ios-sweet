@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - Isolated Duchamp volume-up probe staged for Slot B (2026-11-11)
+
+- The pinned FDT maps volume up to KP_MEM1 bit 0. The archived LK log reports KP_EN=1 before Fastboot. The new PC/x0 capture profile checks the recorded handset entry addresses and inherited CPU state, then attempts one 16-bit KP_EN read and one KP_MEM1 read if enabled. Screen stages bracket the reads. PMIC and slot selection remain unavailable.
+- Five QEMU cases passed, including the hardware image rejecting the QEMU handoff and four simulated keypad register states. Host and existing PC/x0 and UFS receiver checks passed. The standard PC/x0 binary is byte-identical. The 64 MiB local B diagnostic passed boot header and AVB hash checks and unwrapped to the tested Image. Previous B backup SHA-256 still matches the prior installed image. Results and image are under outputs/duchamp-kpd-entry-20261111.cSLzHv.
+- No flash, slot change or reboot. ADB confirmed Android completed boot on A. Physical KP_EN/KP_MEM1 access and the separate early PMIC path still need verification. The diagnostic has no storage, PMIC, reset, or XNU jump path.
+
 ACTIVE HANDOFF - Physical Duchamp buttons verified under Android on Slot A (2026-11-11)
 
 - Captured real press/release pairs for volume up through mtk-kpd and for volume down and power through mtk-pmic-keys. Android completed boot on A and stayed on A. All three A boot image hashes matched the saved pre-trial baseline. All three B hashes matched the previously tested XNU trial images.
