@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Slot B physically read the Duchamp volume-up release state (2026-11-11)
+
+- With the user present, verified a fresh boot_b backup and installed the isolated keypad diagnostic to boot_b only. Stock LK accepted Slot B. The user's photo shows PC=0x40000000, x0=0x47c80000, D0=4 and D1=0x0001ffff. The handoff matched and the bootshim physically read KP_EN=1 and KP_MEM1=0xffff, with volume up released. A physical press transition and PMIC access were not measured.
+- After the user returned to Fastboot, selected and verified A, restored the original boot_b, and confirmed Android V816.0.17.0.UNLMIXM completed boot on A. All seven checked partition hashes match the pretrial values. Only boot_b received image writes. Evidence, photo and fresh B backup are under outputs/duchamp-kpd-hardware-trial-20261111. A future bounded read window after the diagnostic appears can capture a physical press and release in one boot.
+
 ACTIVE HANDOFF - Isolated Duchamp volume-up probe staged for Slot B (2026-11-11)
 
 - The pinned FDT maps volume up to KP_MEM1 bit 0. The archived LK log reports KP_EN=1 before Fastboot. The new PC/x0 capture profile checks the recorded handset entry addresses and inherited CPU state, then attempts one 16-bit KP_EN read and one KP_MEM1 read if enabled. Screen stages bracket the reads. PMIC and slot selection remain unavailable.
