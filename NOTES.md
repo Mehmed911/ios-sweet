@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Physical Duchamp buttons verified under Android on Slot A (2026-11-11)
+
+- Captured real press/release pairs for volume up through mtk-kpd and for volume down and power through mtk-pmic-keys. Android completed boot on A and stayed on A. All three A boot image hashes matched the saved pre-trial baseline. All three B hashes matched the previously tested XNU trial images.
+- The installed B image does not contain the QEMU menu. Physical button sampling at bootshim entry and the menu's return to A remain unverified. No reboot, flash, slot change or partition write was issued. Read-only evidence: outputs/duchamp-phone-buttons-android-20261111/verification.json.
+
 ACTIVE HANDOFF - Duchamp menu entry samples verified in QEMU (2026-11-11)
 
 - Added a QEMU-only preview that consumes an injected keypad and PMIC sample at menu entry, before drawing or reading UART. All seven entry cases passed: neutral, each key held, incomplete, invalid PMIC and missing. After release, fresh volume up/down and power selected B, A and confirmed A. All seven menu regressions passed, including simulated A readback followed by a QMP guest reset and B dispatch to XNU. Three incompatible build configurations were rejected. Host checks passed and the phone PC/x0 diagnostic remains byte-identical.
