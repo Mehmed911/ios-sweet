@@ -12,13 +12,14 @@ def stage(root):
            'mt6897_ufs_clocks.h','mt6897_ufs_topckgen.h','mt6897_ufs_cache.h',
            'mt6897_ufs_dma_route.h',
            'mt6897_ufs_gate.h',
-           'mt6897_ufs_provider.h',
+           'mt6897_ufs_provider.h','mt6897_ufs_probe.h',
            'mt6897_v7s.h',
            'mt6897_pmif.c','mt6897_pmic.c',
            'mt6897_firmware.c','mt6897_iommu.c','mt6897_ufs_platform.c',
            'mt6897_ufs_dma.c','mt6897_ufs_clocks.c','mt6897_ufs_topckgen.c',
            'mt6897_ufs_cache.c','mt6897_ufs_dma_route.c',
-           'mt6897_ufs_gate.c','mt6897_ufs_provider.c','mt6897_v7s.c']
+           'mt6897_ufs_gate.c','mt6897_ufs_provider.c','mt6897_ufs_probe.c',
+           'mt6897_v7s.c']
     paths={'bsd/dev/'+n:repo/'duchamp/drivers'/n for n in names}
     xnu_names=['mt6897_ufs_cache_backend.h','mt6897_ufs_cache_backend.c']
     paths.update({'bsd/dev/'+n:repo/'duchamp/xnu'/n for n in xnu_names})

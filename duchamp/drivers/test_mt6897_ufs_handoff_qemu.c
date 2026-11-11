@@ -3,8 +3,7 @@
 #error "Build only through the standalone QEMU handoff test runner"
 #endif
 
-#include "mt6897_ufs_provider.h"
-#include "ufs_readonly.h"
+#include "mt6897_ufs_probe.h"
 
 extern void model_assert_fail(const char *, unsigned);
 extern int printf(const char *, ...);
@@ -17,10 +16,7 @@ extern int memcmp(const void *, const void *, size_t);
 
 #define BOOT_ID UINT64_C(0x202611110002)
 #define IMAGE_ID UINT64_C(0x584e555f4d4f444c)
-#define BLOCK_SIZE 4096u
-#define LUN 2u
-#define LBA 276480u
-#define READ_16 0x88u
+#define BLOCK_SIZE MT6897_UFS_PROBE_BYTES
 #define QEMU_PCI UINT64_C(0x3f020000)
 #define QEMU_BAR UINT64_C(0x10000000)
 #define DMA_POOL_SIZE 0x60000u
@@ -34,7 +30,7 @@ enum proof {
     DMA_GRANTED = 1u << 4,
     CACHE_GRANTED = 1u << 5
 };
-enum refusal { ALLOWED, BOOT_MISMATCH, QUEUES, DMA, CACHE, PROVENANCE };
+enum refusal { ALLOWED, BOOT_MISMATCH, QUEUES, DMA, CACHE, PROVENANCE, REVOKED };
 
 struct queue_sample {
     uint32_t sq_head, sq_tail, cq_head, cq_tail;
@@ -195,14 +191,10 @@ qemu_milliseconds(void *context)
 }
 
 static int
-qemu_dispatch(void *context, const struct mt6897_ufs_provider_request *request,
-    uint64_t *result)
+qemu_prepare(void *context, struct dufs_config *config)
 {
     struct transport *io = context;
     ++io->dispatch;
-    CHECK(request->operation == MT6897_UFS_PROVIDER_COMMAND);
-    CHECK(request->argument[0] == READ_16 && request->argument[1] == LUN);
-    CHECK(request->argument[2] == LBA && request->argument[3] == 1);
 
     volatile uint32_t *pci = (void *)QEMU_PCI;
     ++io->pci;
@@ -218,26 +210,15 @@ qemu_dispatch(void *context, const struct mt6897_ufs_provider_request *request,
     CHECK((pci[4] & ~15u) == QEMU_BAR);
 
     uint64_t pa = (uintptr_t)dma_pool;
-    const struct dufs_config config = {
+    *config = (struct dufs_config) {
         .io = { io, qemu_read32, qemu_write32, qemu_dma_write, qemu_dma_read,
             qemu_barrier, qemu_milliseconds },
         .dma_begin = pa, .dma_end = pa + sizeof(dma_pool),
         .list_dma = pa, .command_dma = pa + 0x1000, .data_dma = pa + 0x10000,
         .timeout_ms = 3000, .poll_limit = DUFS_MAX_POLLS,
-        .exclusive_platform_ready = 1, .lun = LUN,
+        .exclusive_platform_ready = 1,
         .descriptor_address_bits = 64, .data_address_bits = 64
     };
-    uint64_t blocks = 0;
-    uint32_t bytes = 0;
-    CHECK(dufs_bind(&controller, &config) == DUFS_OK);
-    CHECK(dufs_start(&controller) == DUFS_OK);
-    CHECK(dufs_nop(&controller) == DUFS_OK);
-    CHECK(dufs_device_init(&controller) == DUFS_OK);
-    CHECK(dufs_capacity(&controller, &blocks, &bytes) == DUFS_OK);
-    CHECK(blocks == LBA + 2 && bytes == BLOCK_SIZE);
-    ++io->reads;
-    CHECK(dufs_read(&controller, LBA, 1, io->destination, sizeof(io->destination)) == DUFS_OK);
-    *result = bytes;
     return 0;
 }
 
@@ -247,10 +228,10 @@ run_case(unsigned id, const struct firmware_record *fw,
 {
     struct mt6897_ufs_gate gate = { 0 };
     struct mt6897_ufs_gate_lease lease = { 0 };
-    struct mt6897_ufs_provider provider = { 0 };
+    struct mt6897_ufs_probe probe = { 0 };
     struct transport io = { 0 };
     struct verification input = { .firmware = fw, .entry = entry };
-    const struct mt6897_ufs_provider_ops ops = { .context = &io, .dispatch = qemu_dispatch };
+    const struct mt6897_ufs_probe_ops ops = { .context = &io, .prepare = qemu_prepare };
     struct mt6897_ufs_gate_evidence evidence = mt6897_ufs_gate_duchamp_known_evidence(BOOT_ID);
     uint64_t blockers = 0, bytes = 0;
 
@@ -262,31 +243,50 @@ run_case(unsigned id, const struct firmware_record *fw,
     CHECK(mt6897_ufs_gate_init(&gate, BOOT_ID) == MT6897_UFS_GATE_INIT_OK);
     enum mt6897_ufs_gate_result verdict = mt6897_ufs_gate_authorize(
         &gate, &evidence, model_verify, &input, &lease, &blockers);
-    CHECK(input.calls == 1 && input.refusal == expected);
-    if (expected == ALLOWED) {
+    CHECK(input.calls == 1 && input.refusal == (expected == REVOKED ? ALLOWED : expected));
+    for (unsigned i = 0; i < BLOCK_SIZE; ++i)
+        io.destination[i] = 0xa5;
+    if (expected == ALLOWED || expected == REVOKED) {
         CHECK(verdict == MT6897_UFS_GATE_LEASED && blockers == 0);
-        CHECK(mt6897_ufs_provider_bind(&provider, &gate, &lease, &ops, &blockers) ==
+        CHECK(mt6897_ufs_probe_bind(&probe, &gate, &lease, &controller, &ops, &blockers) ==
             MT6897_UFS_PROVIDER_OK);
-        CHECK(mt6897_ufs_provider_command(&provider, READ_16, LUN, LBA, 1,
-            &bytes, &blockers) == MT6897_UFS_PROVIDER_OK);
-        CHECK(bytes == BLOCK_SIZE && io.dispatch == 1 && io.reads == 1);
-        for (unsigned i = 0; i < BLOCK_SIZE; ++i)
-            CHECK(io.destination[i] == (uint8_t)(i * 17u + 3u));
     } else {
         CHECK(verdict == MT6897_UFS_GATE_DENIED);
         CHECK(blockers == MT6897_UFS_BLOCK_VERIFIER_DENIED && !lease.lease_id);
-        CHECK(mt6897_ufs_provider_bind(&provider, &gate, &lease, &ops, &blockers) ==
+        CHECK(mt6897_ufs_probe_bind(&probe, &gate, &lease, &controller, &ops, &blockers) ==
             MT6897_UFS_PROVIDER_LEASE);
-        const uint64_t args[] = { READ_16, LUN, LBA, 1 };
+        const uint64_t args[4] = { 0 };
+        uint64_t result;
         for (unsigned op = 0; op < MT6897_UFS_PROVIDER_OPERATION_COUNT; ++op) {
-            CHECK(mt6897_ufs_provider_call(&provider, op, args, &bytes, &blockers) ==
+            CHECK(mt6897_ufs_provider_call(&probe.provider, op, args, &result, &blockers) ==
                 MT6897_UFS_PROVIDER_FAULTED);
         }
-        CHECK(bytes == 0 && provider.dispatches == 0 && io.dispatch == 0);
+    }
+    if (expected == REVOKED) {
+        CHECK(mt6897_ufs_gate_fault(&gate, MT6897_UFS_BLOCK_PROVIDER_RUNTIME, &blockers) ==
+            MT6897_UFS_GATE_FAULT);
+        CHECK(blockers == MT6897_UFS_BLOCK_PROVIDER_RUNTIME);
+    }
+    CHECK(mt6897_ufs_probe_read(&probe, io.destination, BLOCK_SIZE - 1, &blockers) ==
+        MT6897_UFS_PROVIDER_ARGUMENT);
+    enum mt6897_ufs_provider_result read = mt6897_ufs_probe_read(
+        &probe, io.destination, sizeof(io.destination), &blockers);
+    if (expected == ALLOWED) {
+        CHECK(read == MT6897_UFS_PROVIDER_OK && io.dispatch == 1);
+        ++io.reads;
+        bytes = BLOCK_SIZE;
+        for (unsigned i = 0; i < BLOCK_SIZE; ++i)
+            CHECK(io.destination[i] == (uint8_t)(i * 17u + 3u));
+    } else {
+        CHECK(read == (expected == REVOKED ? MT6897_UFS_PROVIDER_LEASE :
+            MT6897_UFS_PROVIDER_FAULTED));
+        CHECK(bytes == 0 && probe.provider.dispatches == 0 && io.dispatch == 0);
         CHECK(io.pci == 0 && io.mmio == 0 && io.dma == 0 && io.reads == 0);
         for (unsigned i = 0; i < BLOCK_SIZE; ++i)
-            CHECK(io.destination[i] == 0);
+            CHECK(io.destination[i] == 0xa5);
     }
+    CHECK(mt6897_ufs_probe_read(&probe, io.destination, BLOCK_SIZE, &blockers) ==
+        MT6897_UFS_PROVIDER_STATE);
     printf("UFS HANDOFF case=%u refusal=%u dispatch=%u pci=%u mmio=%u dma=%u reads=%u bytes=%u\n",
         id, (unsigned)expected, io.dispatch, io.pci, io.mmio, io.dma, io.reads, (unsigned)bytes);
 }
@@ -358,6 +358,7 @@ main(void)
     fw = ready;
     fw.proof &= ~RESOURCES_GRANTED;
     run_case(19, &fw, &entry, PROVENANCE);
-    run_case(20, &ready, &entry, ALLOWED);
+    run_case(20, &ready, &entry, REVOKED);
+    run_case(21, &ready, &entry, ALLOWED);
     return 0;
 }

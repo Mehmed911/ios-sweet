@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - MT6897 one-block UFS probe wired through the provider (2026-11-12)
+
+- Added the one-shot read-only adapter in duchamp/drivers/mt6897_ufs_probe.c. The provider validates its lease before the prepare callback, then the adapter uses the existing UFS core to read exactly 4096 bytes from LUN 2 LBA 276480. Failed authorization leaves the destination untouched. Included the adapter in XNU source staging and compiled the staged ARM64 Mach-O object.
+- ARM64 QEMU confirmed one SCSI READ(16) on the read-only virtual device with synthetic handoff evidence. All 20 refusals had zero PCI, MMIO, DMA or read callbacks, including a lease revoked after bind. The UFS polling model passed 79 checks each natively and in ARM64 QEMU. Separate QEMU qtest with the saved vendor_boot_a backup passed 27 checks and matched the Android digest. A one-byte change was detected.
+- Logs are under outputs/duchamp-mt6897-ufs-probe-20261112-verified. The same-boot Slot B queue, DMA and cache evidence is still absent. The adapter requires a verified platform transport. No new full XNU build or phone access, flash or partition changes.
+
 ACTIVE HANDOFF - Duchamp vendor UFS handoff diagnostics (2026-11-12)
 
 - Reviewed the published MiCode tfa_debug driver. runtime_snapshot reads a subrange of raw_dump_all and does not take a controller sample. Found no public final-exit UFS trace producer for the observed BL31 lts-v2.8.6(release):2fbca47 on the audited V816.0.17.0.UNLMIXM release.

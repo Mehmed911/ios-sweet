@@ -19,7 +19,8 @@ CASES = [
     ("mcq_sample_incomplete", 2), ("mcq_completion_pending", 2), ("mcq_work_outstanding", 2),
     ("missing_dma_grant", 3), ("missing_cache_grant", 4),
     ("missing_dma_owner", 3), ("missing_cache_owner", 4),
-    ("missing_controller_grant", 5), ("same_boot_with_complete_evidence", 0),
+    ("missing_controller_grant", 5), ("lease_revoked_after_bind", 6),
+    ("same_boot_with_complete_evidence", 0),
 ]
 ROW = re.compile(
     r"UFS HANDOFF case=(\d+) refusal=(\d+) dispatch=(\d+) pci=(\d+) "
@@ -77,7 +78,7 @@ def main():
         linker, elf, media = (scratch / name for name in ("model.ld", "model.elf", "synthetic.raw"))
         linker.write_text(LINKER)
         sources = ["test_mt6897_model_start.S", "test_mt6897_model_runtime.c",
-                   "mt6897_ufs_gate.c", "mt6897_ufs_provider.c", "ufs_readonly.c",
+                   "mt6897_ufs_gate.c", "mt6897_ufs_provider.c", "mt6897_ufs_probe.c", "ufs_readonly.c",
                    "test_mt6897_ufs_handoff_qemu.c"]
         subprocess.run([args.clang, "-target", "aarch64-none-elf", "-std=c11", "-O2",
                         "-ffreestanding", "-fno-builtin", "-mgeneral-regs-only", "-mstrict-align",
