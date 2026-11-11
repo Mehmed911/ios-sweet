@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Archived Slot B logs do not establish SWINF2 delegation (2026-11-11)
+
+- Rechecked the retained PL/LK log, both pstore exports, the identity-matched Android BL31 log and five archived ATF probe outputs. Four primary capture hashes match their receipts. The PL/LK log reports SPMI initialization, a pre-reboot PMIF command list containing only channel 0 entries, BL31 load and Fastboot entry. No saved log supplies a SWINF2 grant tied to the XNU Slot B entry. Xiaomi's public ATF reader exposes the reserved log buffer on Android, and the published source reviewed contains no matching LK/BL31 channel grant. Coverage report is under outputs/duchamp-swinf2-handoff-audit-20261111/slot-b-log-coverage.json.
+- Keep the TOPSTATUS experiment gated on a matching firmware contract or same-boot trace that identifies SWINF2 ownership and serialization after LK exit. No new QEMU run, phone access or partition change. Last verified state remains Android on A after restoring B.
+
 ACTIVE HANDOFF - Duchamp SWINF2 delegation remains unverified (2026-11-11)
 
 - The saved Duchamp DTB and Xiaomi Android driver identify SWINF2 and SID 4. The Android driver serializes its own transactions. The prior Slot B capture proves INIT_DONE=1 and FSM=0 at the sampled instant. A TOPSTATUS read through this channel requires issuing a PMIF command and acknowledging valid data.
