@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - Public Duchamp BL31 channels reviewed against the Slot B receiver (2026-11-12)
+
+- Verified MiCode `3c4ccd07` and the pinned Android FDT. The four-byte `atag,ufs` describes RPMB key state. `GET_MCQ_EN` supplies MCQ policy. `/proc/ufs_debug` traces the Android UFS host after its initialization. The ATF snapshot copies an existing ring, and the SLC parity interface provides no UFS cache grant.
+- Re-ran the saved LK and BL31 binary audit and passed all 22 LK, BL31 identity and resource-ownership checks. A vendor-published final-exit record must bind the XNU digest and fresh Slot B boot ID to drained queues, effective DMA delegation and the system-cache maintenance owner. Documented the existing `x0` FDT as a possible carrier for a separate vendor-defined reserved RAM record in `duchamp/MT6897-LK-HANDOFF-CONTRACT.md`.
+- The audit is in `outputs/duchamp-bl31-vendor-channel-20261112`. No vendor ABI or same-boot sample was found for the installed firmware. The physical UFS gate remains closed. No device commands, reboot, slot change, flash or partition writes.
+
 ACTIVE HANDOFF - Slot B image receives a BL31 handoff in QEMU (2026-11-12)
 
 - The isolated QEMU_BL31_RECEIVER profile boots an ARM64 Image extracted from a separately repacked Android v4/LZ4 Slot B container. The shim reads the synthetic mailbox at 0x49000000 and injects the independent boot-entry ID and 64-byte record into the materialized boot args and /chosen ADT property. The archived boot_b.img is hash-checked before and after. The repack has no AVB footer and the shim requires the emulator addresses and Cortex-A76 MIDR.

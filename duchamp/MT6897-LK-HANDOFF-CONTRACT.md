@@ -208,6 +208,49 @@ export was 2 MiB and contained BL31 banners without a correlated Slot B
 record or UFS handoff fields. A documented producer at the final EL3 exit
 is still needed. [Duchamp tfa_debug driver](https://github.com/MiCode/MTK_kernel_device_modules/blob/bsp-duchamp-u-oss/drivers/misc/mediatek/atf/tfa_debug.c)
 
+### Vendor channel review, 2026-11-12
+
+The [published Duchamp source tree](https://github.com/MiCode/MTK_kernel_device_modules/tree/3c4ccd07d5624879555ec710c11bb8818e5cb5c6) and the saved Android FDT establish several existing paths. None of the reviewed paths supplies the final Slot B handoff.
+
+| Path | Observation |
+| --- | --- |
+| `/chosen/atag,ufs` | The saved FDT contains four bytes. MiCode defines the entire `tag_ufs` as the RPMB region 2 key-state enum. The property carries storage metadata from boot into the kernel. [MiCode UFS header](https://github.com/MiCode/MTK_kernel_device_modules/blob/3c4ccd07d5624879555ec710c11bb8818e5cb5c6/drivers/ufs/ufs-mediatek.h#L187-L195) |
+| `GET_MCQ_EN` | Android consumes the returned bit when deciding whether MCQ is permitted. The API supplies permission to use that mode. The active mode and queue state at handoff still require a firmware observation. [MiCode UFS driver](https://github.com/MiCode/MTK_kernel_device_modules/blob/3c4ccd07d5624879555ec710c11bb8818e5cb5c6/drivers/ufs/ufs-mediatek.c#L750-L775) |
+| `/proc/ufs_debug` | The Android UFS driver registers kernel tracepoints against its own `ufs_hba` and exposes its command history. This observation belongs to the Android driver lifetime. [MiCode UFS diagnostics](https://github.com/MiCode/MTK_kernel_device_modules/blob/3c4ccd07d5624879555ec710c11bb8818e5cb5c6/drivers/ufs/ufs-mediatek-dbg.c#L2086-L2118) |
+| `runtime_snapshot` and `raw_dump_all` | Both read existing RAM. The separate ATF log write handler invokes a debug control and exposes no UFS handoff response. The saved snapshot and raw export identify the same Android A boot. [MiCode ATF driver](https://github.com/MiCode/MTK_kernel_device_modules/blob/3c4ccd07d5624879555ec710c11bb8818e5cb5c6/drivers/misc/mediatek/atf/tfa_debug.c#L175-L227) |
+| System cache parity driver | Its secure service handles parity errors. No UFS cache-maintenance ownership grant is exposed by that path. [MiCode SLC parity driver](https://github.com/MiCode/MTK_kernel_device_modules/blob/3c4ccd07d5624879555ec710c11bb8818e5cb5c6/drivers/memory/mediatek/slc-parity.c#L58-L68) |
+
+The fresh offline audit reproduced both secure-side callbacks in the saved
+BL31 sample. The supported trace must cover the point after the last LK UFS
+operation and after the BL31 callbacks. The archived XNU Slot B trial proves
+the RAM-root boot. The retained Fastboot PL/LK log and Android A ATF export
+lack an event that links either to that XNU entry. The current QEMU receiver
+accepts only the emulator profile and the record format used by its fixture.
+
+For a future vendor-supported channel, the existing FDT passed in `x0`
+provides a transport candidate. The vendor could define a distinct `/chosen`
+property that describes a bounded record in reserved RAM. Alternatively,
+firmware can use a Transfer List if both sides document that exact interface.
+The public specification describes the transport. Vendor documentation must
+identify the producer, ABI, memory attributes and lifetime for the running
+Duchamp build. Verify the record's origin through the documented trust path
+before using it for authorization. A checksum detects corruption. A fresh boot
+identifier binds the firmware record to the bootshim/XNU entry only when
+obtained from the supported boot chain. [Firmware Handoff specification](https://firmwarehandoff.github.io/firmware_handoff/main/index.html) and [TF-A handoff threat model](https://tf-a.docs.trustedfirmware.org/en/latest/threat_model/firmware_threat_model/threat_model_firmware_handoff.html)
+
+The vendor record should bind Slot B, the XNU image digest and the fresh
+boot identifier to the final controller sample and explicit resource grant.
+The DMA grant must describe the allowed buffer range and effective address
+translation. It must specify the owner and synchronization of the UFS DMA
+buffers, including the system cache where applicable. The firmware ABI must
+also define how the bootshim reads a complete, visible record from reserved
+RAM. This concerns visibility of the record itself, while the DMA grant
+concerns descriptors and data buffers used by UFS.
+
+The local static audit is under `outputs/duchamp-bl31-vendor-channel-20261112`.
+All 22 local checks for LK handoff, BL31 identity and UFS resource ownership
+passed. Physical UFS stays blocked. No device commands were issued.
+
 
 ## RAM and reserved memory
 
