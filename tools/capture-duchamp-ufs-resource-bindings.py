@@ -19,6 +19,7 @@ import subprocess
 
 
 REPORT_VERSION = 1
+RUNTIME_PM_STATES = ("active", "suspended", "suspending", "resuming")
 
 EXPECTED_BINDINGS = {
     "emi_slb_observer": {
@@ -147,8 +148,13 @@ def analyze_snapshot(snapshot):
                 resource_id + " path differs")
         require(observed.get("driver") == expected["driver"],
                 resource_id + " driver differs")
-        require(observed.get("runtime_status") == expected["runtime_status"],
-                resource_id + " runtime status differs")
+        # Runtime PM may autosuspend the bound controller while these
+        # read-only queries run. Record its observed state without requiring
+        # it to stay active or promoting that state to an XNU grant.
+        allowed_states = (("unsupported",) if expected["runtime_status"] == "unsupported"
+                          else RUNTIME_PM_STATES)
+        require(observed.get("runtime_status") in allowed_states,
+                resource_id + " runtime status invalid")
         binding_report[resource_id] = {
             **observed,
             "linux_driver_binding_proven": True,

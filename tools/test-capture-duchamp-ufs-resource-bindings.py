@@ -106,6 +106,26 @@ class ResourceBindingCaptureTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "ufs_phy driver differs"):
             MODULE.analyze_snapshot(snapshot)
 
+    def test_runtime_pm_transitions_preserve_observation_and_denial(self):
+        for resource in ("ufs_hci", "ufs_phy"):
+            for state in ("active", "suspended", "suspending", "resuming"):
+                with self.subTest(resource=resource, state=state):
+                    snapshot = fixture()
+                    snapshot["bindings"][resource]["runtime_status"] = state
+                    report = MODULE.analyze_snapshot(snapshot)
+                    self.assertEqual(report["linux_runtime"]["bindings"][resource]["runtime_status"], state)
+                    self.assertFalse(report["authorization"]["physical_backend_enabled"])
+                    self.assertFalse(report["proof_boundary"][
+                        "xnu_mmio_clock_reset_phy_regulator_irq_delegation_proven"])
+
+    def test_invalid_runtime_state_is_rejected(self):
+        for state in ("error", "enabled", None):
+            with self.subTest(state=state):
+                snapshot = fixture()
+                snapshot["bindings"]["ufs_hci"]["runtime_status"] = state
+                with self.assertRaisesRegex(ValueError, "ufs_hci runtime status invalid"):
+                    MODULE.analyze_snapshot(snapshot)
+
     def test_system_cache_supplier_promotion_is_rejected(self):
         snapshot = fixture()
         snapshot["supplier_links"][0] = (
