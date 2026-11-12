@@ -67,7 +67,7 @@ jobs:
       - name: Fetch build script
         run: |
           shasum -a 256 -c .github/xnu-inputs-491ff8b.sha256
-          echo 'Baseline 491ff8b5695a44c0aa8caa1a55b4aa6b5408bf27 plus the QEMU MCQ transport (317 verified inputs)'
+          echo 'Baseline 491ff8b5695a44c0aa8caa1a55b4aa6b5408bf27 plus the passive UFS observer (319 verified inputs)'
           git init -q dxb
           git -C dxb fetch -q --depth 1 "$DXB_REPO" "$DXB_SHA"
           git -C dxb checkout -q FETCH_HEAD
@@ -180,6 +180,8 @@ jobs:
           cmp ../duchamp/drivers/ufs_readonly.c xnu/bsd/dev/duchamp_ufs_core.c
           cmp ../duchamp/drivers/ufs_readonly.h xnu/bsd/dev/ufs_readonly.h
           cmp ../duchamp/xnu/qemu_ufs_mcq.c xnu/bsd/dev/duchamp_qemu_ufs_mcq.c
+          cmp ../duchamp/drivers/ufs_register_snapshot.h xnu/bsd/dev/ufs_register_snapshot.h
+          cmp ../duchamp/drivers/ufs_register_snapshot.c xnu/bsd/dev/duchamp_ufs_register_snapshot.c
           cmp ../duchamp/drivers/ufs_gpt.c xnu/bsd/dev/duchamp_ufs_gpt.c
           cmp ../duchamp/drivers/ufs_gpt.h xnu/bsd/dev/ufs_gpt.h
           cmp ../duchamp/xnu/qemu_ufs.c xnu/bsd/dev/duchamp_qemu_ufs.c

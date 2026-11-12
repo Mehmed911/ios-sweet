@@ -45,6 +45,7 @@ static struct {
 void duchamp_qemu_ufs_handoff_enter(void);
 extern void sweet_early_mark(unsigned int, const char *);
 int duchamp_qemu_ufs_handoff_allows(void);
+uint64_t duchamp_qemu_ufs_snapshot_boot_id(void);
 
 static int
 qemu_profile(DTEntry chosen)
@@ -160,6 +161,15 @@ duchamp_qemu_ufs_handoff_allows(void)
 }
 
 #if !defined(DUCHAMP_HANDOFF_PINNED_QEMU_REPLAY)
+/* Read-only observer revalidates this for each access, without repeated logs.
+ * The source is the existing synthetic QEMU handoff, not a physical grant.
+ */
+uint64_t
+duchamp_qemu_ufs_snapshot_boot_id(void)
+{
+    return handoff.verdict == HANDOFF_ALLOW ? handoff.entry_id : 0;
+}
+
 int duchamp_qemu_ufs_handoff_probe_lease(struct mt6897_ufs_gate *,
     struct mt6897_ufs_gate_lease *);
 

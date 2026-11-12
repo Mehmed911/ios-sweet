@@ -22,6 +22,8 @@ def stage(root):
         'bsd/dev/duchamp_qemu_ufs.c':repo/'duchamp/xnu/qemu_ufs.c',
         'bsd/dev/duchamp_qemu_ufs_handoff.c':repo/'duchamp/xnu/qemu_ufs_handoff.c',
         'bsd/dev/duchamp_qemu_ufs_mcq.c':repo/'duchamp/xnu/qemu_ufs_mcq.c',
+        'bsd/dev/ufs_register_snapshot.h':repo/'duchamp/drivers/ufs_register_snapshot.h',
+        'bsd/dev/duchamp_ufs_register_snapshot.c':repo/'duchamp/drivers/ufs_register_snapshot.c',
     }
     config=root/'bsd/conf/files'
     iokit=root/'iokit/bsddev/IOKitBSDInit.cpp'
@@ -39,7 +41,8 @@ def stage(root):
                'bsd/dev/duchamp_ufs_gpt.c\t\tstandard\n'
                'bsd/dev/duchamp_qemu_ufs.c\t\tstandard\n'
                'bsd/dev/duchamp_qemu_ufs_handoff.c\t\tstandard\n'
-               'bsd/dev/duchamp_qemu_ufs_mcq.c\t\tstandard\n')
+               'bsd/dev/duchamp_qemu_ufs_mcq.c\t\tstandard\n'
+               'bsd/dev/duchamp_ufs_register_snapshot.c\t\tstandard\n')
     hashes={name:hashlib.sha256(source.read_bytes()).hexdigest() for name,source in paths.items()}
     if marker in original_iokit:
         if (additions not in original_config or original_arm.count(entry_call)!=1 or
