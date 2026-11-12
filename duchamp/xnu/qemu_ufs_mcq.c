@@ -3,7 +3,7 @@
  * driver and its checked request/response code, replacing only its queue I/O.
  * The physical MT6897 backend and inherited-queue policy are independent.
  */
-#if defined(DUCHAMP) || defined(DUCHAMP_PINNED_QEMU_MCQ_REPLAY)
+#if defined(ARM64_BOARD_CONFIG_SWEET) || defined(DUCHAMP_PINNED_QEMU_MCQ_REPLAY)
 #include "ufs_readonly.h"
 
 extern int PE_parse_boot_argn(const char *, void *, int);
