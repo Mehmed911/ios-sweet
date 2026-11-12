@@ -34,6 +34,7 @@ boot_menu=${BOOT_MENU:-}
 entry_keys=${BOOT_MENU_ENTRY_KEYS:-}
 boot_once=${BOOT_ONCE:-}
 recovery_chain=${RECOVERY_CHAIN:-}
+bl31_receiver=${QEMU_BL31_RECEIVER:-}
 if [ -n "$recovery_chain" ]; then
 	if [ "$recovery_chain:$boot_menu:${QEMU_ONLY:-}" != 1:1:1 ] ||
 	    [ -n "${PAYLOAD:-}$entry_keys$boot_once" ]; then
@@ -94,7 +95,16 @@ if [ -n "$pmif_probe$pmif_probe_qemu" ]; then
 fi
 ldflags="-Wl,--defsym,DUCHAMP_IMAGE_BASE=0"
 
-if [ -n "$boot_menu" ]; then
+if [ -n "$bl31_receiver" ]; then
+	if [ "$bl31_receiver:${QEMU_ONLY:-}:${MATERIALIZE:-}:${READY:-}:${JUMP:-}" != 1:1:1:1:1 ] ||
+	    [ -z "${PAYLOAD:-}" ] ||
+	    [ -n "$boot_menu$phone_capture$phone_layout$lk_ram${PHONE_CONTRACT:-}${RETURN:-}${TEST_XNU_RETURN:-}" ]; then
+		echo "QEMU_BL31_RECEIVER=1 requires the isolated QEMU-only materialized XNU jump" >&2
+		exit 2
+	fi
+	cflags="$cflags -DDUCHAMP_QEMU_BL31_RECEIVER=1 -DDUCHAMP_EMBED_PAYLOAD=1 -DDUCHAMP_QEMU_ONLY=1 -DDUCHAMP_TEST_NO_WATCHDOG=1"
+	ldflags="-Wl,--defsym,DUCHAMP_IMAGE_BASE=0x40200000"
+elif [ -n "$boot_menu" ]; then
 	if [ "$boot_menu" != 1 ] || [ "${QEMU_ONLY:-}" != 1 ]; then
 		echo "BOOT_MENU=1 requires QEMU_ONLY=1" >&2
 		exit 2
@@ -207,6 +217,10 @@ if [ -n "$boot_menu" ]; then
 	$cc $cflags -c boot_menu.c -o "$out/boot_menu.o"
 	$cc $cflags -c boot_menu_keys.c -o "$out/boot_menu_keys.o"
 	objects="$objects $out/boot_menu.o $out/boot_menu_keys.o"
+fi
+if [ -n "$bl31_receiver" ]; then
+	$cc $cflags -c qemu_bl31_receiver.c -o "$out/qemu_bl31_receiver.o"
+	objects="$objects $out/qemu_bl31_receiver.o"
 fi
 
 if [ -n "$lk_ram" ]; then

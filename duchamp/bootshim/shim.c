@@ -19,6 +19,9 @@
 #if defined(DUCHAMP_HANDOFF_READY)
 #include "handoff_ready.h"
 #endif
+#if defined(DUCHAMP_QEMU_BL31_RECEIVER)
+#include "qemu_bl31_receiver.h"
+#endif
 #if defined(DUCHAMP_LK_RAM_TRANSPORT)
 #if !defined(DUCHAMP_QEMU_ONLY)
 #error "DUCHAMP_LK_RAM_TRANSPORT is restricted to QEMU-only builds"
@@ -465,6 +468,13 @@ duchamp_bootshim_main(void)
 		draw_row(10, duchamp_bootshim_materialize_result == 0 ?
 		    COLOR_PASS : COLOR_FAIL);
 		draw_row(11, COLOR_SIGNATURE_A);
+#if defined(DUCHAMP_QEMU_BL31_RECEIVER)
+		if (duchamp_bootshim_materialize_result == 0 &&
+		    !duchamp_qemu_receive_bl31(&duchamp_bootshim_materialized_plan)) {
+			draw_row(9, COLOR_FAIL);
+			return;
+		}
+#endif
 #if defined(DUCHAMP_XNU_RETURN)
 		if (duchamp_bootshim_materialize_result == 0) {
 			duchamp_bootshim_return_slot_result =

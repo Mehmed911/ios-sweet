@@ -7,6 +7,9 @@
 #if defined(DUCHAMP_QEMU_RECOVERY_CHAIN) && !defined(DUCHAMP_QEMU_ONLY)
 #error "the Linux recovery chain requires QEMU virt"
 #endif
+#if defined(DUCHAMP_QEMU_BL31_RECEIVER) && !defined(DUCHAMP_QEMU_ONLY)
+#error "the synthetic BL31 receiver requires QEMU virt"
+#endif
 
 	.section .text.head, "ax"
 	.globl _head
@@ -50,6 +53,17 @@ duchamp_phone_layout_stop:
 	b.ne	halt
 	movz	x10, #0x4800, lsl #16
 	cmp	x19, x10
+	b.ne	halt
+#endif
+#if defined(DUCHAMP_QEMU_BL31_RECEIVER)
+	/* Match the implementer, architecture and CPU part of the test Cortex-A76. */
+	mrs	x9, midr_el1
+	movz	w10, #0xfff0
+	movk	w10, #0xff0f, lsl #16
+	and	w9, w9, w10
+	movz	w10, #0xd0b0
+	movk	w10, #0x410f, lsl #16
+	cmp	w9, w10
 	b.ne	halt
 #endif
 	mrs	x24, CurrentEL

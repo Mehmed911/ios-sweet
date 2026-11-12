@@ -1,7 +1,6 @@
 #include "materialize.h"
 
 #define BOOT_ARGS_PAGE 0x4000u
-#define COMMAND_LINE_LENGTH 608u
 
 struct boot_video {
 	uint64_t base;
@@ -23,13 +22,14 @@ struct boot_args_v2 {
 	uint32_t machine_type;
 	uint64_t device_tree;
 	uint32_t device_tree_length;
-	char command_line[COMMAND_LINE_LENGTH];
+	char command_line[DUCHAMP_BOOT_ARGS_COMMAND_LINE_LENGTH];
 	uint64_t boot_flags;
 	uint64_t memory_size_actual;
 };
 
 _Static_assert(__builtin_offsetof(struct boot_args_v2, video) == 40, "boot_args video offset");
-_Static_assert(__builtin_offsetof(struct boot_args_v2, command_line) == 108, "boot_args command line offset");
+_Static_assert(__builtin_offsetof(struct boot_args_v2, command_line) ==
+    DUCHAMP_BOOT_ARGS_COMMAND_LINE_OFFSET, "boot_args command line offset");
 _Static_assert(sizeof(struct boot_args_v2) == 736, "boot_args size");
 
 static void
@@ -129,7 +129,7 @@ duchamp_loader_materialize(const void *fdt, size_t fdt_size,
 	boot_args->video.depth = framebuffer->depth;
 	boot_args->device_tree = plan.boot_args.device_tree_virtual;
 	boot_args->device_tree_length = (uint32_t)plan.boot_args.device_tree_size;
-	copy_bytes(boot_args->command_line, payload + 0x48, COMMAND_LINE_LENGTH);
+	copy_bytes(boot_args->command_line, payload + 0x48, sizeof(boot_args->command_line));
 	boot_args->memory_size_actual = plan.boot_args.memory_size;
 	copy_bytes(completed_plan, &plan, sizeof(plan));
 	return DUCHAMP_GUARD_OK;

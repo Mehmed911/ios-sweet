@@ -100,6 +100,10 @@ duchamp_loader_dry_run(const void *fdt, size_t fdt_size,
 	dry_run->boot_args.top_of_kernel_data = placement.top;
 	dry_run->boot_args.device_tree_virtual = virt_base + placement.adt - phys_base;
 	dry_run->boot_args.device_tree_size = adt_size;
-	dry_run->boot_args.video = *framebuffer;
+	dry_run->boot_args.video.base = framebuffer->base;
+	dry_run->boot_args.video.stride = framebuffer->stride;
+	dry_run->boot_args.video.width = framebuffer->width;
+	dry_run->boot_args.video.height = framebuffer->height;
+	dry_run->boot_args.video.depth = framebuffer->depth;
 	return DUCHAMP_GUARD_OK;
 }

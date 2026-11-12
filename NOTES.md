@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - Slot B image receives a BL31 handoff in QEMU (2026-11-12)
+
+- The isolated QEMU_BL31_RECEIVER profile boots an ARM64 Image extracted from a separately repacked Android v4/LZ4 Slot B container. The shim reads the synthetic mailbox at 0x49000000 and injects the independent boot-entry ID and 64-byte record into the materialized boot args and /chosen ADT property. The archived boot_b.img is hash-checked before and after. The repack has no AVB footer and the shim requires the emulator addresses and Cortex-A76 MIDR.
+- The full XNU kernel from CI 43115466836 logged both IDs. One accepted case read 4096 bytes via READ(16) on virtual LUN 2 / LBA 276480 and matched Android SHA-256 065f2cf024655ce86cd67efd58901ded708c34cf2e721778b6b3de67f5382fd6. Six cases produced no UFS MMIO or SCSI events: a different ID, missing record, missing queue evidence, a pending queue, missing DMA grant and missing cache evidence. The 27 host UFS profile tests passed.
+- Build and per-case evidence are in outputs/duchamp-slot-b-bl31-receiver-20261112. tools/test-duchamp-slot-b-handoff.py recreates the container and runs the matrix. The existing explicit framebuffer-field copy in loader/plan.c is required by the freestanding link to avoid an unresolved memcpy. The phone was not accessed. Physical UFS still needs a documented producer of the final-exit record on the same Slot B boot.
+
 ACTIVE HANDOFF - Firmware and XNU UFS block digests match in one QEMU boot (2026-11-12)
 
 - Added a HakiOS-style comparison to tools/test-duchamp-ufs-probe-xnu.py. Before starting XNU, QTest acts as the firmware and sends one READ(16) for LUN 2 / LBA 276480 on the same read-only virtual UFS device. It verifies completion and hashes the 4096 bytes returned into guest RAM by UFS DMA.

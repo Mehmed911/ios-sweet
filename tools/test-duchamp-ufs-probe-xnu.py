@@ -243,12 +243,12 @@ def observe_pending_request(monitor, endpoint, trace, state, checkpoint, seconds
 
 
 def boot_to_probe(payload, folder, options, qemu, seconds, names, checkpoint,
-                  *, inherited, pending, compare_record):
+                  *, inherited, pending, compare_record, entry_loaders=None):
     """Stop at the compiled terminal loop and capture the kernel's BSD log."""
     run = folder / "run"
     run.mkdir()
     frame = sweet["FRAMEBUFFERS"]["duchamp"]
-    base, image, args, entry = sweet["build_image"](payload, frame)
+    base, = struct.unpack_from("<Q", payload, 0x38)
     ram_size = max(4, -(-(base + struct.unpack_from("<Q", payload, 0x40)[0] - 0x40000000) // (1 << 30)))
     trace = folder / "ufs.trace"
     events = folder / "trace-events"
@@ -268,17 +268,21 @@ def boot_to_probe(payload, folder, options, qemu, seconds, names, checkpoint,
         scratch = Path(temporary)
         monitor, debug = scratch / "qmp", scratch / "gdb"
         firmware = scratch / "firmware.sock"
-        ram, stub, framebuffer = (scratch / name for name in ("ram", "stub", "fb"))
-        ram.write_bytes(image)
-        stub_pa = sweet["STUB_PA"]
-        stub.write_bytes(sweet["stub"](args, entry))
+        framebuffer = scratch / "fb"
+        if entry_loaders is None:
+            _, image, args, entry = sweet["build_image"](payload, frame)
+            ram, stub = scratch / "ram", scratch / "stub"
+            ram.write_bytes(image)
+            stub_pa = sweet["STUB_PA"]
+            stub.write_bytes(sweet["stub"](args, entry))
+            entry_loaders = ["-device", f"loader,file={ram},addr={base:#x},force-raw=on",
+                             "-device", f"loader,file={stub},addr={stub_pa:#x},force-raw=on",
+                             "-device", f"loader,addr={stub_pa:#x},cpu-num=0"]
         cmd = [qemu, "-M", "virt,gic-version=3,highmem-ecam=off,memory-backend=probe_ram",
                "-m", f"{ram_size}G", "-cpu", "cortex-a76", "-smp", "1", "-nodefaults", "-nographic",
                "-object", f"memory-backend-file,id=probe_ram,size={ram_size}G,mem-path={memory},share=on,prealloc=off",
                "-qmp", f"unix:{monitor},server=on,wait=off", "-gdb", f"unix:{debug},server=on,wait=off",
-               "-S", "-no-reboot", "-device", f"loader,file={ram},addr={base:#x},force-raw=on",
-               "-device", f"loader,file={stub},addr={stub_pa:#x},force-raw=on",
-               "-device", f"loader,addr={stub_pa:#x},cpu-num=0",
+               "-S", "-no-reboot", *entry_loaders,
                "-trace", f"events={events},file={trace}", *options]
         if observe_firmware:
             cmd.extend(["-qtest", f"unix:{firmware},server=on,wait=off",
