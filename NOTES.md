@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - XNU rejects a running inherited UFS list in QEMU (2026-11-12)
+
+- Added a QTest fixture to tools/test-duchamp-ufs-probe-xnu.py. While the ARM64 guest is paused, it starts the emulated legacy HCI and configures a running transfer list with no pending request. Readback shows HCE=1, UTRLRSR=1, UTRLBA=0x60000000 and UTRLDBR=0.
+- The full XNU artifact from CI 43115466836 admitted the synthetic handoff, mapped the PCI BAR and rejected initialization with provider status -5. After the separately verified fixture trace, XNU made exactly one HCI read (HCE=1), zero HCI writes and zero SCSI commands. The output buffer stayed zero.
+- All ten XNU/QEMU cases and 27 host profile tests passed. The cold control still read 4096 bytes and matched the Android reference. The experiment used a read-only virtual disk and did not access the phone or its partitions. Results and traces are in outputs/duchamp-ufs-inherited-controller-20261112.
+
 ACTIVE HANDOFF - QEMU UFS replay and live BL31 correlation recheck (2026-11-12)
 
 - Replayed all nine QEMU cases with the SHA-256-pinned full XNU artifact from CI 43115466836. The matching synthetic handoff issued one READ(16) for LUN 2 / LBA 276480, read 4096 bytes and matched the Android reference. A one-byte alteration changed the digest. All seven denials had zero controller events.
