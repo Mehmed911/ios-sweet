@@ -26,6 +26,7 @@
 extern vm_offset_t ml_io_map(vm_offset_t, vm_size_t);
 extern ppnum_t pmap_find_phys(pmap_t, addr64_t);
 int duchamp_qemu_ufs_rootdev(dev_t *);
+int dufs_mcq_bind(struct dufs_host *, const struct dufs_config *);
 extern int duchamp_qemu_ufs_handoff_allows(void);
 extern int duchamp_qemu_ufs_handoff_probe_lease(struct mt6897_ufs_gate *,
     struct mt6897_ufs_gate_lease *);
@@ -258,7 +259,7 @@ qu_prepare(__unused void *context, struct dufs_config *setup)
     *(volatile uint16_t *)(config+4)=6;
     qu_barrier(NULL);
     if((pci[4]&~15u)!=QU_BAR) return EIO;
-    qu.regs=ml_io_map(QU_BAR,0x1000);
+    qu.regs=ml_io_map(QU_BAR,0x2000);
     if(!qu.regs) return ENOMEM;
     if(kmem_alloc_contig(kernel_map,&qu.dma,QU_DMA_BYTES,PAGE_MASK,0,0,
         KMA_DATA|KMA_ZERO|KMA_PERMANENT,VM_KERN_MEMORY_IOKIT)!=KERN_SUCCESS) return ENOMEM;
@@ -344,7 +345,7 @@ int duchamp_qemu_ufs_rootdev(dev_t *device) {
     struct dufs_config setup;
     error=qu_prepare(NULL,&setup);
     if(error) return error;
-    int result=dufs_bind(&qu.host,&setup);
+    int result=dufs_mcq_bind(&qu.host,&setup);
     if(!result) result=dufs_start(&qu.host);
     if(!result) result=dufs_nop(&qu.host);
     if(!result) result=dufs_device_init(&qu.host);
