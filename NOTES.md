@@ -8,6 +8,7 @@ ACTIVE HANDOFF - Physical Slot B UFS prerequisites rechecked (2026-11-12)
 
 - Read-only ADB found the same Duchamp Android A boot before and after capture. The ATF raw and snapshot, PL/LK and bootprof hashes all match the previous Android A capture, and pstore is empty. Reverified the archived Slot B photo and LK/pstore hashes. That XNU image boots md0 and has no handoff receiver. No available record binds the observed firmware to that XNU entry or establishes queue drain, DMA delegation or the cache maintenance owner.
 - Reverified the saved Android backup and its 4096-byte reference for LUN 2 / LBA 276480 against the matching QEMU result. The physical read remains gated. The new receipt is outputs/duchamp-slot-b-ufs-conditions-20261112/verification.json. No reboot, slot switch, flash or partition write.
+- After the firmware/XNU QEMU comparison, a fresh ADB check matched the same Android A boot and identical ATF export hashes. Pstore was empty. The archived B image still lacks the handoff receiver. The physical comparison did not start. See outputs/duchamp-slot-b-physical-compare-20261112/verification.json.
 
 ACTIVE HANDOFF - XNU rejects a pending inherited UFS request in QEMU (2026-11-12)
 
