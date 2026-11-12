@@ -199,13 +199,24 @@ validates and uses QEMU's layout, as defined by the pinned emulator source.
 [QEMU UFS implementation](https://github.com/qemu/qemu/blob/v10.2.1/hw/ufs/ufs.c)
 and [QEMU register and completion definitions](https://github.com/qemu/qemu/blob/v10.2.1/include/block/ufs.h)
 
-The local replay compiles `duchamp/xnu/qemu_ufs_mcq_replay.c` and links it
+The local replay compiles `duchamp/xnu/qemu_ufs_mcq.c` and links it
 into verified empty text/data gaps in the CI 43115466836 Mach-O. A checked
 call-site replacement affects the virtual root driver's `dufs_bind()`
 call. The original BSD block driver, request construction, GPT parser,
 HFS+ implementation and PID 1 stay in the CI binary. This experiment
 uses a pinned compiled baseline with a locally linked transport.
-A full source rebuild incorporating MCQ remains a separate verification.
+The same module is staged as `bsd/dev/duchamp_qemu_ufs_mcq.c` for a full
+XNU source build. The root adapter calls `dufs_mcq_bind()` through its normal
+entry point and maps `0x2000` bytes to include MCQ runtime registers.
+The MCQ module uses the same SWEET board guard as the virtual root adapter.
+When the MCQ boot argument is absent, binding returns the original legacy
+transport configuration.
+
+The verifier accepts `--full-build-sha256`, `--ci-run` and `--ci-head` to
+exercise a complete CI Mach-O. It checks the supplied digest and the MCQ
+and handoff symbols, then builds each payload from that binary directly.
+The report records `full_kernel_rebuild=true` and
+`replay_hooks_applied=false` in this mode.
 
 The replay requires `sweet-qemu-ufs-mcq=1`, the GPT fixture, explicit
 read-only storage and the existing QEMU handoff opt-in. The runner selects
@@ -252,7 +263,7 @@ preceding model section. The completed report, per-case device traces and
 framebuffer captures are archived under
 `outputs/duchamp-mt6897-ufs-mcq-20261112/verified`.
 
-All seven guest cases passed on QEMU 10.2.1. The normal case reached PID 1
+The initial local replay passed all seven guest cases on QEMU 10.2.1. Its normal case reached PID 1
 after 33.890 host seconds with 33 MCQ submissions/completions and 28
 READ(16) commands. An independent trace check matched all SQ tail and
 CQ head offsets through eight wraps. The existing legacy mode reached
@@ -262,6 +273,31 @@ the expected refusal or timeout. The report records those expected stops.
 The inherited stage-171 text still says `QEMU RAM ROOT MOUNTED`. The
 fixture metadata has `no_ramdisk=true`, and PID 1 checks that its root
 device matches qufs0 before reading the known HFS+ file.
+
+The full-source build completed successfully in
+[CI 43290848980](https://github.com/Mehmed911/ios-sweet/actions/runs/43290848980)
+at source `3879b4b380112de3fab4987cb216c139423e17d2`. It uses the successful
+CI 43115466836 input tree plus the MCQ integration. The artifact identifies
+all 317 source inputs and the verified IIG archive. Its unmodified Mach-O
+SHA-256 is `6f471df61fceb79fade40d7d5248621837d5484ded3c7690e2061f11069e10c8`.
+Native disassembly shows the root driver calling `dufs_mcq_bind()`.
+This kernel reached diagnostic PID 1 via GPT/MCQ in 33.936 host seconds
+and completed 33 MCQ requests, including 28 READ(16) commands.
+All seven cases passed using this complete binary with
+`replay_hooks_applied=false`. Invalid DMA and missing SQ synchronization
+produced zero submissions. The device-side fault produced one submission,
+one QEMU DMA error, no SCSI commands and a bounded timeout. Missing grants
+and an inherited MCQ mode left the UFS trace empty. The same binary reached
+PID 1 in legacy mode in 33.887 seconds.
+
+The full-build receipts, per-case traces, native binding, ring advances,
+legacy regression and framebuffer capture are under
+`outputs/duchamp-xnu-mcq-full-20261112`. The unchanged kernel is
+`work/ci-xnu-ufs-mcq-20261112/kernel-selected/kernel.development.sweet`.
+All 44 host staging/profile checks passed. The full-build verifier also
+refused a wrong digest and an older kernel lacking the MCQ symbol.
+The physical platform and non-coherent cache limitations described above
+still apply.
 
 ## Preserved raw-read failure and fix
 

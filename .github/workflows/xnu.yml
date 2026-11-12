@@ -150,6 +150,7 @@ jobs:
           grep -Fq 'duchamp_qemu_spi2_touch_step(self->fTestCount)' xnu/iokit/Kernel/arm/hid/SweetHID.cpp
           cmp ../duchamp/drivers/ufs_readonly.c xnu/bsd/dev/duchamp_ufs_core.c
           cmp ../duchamp/drivers/ufs_readonly.h xnu/bsd/dev/ufs_readonly.h
+          cmp ../duchamp/xnu/qemu_ufs_mcq.c xnu/bsd/dev/duchamp_qemu_ufs_mcq.c
           grep -Fq 'DUCHAMP QEMU backend selftest failed' xnu/iokit/bsddev/IOKitBSDInit.cpp
           grep -Fq 'QEMU XNU BACKENDS SELFTEST PASS' xnu/bsd/dev/duchamp_qemu_backends.c
           grep -Fq 'QEMU XNU UFS LEASE PROVIDER DEFAULT CLOSED' xnu/bsd/dev/duchamp_qemu_backends.c

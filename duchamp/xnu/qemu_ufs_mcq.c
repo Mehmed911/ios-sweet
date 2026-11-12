@@ -1,15 +1,14 @@
 /*
- * Local QEMU 10.2 UFS transport for the pinned XNU replay. Keep the BSD/GPT
+ * QEMU 10.2 UFS transport. Keep the BSD/GPT
  * driver and its checked request/response code, replacing only its queue I/O.
  * The physical MT6897 backend and inherited-queue policy are independent.
  */
-#ifndef DUCHAMP_PINNED_QEMU_MCQ_REPLAY
-#error "Only the isolated QEMU MCQ replay may link this source"
-#endif
+#if defined(ARM64_BOARD_CONFIG_SWEET) || defined(DUCHAMP_PINNED_QEMU_MCQ_REPLAY)
 #include "ufs_readonly.h"
 
 extern int PE_parse_boot_argn(const char *, void *, int);
 extern void sweet_early_mark(unsigned, const char *);
+int dufs_mcq_bind(struct dufs_host *, const struct dufs_config *);
 
 enum {
     CAP = 0, MCQCAP = 4, IS = 0x20,
@@ -191,3 +190,4 @@ int dufs_mcq_bind(struct dufs_host *host, const struct dufs_config *config)
     host->config.io.dma_read = mcq_dma_read;
     return 0;
 }
+#endif

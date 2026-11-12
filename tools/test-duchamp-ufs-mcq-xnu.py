@@ -18,7 +18,7 @@ from duchamp_ufs_xnu_replay import branch, digest, macho_segments, symbols
 TOOLS = Path(__file__).resolve().parent
 SLOT = runpy.run_path(str(TOOLS / "test-duchamp-slot-b-handoff.py"))
 ROOT = SLOT["ROOT"]
-SOURCE = TOOLS.parent / "duchamp/xnu/qemu_ufs_mcq_replay.c"
+SOURCE = TOOLS.parent / "duchamp/xnu/qemu_ufs_mcq.c"
 BASE_SHA256 = "57ba8b32dd1b7a5ed7c70ed65d7a4aec107d12b85147f236c439cd309672fda0"
 BIND_CALL = 0xfffffe00074df9e4
 TEXT = 0xfffffe0007b479a0
@@ -152,6 +152,9 @@ def main():
     for option in ("kernel", "slot-b", "fdt", "fixture", "mt6897-sources", "output"):
         parser.add_argument("--" + option, type=lambda path: Path(path).resolve(), required=True)
     parser.add_argument("--seconds", type=int, default=90)
+    parser.add_argument("--full-build-sha256", help="verify and boot the complete Mach-O without replay hooks")
+    parser.add_argument("--ci-run", type=int)
+    parser.add_argument("--ci-head")
     parser.add_argument("--jobs", type=int, choices=(1, 2, 3), default=2)
     parser.add_argument("--case", choices=CASES, action="append")
     args = parser.parse_args()
@@ -170,7 +173,22 @@ def main():
     SLOT["write_json"](output / "mt6897-model.json", model)
     assert model["mcq_wrap_and_drain"] and model["mcq_test_queue"] == 7
     assert model["profile"]["mcq_stride"] == 0x30
-    kernel, build = build_kernel(baseline, output)
+    baseline_sha = digest(baseline.read_bytes())
+    if args.full_build_sha256:
+        if baseline_sha != args.full_build_sha256:
+            parser.error("full-build kernel SHA-256 differs from the artifact receipt")
+        required = {"_dufs_mcq_bind", "_duchamp_qemu_ufs_handoff_enter",
+                    "_duchamp_qemu_ufs_rootdev"}
+        if not required <= symbols(baseline).keys():
+            parser.error("full-build artifact lacks the XNU MCQ integration")
+        kernel = baseline
+        build = dict(kernel_sha256=baseline_sha, ci_run=args.ci_run, ci_head=args.ci_head,
+                     source_sha256=digest(SOURCE.read_bytes()), full_kernel_rebuild=True,
+                     replay_hooks_applied=False)
+    else:
+        if args.ci_run is not None or args.ci_head is not None:
+            parser.error("CI provenance flags require --full-build-sha256")
+        kernel, build = build_kernel(baseline, output)
     args.kernel = kernel
     cases = args.case or list(CASES)
     if len(cases) != len(set(cases)):
@@ -199,7 +217,7 @@ def main():
             results[name] = future.result()
             SLOT["write_json"](output / name / "verification.json", results[name])
             print(name, json.dumps(results[name]), flush=True)
-    assert digest(baseline.read_bytes()) == BASE_SHA256
+    assert digest(baseline.read_bytes()) == baseline_sha
     assert digest(args.slot_b.read_bytes()) == slot_sha
     assert digest(disk.read_bytes()) == manifest["sha256"][disk.name]
     report = dict(passed=True, full_matrix=set(cases) == CASES.keys(), build=build,
