@@ -1,3 +1,10 @@
+ACTIVE HANDOFF - QEMU UFS replay and live BL31 correlation recheck (2026-11-12)
+
+- Replayed all nine QEMU cases with the SHA-256-pinned full XNU artifact from CI 43115466836. The matching synthetic handoff issued one READ(16) for LUN 2 / LBA 276480, read 4096 bytes and matched the Android reference. A one-byte alteration changed the digest. All seven denials had zero controller events.
+- Read-only ADB confirmed the same Android A boot before and after the capture. ATF raw (2097152 bytes), runtime snapshot (131072 bytes), PL/LK and bootprof all matched their prior Android A hashes. Parsed the vendor buffer headers and verified that the runtime snapshot is byte-for-byte the RUNTIME_LOG body of the raw export. Pstore was empty and last_kmsg was unavailable.
+- Rechecked the archived Slot B trial, PL/LK log and pstore slices. The LK reference to boot_b is a partition listing. The trial image lacks the handoff receiver, and the available records have no correlated BL31-to-XNU entry, queue drain, DMA grant or cache owner. A vendor-supported final-exit record with a matching XNU boot identifier remains the physical UFS prerequisite.
+- Reports and the matching QEMU traces are in outputs/duchamp-bringup-recheck-20261112. No reboot, slot change, flash, partition write, direct MMIO or physical UFS read.
+
 ACTIVE HANDOFF - Live Android A ATF logs checked for Slot B XNU (2026-11-12)
 
 - ADB identified Duchamp running Android V816.0.17.0.UNLMIXM on A. The Android boot ID hash and slot agreed before and after the read-only capture. ATF raw returned 2097152 bytes and runtime_snapshot returned 131072. Both showed BL31 lts-v2.8.6(release):2fbca47. PL/LK and bootprof also read successfully. Pstore was empty and last_kmsg was unreadable.
