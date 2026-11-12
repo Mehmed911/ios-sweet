@@ -42,7 +42,7 @@ def write_json(path, data):
     path.write_text(json.dumps(data, indent=2) + "\n")
 
 
-def build_image(args, output, adt_path, *, gpt):
+def build_image(args, output, adt_path, *, gpt, extra_boot_args=""):
     tree_raw = adt_path.read_bytes()
     tree, end = adt.parse(tree_raw)
     assert end == len(tree_raw)
@@ -53,7 +53,7 @@ def build_image(args, output, adt_path, *, gpt):
     tree_path = output / "boot.adt"
     tree_path.write_bytes(adt.serialize(tree))
     cmdline = BOOT_ARGS if gpt else BOOT_ARGS + " sweet-qemu-ufs-probe=1"
-    payload, _ = mkpayload.build(args.kernel, tree_path, cmdline)
+    payload, _ = mkpayload.build(args.kernel, tree_path, cmdline + extra_boot_args)
     payload_path = output / "payload.bin"
     payload_path.write_bytes(payload)
 

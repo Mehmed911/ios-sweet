@@ -182,6 +182,87 @@ MCQ queue movement and non-coherent cache visibility are exercised by the
 software model. The guest trace covers the virtual controller's legacy
 operations. Evidence is under `outputs/duchamp-mt6897-ufs-model-20261112`.
 
+## QEMU MCQ guest transport
+
+`tools/test-duchamp-ufs-mcq-xnu.py` connects the source-checked MT6897 model
+to a QEMU MCQ guest test. The model supplies the eight-queue capacity and
+synthetic cold handoff. XNU then creates one submission/completion pair on
+QEMU's PCI UFS controller. Each ring contains four 32-byte entries, and the
+existing single-owner read-only transport keeps one request outstanding.
+The guest polls completion and acknowledges CQ head movement. The normal
+boot wraps both rings while reading the GPT and HFS+ root.
+
+The QEMU register layout places queue configuration at `0x400` and runtime
+registers at `0x1000`. MT6897's source-derived runtime offsets begin at
+`0x2800`. The model preserves those MediaTek offsets. The guest adapter
+validates and uses QEMU's layout, as defined by the pinned emulator source.
+[QEMU UFS implementation](https://github.com/qemu/qemu/blob/v10.2.1/hw/ufs/ufs.c)
+and [QEMU register and completion definitions](https://github.com/qemu/qemu/blob/v10.2.1/include/block/ufs.h)
+
+The local replay compiles `duchamp/xnu/qemu_ufs_mcq_replay.c` and links it
+into verified empty text/data gaps in the CI 43115466836 Mach-O. A checked
+call-site replacement affects the virtual root driver's `dufs_bind()`
+call. The original BSD block driver, request construction, GPT parser,
+HFS+ implementation and PID 1 stay in the CI binary. This experiment
+uses a pinned compiled baseline with a locally linked transport.
+A full source rebuild incorporating MCQ remains a separate verification.
+
+The replay requires `sweet-qemu-ufs-mcq=1`, the GPT fixture, explicit
+read-only storage and the existing QEMU handoff opt-in. The runner selects
+`ufs,mcq=on,mcq-maxq=8`. Existing invocations select the legacy device.
+The boot image is locally repacked and extracted for the QEMU loader.
+The archived Slot B image and GPT disk are hash-checked before and after.
+The runtime mailbox remains a synthetic BL31 record with a fresh boot ID.
+
+The matrix checks these paths.
+
+| Case | Required observation |
+| --- | --- |
+| Cold handoff | GPT/HFS+ root, diagnostic PID 1, file bytes and EROFS write-open rejection |
+| UCD DMA address outside the owned pool | Rejection before any SQ tail write or SCSI command |
+| Missing SQ publication/sync | Rejection before any SQ tail write or SCSI command |
+| Device-side UCD DMA fault | One SQ submission, QEMU DMA error, bounded timeout and zero SCSI commands |
+| Missing DMA grant | Empty virtual UFS trace |
+| Missing cache grant | Empty virtual UFS trace |
+| Inherited MCQ handoff | Empty virtual UFS trace |
+
+The normal path uses the existing XNU DMA callbacks to publish the SQE and
+synchronize the CQE and payload for CPU access. The missing-sync control
+injects an unpublished SQE condition and refuses submission. QEMU TCG's
+coherent memory cannot measure physical non-coherent cache behavior.
+The separate MT6897 model retains distinct CPU/device arrays to exercise
+stale PRDT and data visibility. Hardware cache ownership, firmware
+delegation, interrupts and physical UFS remain outside this test.
+
+Run inside WSL, using a new output directory on the Linux filesystem.
+
+```sh
+python3 -B tools/test-duchamp-ufs-mcq-xnu.py \
+  --kernel work/ci-xnu-ufs-probe-20261112/kernel-selected/kernel.development.sweet \
+  --slot-b ../../outputs/duchamp-slot-b-candidate-20261111/boot_b.img \
+  --fdt ../phone-fdt.bin \
+  --fixture work/qufs-gpt-xnu-20261110-v1/gpt-fixture \
+  --mt6897-sources /path/to/pinned-xiaomi-ufs-sources \
+  --output /path/to/new-linux-output --jobs 2 --seconds 100
+python3 -B tools/test-qemu-ufs-profile.py
+```
+
+The source directory contains the three pinned Xiaomi files listed in the
+preceding model section. The completed report, per-case device traces and
+framebuffer captures are archived under
+`outputs/duchamp-mt6897-ufs-mcq-20261112/verified`.
+
+All seven guest cases passed on QEMU 10.2.1. The normal case reached PID 1
+after 33.890 host seconds with 33 MCQ submissions/completions and 28
+READ(16) commands. An independent trace check matched all SQ tail and
+CQ head offsets through eight wraps. The existing legacy mode reached
+PID 1 using the same replay kernel, and all 29 host profile checks passed.
+The failed-root cases deliberately end in a root-unavailable panic after
+the expected refusal or timeout. The report records those expected stops.
+The inherited stage-171 text still says `QEMU RAM ROOT MOUNTED`. The
+fixture metadata has `no_ramdisk=true`, and PID 1 checks that its root
+device matches qufs0 before reading the known HFS+ file.
+
 ## Preserved raw-read failure and fix
 
 `research/xnu-ufs/guest-v1` failed after 70.61 host seconds. The initial kernel

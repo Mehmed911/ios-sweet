@@ -142,6 +142,15 @@ def runner_options(payload,image,cpu,framebuffer, *, var_ramdisk=False):
         raise ValueError('data RAMDisk requires explicit read-only root and no alternate memory devices')
     if gpt and (args.count('rootrw=0') != 1 or any(x.startswith(('pmd','vmd')) for x in args)):
         raise ValueError('GPT fixture requires explicit read-only root and no alternate memory devices')
+    mcq_args = [x for x in args if x.split('=', 1)[0] == 'sweet-qemu-ufs-mcq']
+    fault_args = [x for x in args if x.split('=', 1)[0] == 'sweet-qemu-mcq-fault']
+    if mcq_args or fault_args:
+        if (mcq_args != ['sweet-qemu-ufs-mcq=1'] or not gpt or var_ramdisk or probe_args
+                or [x for x in args if x.split('=', 1)[0] == 'sweet-qemu-ufs-handoff']
+                != ['sweet-qemu-ufs-handoff=1']
+                or fault_args not in ([], ['sweet-qemu-mcq-fault=1'], ['sweet-qemu-mcq-fault=2'],
+                                      ['sweet-qemu-mcq-fault=3'])):
+            raise ValueError('MCQ requires the read-only GPT handoff fixture and a recognized fault mode')
     var_layout = data_ramdisk(payload, tree, offset, size) if var_ramdisk else None
     path=Path(image).resolve()
     if not stat.S_ISREG(path.stat().st_mode) or ',' in str(path):
@@ -179,8 +188,11 @@ def runner_options(payload,image,cpu,framebuffer, *, var_ramdisk=False):
     lun = PROBE_LUN if probe_args else 0
     if probe_args:
         metadata['probe'] = {'lun': lun, 'lba': PROBE_LBA, 'bytes': PROBE_BYTES}
+    if mcq_args:
+        metadata['mcq'] = {'max_queues': 8, 'fault': int(fault_args[0][-1]) if fault_args else 0}
     drive_id = f'duchamp_lu{lun}'
+    queue_options = 'mcq=on,mcq-maxq=8' if mcq_args else 'mcq=off'
     options=['-drive',f'file={path},format=raw,if=none,id={drive_id},readonly=on',
-             '-device','ufs,id=duchamp_ufs,addr=04.0,mcq=off',
+             '-device',f'ufs,id=duchamp_ufs,addr=04.0,{queue_options}',
              '-device',f'ufs-lu,drive={drive_id},bus=duchamp_ufs,lun={lun}']
     return options,metadata

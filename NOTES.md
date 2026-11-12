@@ -1,3 +1,11 @@
+ACTIVE HANDOFF - QEMU MCQ boots the GPT root and rejects DMA/cache faults (2026-11-12)
+
+- Added the isolated MCQ transport in `duchamp/xnu/qemu_ufs_mcq_replay.c` and `tools/test-duchamp-ufs-mcq-xnu.py`. The source-checked MT6897 model supplies the eight-queue capacity and synthetic cold handoff. QEMU executes a four-entry SQ/CQ pair on queue 0 using its own register layout. The default virtual UFS profile retains legacy mode.
+- All seven XNU/QEMU cases passed. The GPT/HFS+ root reached diagnostic PID 1 in 33.890 host seconds with 33 MCQ submissions/completions and 28 READ(16) commands. SQ/CQ offsets matched through eight wraps. PID 1 verified the file bytes and EROFS write-open rejection. The GPT disk SHA-256 stayed `9a74c16529b51a06bcc843e73184ae669a5670808a4e85db7c532db578be74e1`.
+- Invalid owned-pool DMA and missing SQ sync each produced zero SQ submissions/SCSI commands. An explicit device-side UCD fault produced one SQ submission, one QEMU DMA-read error, no completions/SCSI commands and a bounded XNU timeout. Missing DMA/cache grants and inherited MCQ each left the entire UFS trace empty. Negative root selection ends in an expected root-unavailable panic. The legacy regression also reached PID 1, and all 29 host profile checks passed.
+- This uses a 1632-byte locally compiled transport linked into checked gaps of the CI 43115466836 kernel, with one checked root-driver call-site hook. Replay SHA-256 is `5ed792c0052a6d791eb24dda3d87fd33c37bde4b98d41a3c480678658eb57a42`. A full source rebuild with MCQ is the next verification. The cache omission is an injected contract failure under coherent QEMU TCG. Physical MT6897 cache/resource ownership remains unverified.
+- Reports, traces, local images and `pid1.png` are in `outputs/duchamp-mt6897-ufs-mcq-20261112/verified`. The source/command details are in `duchamp/QEMU-UFS-XNU.md`. No phone access or partition changes.
+
 ACTIVE HANDOFF - MT6897 UFS model supplies the Slot B GPT test (2026-11-12)
 
 - Added `tools/mt6897_ufs_model.py`. The pinned Duchamp DTB provides the UFS HCI, IRQs and identity DMA aperture, and the pinned Xiaomi UFS source provides MCQ register offsets, stride and permission policy. The model runs legacy and MCQ queue drain checks and verifies that the PRDT and data stay stale until the appropriate sync. An out-of-window DMA address is rejected.

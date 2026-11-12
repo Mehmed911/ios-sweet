@@ -91,6 +91,36 @@ class Tests(unittest.TestCase):
         target = profile.child(tree,'duchamp-qemu-ufs')
         target.props.append(('gpt-root-guid',0,profile.GPT_ROOT_GUID.bytes_le))
         reject_gpt(tree)
+
+    def test_mcq_requires_explicit_gpt_handoff_profile(self):
+        tree = self.gpt_tree()
+        raw = bytearray(1024 * 1024)
+        raw[512:520] = b'EFI PART'
+        self.image.write_bytes(raw)
+        args = 'rd=qufs0 sweet-qemu-ufs=1 rootrw=0 sweet-qemu-ufs-handoff=1 sweet-qemu-ufs-mcq=1'
+        for fault in ('', ' sweet-qemu-mcq-fault=1', ' sweet-qemu-mcq-fault=2',
+                      ' sweet-qemu-mcq-fault=3'):
+            with self.subTest(fault=fault):
+                options, meta = profile.runner_options(self.payload(tree, args + fault),
+                                                        self.image, 'cortex-a76', 'duchamp')
+                self.assertIn('mcq=on,mcq-maxq=8', options[3])
+                self.assertTrue(meta['readonly'])
+                self.assertEqual(meta['mcq']['fault'], int(fault[-1]) if fault else 0)
+        for changed in (args.replace('sweet-qemu-ufs-handoff=1', ''),
+                        args + ' sweet-qemu-ufs-mcq=1',
+                        args + ' sweet-qemu-ufs-handoff=0',
+                        args + ' sweet-qemu-mcq-fault=4',
+                        args + ' sweet-qemu-mcq-fault=2 sweet-qemu-mcq-fault=2',
+                        args.replace('sweet-qemu-ufs-mcq=1', 'sweet-qemu-ufs-mcq=0'),
+                        args.replace('sweet-qemu-ufs-mcq=1', 'sweet-qemu-mcq-fault=1')):
+            with self.subTest(args=changed):
+                self.reject(tree, args=changed)
+        self.reject(args=args)
+
+    def test_legacy_profile_keeps_mcq_disabled(self):
+        options, meta = profile.runner_options(self.payload(), self.image, 'cortex-a76', 'duchamp')
+        self.assertIn('mcq=off', options[3])
+        self.assertNotIn('mcq', meta)
     def test_other_cpu(self): self.reject(cpu='cortex-a715')
     def test_other_framebuffer(self): self.reject(fb='sweet')
 
