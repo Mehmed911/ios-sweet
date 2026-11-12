@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Live Android A ATF logs checked for Slot B XNU (2026-11-12)
+
+- ADB identified Duchamp running Android V816.0.17.0.UNLMIXM on A. The Android boot ID hash and slot agreed before and after the read-only capture. ATF raw returned 2097152 bytes and runtime_snapshot returned 131072. Both showed BL31 lts-v2.8.6(release):2fbca47. PL/LK and bootprof also read successfully. Pstore was empty and last_kmsg was unreadable.
+- No captured log contained an XNU entry, a correlatable Slot B boot ID or evidence of queue drain and DMA/cache delegation. The report is under outputs/duchamp-slot-b-live-adb-20261112. Raw log contents were not retained. No reboot, slot switch, flash, partition write or physical UFS probe.
+
 ACTIVE HANDOFF - Slot B BL31 capture attempt (2026-11-12)
 
 - Windows reported no ADB or Fastboot devices, no matching Xiaomi/MediaTek/Android USB interface and no present serial ports. No capture could be acquired from the phone. The saved Slot B launchd receipt has no boot identifier for BL31 correlation. The audited Slot B image uses md0 and has no handoff receiver.
