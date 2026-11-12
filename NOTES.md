@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - Firmware and XNU UFS block digests match in one QEMU boot (2026-11-12)
+
+- Added a HakiOS-style comparison to tools/test-duchamp-ufs-probe-xnu.py. Before starting XNU, QTest acts as the firmware and sends one READ(16) for LUN 2 / LBA 276480 on the same read-only virtual UFS device. It verifies completion and hashes the 4096 bytes returned into guest RAM by UFS DMA.
+- Boot ID 0x7a25e7ed54de4d82 appears in the QTest receipt and both XNU entry fields. At handoff HCE, UTRLDBR, UTRLRSR, UTMRLDBR and UTMRLRSR all read zero. The measured legacy queue state matches the synthetic ADT record.
+- XNU from CI 43115466836 sends its own READ(16) for the same block. Both SHA-256 digests match the saved Android reference. All twelve XNU/QEMU cases and 27 host profile tests passed. The separately captured firmware and XNU traces are in outputs/duchamp-ufs-firmware-xnu-compare-20261112. No phone access or partition writes.
+
 ACTIVE HANDOFF - Physical Slot B UFS prerequisites rechecked (2026-11-12)
 
 - Read-only ADB found the same Duchamp Android A boot before and after capture. The ATF raw and snapshot, PL/LK and bootprof hashes all match the previous Android A capture, and pstore is empty. Reverified the archived Slot B photo and LK/pstore hashes. That XNU image boots md0 and has no handoff receiver. No available record binds the observed firmware to that XNU entry or establishes queue drain, DMA delegation or the cache maintenance owner.

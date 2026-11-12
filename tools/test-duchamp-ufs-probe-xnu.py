@@ -27,6 +27,7 @@ TOOLS = Path(__file__).resolve().parent
 handoff = runpy.run_path(str(TOOLS / "test-duchamp-ufs-handoff-xnu.py"))
 sweet = runpy.run_path(str(TOOLS / "qemu-sweet.py"))
 CASES = {
+    "firmware_xnu_compare": handoff["CASES"]["matched"],
     "inherited_pending": handoff["CASES"]["matched"],
     "inherited_controller": handoff["CASES"]["matched"],
     **handoff["CASES"],
@@ -39,6 +40,10 @@ FAILED = "DUCHAMP UFS PROBE FAILED"
 START = "DUCHAMP UFS PROBE SHA256 "
 FIRMWARE_LIST = 0x60000000  # Guest RAM below the XNU memory window.
 FIRMWARE_REQUEST = "firmware_pending"
+FIRMWARE_QUEUE_REGISTERS = (
+    ("HCE", 0x34), ("HCS", 0x30), ("UTRLBA", 0x50), ("UTRLBAU", 0x54),
+    ("UTRLDBR", 0x58), ("UTRLRSR", 0x60), ("UTMRLDBR", 0x78), ("UTMRLRSR", 0x80),
+)
 
 
 def sha256(path):
@@ -90,6 +95,8 @@ def qtest(endpoint):
                 reply = stream.readline().strip().split(maxsplit=1)
                 if not reply or reply[0] != "OK":
                     raise RuntimeError(f"qtest {request}: {reply}")
+                if request.startswith("read "):
+                    return bytes.fromhex(reply[1].removeprefix("0x"))
                 return int(reply[1], 0) if len(reply) == 2 else None
             yield command
 
@@ -121,10 +128,24 @@ def submit_firmware_request(command, *, read):
     command(f"writel {qemu_ufs.BAR[0] + 0x58:#x} 1")
 
 
-def seed_firmware_ufs(endpoint, trace, hold_read):
+def finish_firmware_read(command):
+    wait_doorbell(command, 0)
+    assert command(f"readl {FIRMWARE_LIST + 8:#x}") == 0
+    response = command(f"read {FIRMWARE_LIST + 0x1200:#x} 0x10")
+    assert response[0] == 0x21 and response[2:4] == bytes((qemu_ufs.PROBE_LUN, 2))
+    assert response[6:8] == bytes(2) and response[12:16] == bytes(4)
+    size = qemu_ufs.PROBE_BYTES
+    block = command(f"read {FIRMWARE_LIST + 0x2000:#x} {size:#x}")
+    assert len(block) == size
+    return dict(lun=qemu_ufs.PROBE_LUN, lba=qemu_ufs.PROBE_LBA, bytes=size,
+                sha256=hashlib.sha256(block).hexdigest(), ocs=0, scsi_status=0)
+
+
+def seed_firmware_ufs(endpoint, trace, *, hold_read=None, release_after_read=False):
     """Program QEMU's legacy transfer list while the XNU CPU is paused."""
     bar = qemu_ufs.BAR[0]
     pci = qemu_ufs.ECAM[0] + (4 << 15)
+    state = {}
     with qtest(endpoint) as command:
         assert command(f"readl {pci:#x}") == 0x00131b36
         bar_type = command(f"readl {pci + 0x10:#x}") & 15
@@ -132,40 +153,49 @@ def seed_firmware_ufs(endpoint, trace, hold_read):
         command(f"writel {pci + 0x10:#x} {bar:#x}")
         if bar_type == 4:
             command(f"writel {pci + 0x14:#x} 0")
-        command(f"writew {pci + 4:#x} {6 if hold_read else 2}")
+        command(f"writew {pci + 4:#x} {6 if hold_read or release_after_read else 2}")
         for offset, value in ((0x34, 1), (0x90, 0x16), (0x50, FIRMWARE_LIST),
                               (0x54, 0), (0x60, 1)):
             command(f"writel {bar + offset:#x} {value:#x}")
-        if hold_read:
+        if hold_read or release_after_read:
             # Consume the virtual LUN's power-on UNIT ATTENTION before its read.
             submit_firmware_request(command, read=False)
             wait_doorbell(command, 0)
             assert command(f"readl {FIRMWARE_LIST + 8:#x}") == 0
-            hold_read()
+            if hold_read:
+                hold_read()
             submit_firmware_request(command, read=True)
+        if hold_read:
             deadline = time.monotonic() + 5
             while "ufs_exec_scsi_cmd slot 0, lun 0x2, opcode 0x88" not in trace.read_text():
                 if time.monotonic() >= deadline:
                     raise RuntimeError("Firmware READ(16) was not submitted")
                 time.sleep(0.02)
             assert command(f"readl {FIRMWARE_LIST + 8:#x}") == 0xf
+        if release_after_read:
+            state["firmware_read"] = finish_firmware_read(command)
+            # Stop submissions and release the completed firmware list before XNU.
+            for offset in (0x60, 0x50, 0x54, 0x34):
+                command(f"writel {bar + offset:#x} 0")
         registers = {
             name: command(f"readl {bar + offset:#x}")
-            for name, offset in (("HCE", 0x34), ("HCS", 0x30), ("UTRLBA", 0x50),
-                                 ("UTRLBAU", 0x54), ("UTRLDBR", 0x58), ("UTRLRSR", 0x60))
+            for name, offset in FIRMWARE_QUEUE_REGISTERS
         }
-        assert registers["HCE"] == 1 and registers["HCS"] & 3 == 3
-        assert (registers["UTRLBA"], registers["UTRLBAU"]) == (FIRMWARE_LIST, 0)
-        assert (registers["UTRLDBR"], registers["UTRLRSR"]) == (int(bool(hold_read)), 1)
+        if release_after_read:
+            assert not any(registers.values()), registers
+        else:
+            assert registers["HCE"] == 1 and registers["HCS"] & 3 == 3
+            assert (registers["UTRLBA"], registers["UTRLBAU"]) == (FIRMWARE_LIST, 0)
+            assert (registers["UTRLDBR"], registers["UTRLRSR"]) == (int(bool(hold_read)), 1)
 
-        # XNU maps the PCI BAR again. HCI and its list remain running.
+        # XNU maps the PCI BAR again without changing the HCI state here.
         command(f"writew {pci + 4:#x} 0")
         pci_command = command(f"readw {pci + 4:#x}")
         assert pci_command == 0
     setup_trace = trace.read_text().splitlines()
     assert setup_trace
     return dict(queue_mode="legacy", registers=registers, pci_command=pci_command,
-                setup_trace=setup_trace)
+                setup_trace=setup_trace, **state)
 
 
 def observe_pending_request(monitor, endpoint, trace, state, checkpoint, seconds):
@@ -183,7 +213,7 @@ def observe_pending_request(monitor, endpoint, trace, state, checkpoint, seconds
 
         try:
             firmware = seed_firmware_ufs(
-                endpoint, trace, lambda: block_command(f"break read_aio {FIRMWARE_REQUEST}")
+                endpoint, trace, hold_read=lambda: block_command(f"break read_aio {FIRMWARE_REQUEST}")
             )
             state.update(firmware)
             qmp("cont")
@@ -213,7 +243,7 @@ def observe_pending_request(monitor, endpoint, trace, state, checkpoint, seconds
 
 
 def boot_to_probe(payload, folder, options, qemu, seconds, names, checkpoint,
-                  *, inherited, pending):
+                  *, inherited, pending, compare_record):
     """Stop at the compiled terminal loop and capture the kernel's BSD log."""
     run = folder / "run"
     run.mkdir()
@@ -224,8 +254,11 @@ def boot_to_probe(payload, folder, options, qemu, seconds, names, checkpoint,
     events = folder / "trace-events"
     trace_events = ("ufs_mmio_read\nufs_mmio_write\nufs_exec_scsi_cmd\n"
                     "scsi_req_parsed_lba\nscsi_req_parsed\n")
-    if pending:
+    compare = compare_record is not None
+    observe_firmware = inherited or compare
+    if pending or compare:
         trace_events += "ufs_process_db\nufs_complete_req\n"
+    if pending:
         options = options.copy()
         drive_index = options.index("-drive") + 1
         options[drive_index] = options[drive_index].replace("file=", "file=blkdebug::", 1)
@@ -247,7 +280,7 @@ def boot_to_probe(payload, folder, options, qemu, seconds, names, checkpoint,
                "-device", f"loader,file={stub},addr={stub_pa:#x},force-raw=on",
                "-device", f"loader,addr={stub_pa:#x},cpu-num=0",
                "-trace", f"events={events},file={trace}", *options]
-        if inherited:
+        if observe_firmware:
             cmd.extend(["-qtest", f"unix:{firmware},server=on,wait=off",
                         "-qtest-log", str(folder / "firmware-qtest.log")])
         ring, block = scratch / "msgbuf", scratch / "block"
@@ -279,7 +312,7 @@ disconnect
             try:
                 for _ in range(100):
                     if monitor.exists() and debug.exists() and (
-                        not inherited or firmware.exists()
+                        not observe_firmware or firmware.exists()
                     ):
                         break
                     if process.poll() is not None:
@@ -287,12 +320,19 @@ disconnect
                     time.sleep(0.05)
                 else:
                     raise RuntimeError("QEMU socket startup timed out")
-                if inherited:
+                if observe_firmware:
                     state = {}
                     if pending:
                         observe_pending_request(monitor, firmware, trace, state, checkpoint, seconds)
                     else:
-                        state = seed_firmware_ufs(firmware, trace, hold_read=None)
+                        state = seed_firmware_ufs(firmware, trace, release_after_read=compare)
+                    if compare:
+                        fields = struct.unpack("<IIQ8I2Q", compare_record)
+                        queue_fields = ("HCE", "UTRLDBR", "UTMRLDBR", "UTRLRSR", "UTMRLRSR")
+                        measured = tuple(state["registers"][name] for name in queue_fields)
+                        assert fields[3:10] == (1, *measured, 0), (fields, measured)
+                        state.update(boot_id=hex(fields[2]), record_matches_measured_queues=True,
+                                     source="QTest before XNU execution")
                     (folder / "firmware-state.json").write_text(json.dumps(state, indent=2) + "\n")
                 receipt = subprocess.run(["gdb-multiarch", "-q", "-nx", "-batch", "-x", str(gdb)],
                                          text=True, capture_output=True, timeout=seconds)
@@ -330,6 +370,7 @@ def run_case(name, ids, output, kernel, tree_raw, disk, qemu, seconds, names, ch
     same_boot, proof, busy, verdict = CASES[name]
     pending = name == "inherited_pending"
     inherited = pending or name == "inherited_controller"
+    compare = name == "firmware_xnu_compare"
     entry_id = ids[name]
     bl31_id = 0 if same_boot is None else entry_id if same_boot else ids["matched"]
     folder = output / name
@@ -337,6 +378,7 @@ def run_case(name, ids, output, kernel, tree_raw, disk, qemu, seconds, names, ch
     tree, end = adt.parse(tree_raw)
     assert end == len(tree_raw)
     chosen = qemu_ufs.child(tree, "chosen")
+    record = None
     if bl31_id:
         record = struct.pack("<IIQ8I2Q", 1, proof, bl31_id, 1, 0, busy, 0, 0, 0, 0, 0, 5, 6)
         chosen.props.append(("qemu-bl31-ufs", 0, record))
@@ -351,7 +393,8 @@ def run_case(name, ids, output, kernel, tree_raw, disk, qemu, seconds, names, ch
     disk_path, disk_hash, expected_hash = disk
     options, metadata = qemu_ufs.runner_options(payload, disk_path, "cortex-a76", "duchamp")
     log, screen, block, result = boot_to_probe(payload, folder, options, qemu, seconds, names,
-                                              checkpoint, inherited=inherited, pending=pending)
+                                              checkpoint, inherited=inherited, pending=pending,
+                                              compare_record=record if compare else None)
     (folder / "run/ufs-input.json").write_text(json.dumps(metadata, indent=2) + "\n")
     seen = set(re.findall(r"UFS XNU=([0-9a-f]{16}) BL31=([0-9a-f]{16}) V=(\d+)", screen, re.I))
     assert seen == (set() if verdict is None else {(f"{entry_id:016x}", f"{bl31_id:016x}", str(verdict))}), (name, seen)
@@ -360,22 +403,26 @@ def run_case(name, ids, output, kernel, tree_raw, disk, qemu, seconds, names, ch
     assert metadata["probe"] == {"lun": qemu_ufs.PROBE_LUN, "lba": qemu_ufs.PROBE_LBA,
                                  "bytes": qemu_ufs.PROBE_BYTES}
     traffic = (folder / "ufs.trace").read_text()
-    inherited_result = {}
-    if inherited:
+    firmware_result = {}
+    if inherited or compare:
         state = json.loads((folder / "firmware-state.json").read_text())
         setup_trace = state.pop("setup_trace")
         events = traffic.splitlines()
         assert events[:len(setup_trace)] == setup_trace, events
         guest_trace_end = state.pop("guest_trace_end", len(events))
         guest_events = events[len(setup_trace):guest_trace_end]
-        if pending:
+        if pending or compare:
             firmware_commands = [line for line in setup_trace if line.startswith("ufs_exec_scsi_cmd ")]
             assert firmware_commands == ["ufs_exec_scsi_cmd slot 0, lun 0x2, opcode 0x0",
                                          "ufs_exec_scsi_cmd slot 0, lun 0x2, opcode 0x88"], setup_trace
             assert (f"scsi_req_parsed_lba target 0 lun 2 tag 2 command 136 lba {qemu_ufs.PROBE_LBA}"
                     in setup_trace), setup_trace
+            assert (f"scsi_req_parsed target 0 lun 2 tag 2 command 136 dir 1 length {qemu_ufs.PROBE_BYTES}"
+                    in setup_trace), setup_trace
             completion = "ufs_complete_req UTRLDBR slot 0"
-            assert setup_trace.count(completion) == 1
+            assert setup_trace.count(completion) == (2 if compare else 1)
+            (folder / "firmware-ufs.trace").write_text("\n".join(setup_trace) + "\n")
+        if pending:
             after_guest = events[guest_trace_end:]
             assert after_guest[0] == "ufs_mmio_read addr 0x58 data 0x1 size 4", after_guest
             assert after_guest.count(completion) == 1 and all(
@@ -383,14 +430,20 @@ def run_case(name, ids, output, kernel, tree_raw, disk, qemu, seconds, names, ch
             ), after_guest
             (folder / "after-xnu-ufs.trace").write_text("\n".join(after_guest) + "\n")
         (folder / "guest-ufs.trace").write_text("\n".join(guest_events) + "\n")
-        # The admitted synthetic lease reaches dufs_start. A single HCE=1
-        # read proves the guard was exercised after PCI setup.
-        assert guest_events == ["ufs_mmio_read addr 0x34 data 0x1 size 4"], guest_events
-        assert result["stop_marker"] == FAILED and f"{FAILED} status=-5" in log, log
-        assert not hashes and not any(block)
         traffic = "\n".join(guest_events)
-        inherited_result = dict(firmware_state=state, controller_mmio_reads=1,
-                                controller_mmio_writes=0, scsi_commands=0, provider_status=-5)
+        firmware_result["firmware_state"] = state
+        if inherited:
+            # A single HCE=1 read proves the guard was exercised after PCI setup.
+            assert guest_events == ["ufs_mmio_read addr 0x34 data 0x1 size 4"], guest_events
+            assert result["stop_marker"] == FAILED and f"{FAILED} status=-5" in log, log
+            assert not hashes and not any(block)
+            firmware_result.update(controller_mmio_reads=1, controller_mmio_writes=0,
+                                   scsi_commands=0, provider_status=-5)
+        else:
+            assert state["boot_id"] == hex(entry_id) == hex(bl31_id)
+            assert state["record_matches_measured_queues"]
+            assert state["firmware_read"]["sha256"] == hashlib.sha256(block).hexdigest() == expected_hash
+            firmware_result["firmware_xnu_match"] = True
     commands = re.findall(r"^ufs_exec_scsi_cmd slot \d+, lun (0x[0-9a-f]+), opcode (0x[0-9a-f]+)$",
                           traffic, re.M)
     reads = re.findall(r"^scsi_req_parsed_lba target \d+ lun (\d+) tag \d+ command 136 lba (\d+)$",
@@ -410,7 +463,7 @@ def run_case(name, ids, output, kernel, tree_raw, disk, qemu, seconds, names, ch
                 stop_marker=result["stop_marker"], sha256=next(iter(hashes), None),
                 controller_trace_events=len(traffic.splitlines()), read16=len(reads),
                 bytes_read=sum(transfers),
-                elapsed_seconds=result["elapsed_host_seconds"], **inherited_result)
+                elapsed_seconds=result["elapsed_host_seconds"], **firmware_result)
 
 
 def main():
