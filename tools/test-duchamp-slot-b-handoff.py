@@ -17,6 +17,7 @@ import sys
 
 import adt
 import mkpayload
+import mt6897_ufs_model
 import qemu_ufs
 
 TOOLS = Path(__file__).resolve().parent
@@ -28,6 +29,10 @@ STUB_PA, IMAGE_PA, FDT_PA, MAILBOX_PA = 0x40100000, 0x40200000, 0x48000000, 0x49
 RECORD = struct.Struct("<IIQ8I2Q")
 CASES = ("matched", "different_boot", "missing_bl31", "missing_queues", "busy_queue",
          "missing_dma", "missing_cache")
+MODEL_CASES = {"busy_task_queue": (True, 0x3f, 0, 3), "mcq_mode": (True, 0x3f, 0, 3)}
+MODEL_EVENTS = ("ufs_process_db", "ufs_complete_req", "ufs_err_dma_read_utrd",
+                "ufs_err_dma_read_req_upiu", "ufs_err_dma_read_prdt",
+                "ufs_err_dma_write_utrd", "ufs_err_dma_write_rsp_upiu")
 BOOT_ARGS = ("debug=0xc serial=3 cpus=1 keepsyms=1 -enable_kprintf_spam -noprogress "
              "rd=qufs0 rootrw=0 sweet-qemu-ufs=1 sweet_console_fb=1 "
              "sweet-qemu-boot-id=0x0000000000000000 sweet-qemu-ufs-handoff=1")
@@ -93,11 +98,17 @@ def build_image(args, output, adt_path, *, gpt):
     return payload, loaders, image, unpacked
 
 
-def load_mailbox(name, folder, ids, loaders):
-    same_boot, proof, busy, verdict = ROOT["CASES"][name]
+def load_mailbox(name, folder, ids, loaders, modeled_records=None):
+    cases = ROOT["CASES"] | MODEL_CASES
+    same_boot, proof, busy, verdict = cases[name]
     entry_id = ids[name]
     record_id = 0 if same_boot is None else entry_id if same_boot else ids["matched"]
-    record = (RECORD.pack(1, proof, record_id, 1, 0, busy, 0, 0, 0, 0, 0, 5, 6)
+    state = (0, busy, 0, 0, 0, 0)
+    mode = 1
+    if modeled_records and name in modeled_records:
+        mode, snapshot, proof = modeled_records[name]
+        state = snapshot.fields()
+    record = (RECORD.pack(1, proof, record_id, mode, *state, 0, 5, 6)
               if record_id else bytes(RECORD.size))
     mailbox = folder / "mailbox.bin"
     mailbox.write_bytes(struct.pack("<8sQ", b"QEMUBL31", entry_id) + record)
@@ -143,14 +154,14 @@ def check_case(name, output, ids, payload, loaders, disk, qemu, seconds, symbols
                 elapsed_seconds=result["elapsed_host_seconds"])
 
 
-def check_gpt_case(name, output, ids, loaders, disk, args, qemu):
+def check_gpt_case(name, output, ids, loaders, disk, args, qemu, modeled_records=None):
     folder = output / name
     folder.mkdir()
-    entry_loaders, entry_id, record_id, verdict = load_mailbox(name, folder, ids, loaders)
+    entry_loaders, entry_id, record_id, verdict = load_mailbox(name, folder, ids, loaders, modeled_records)
     disk_path, disk_hash, gpt = disk
     screen, trace, result, metadata = ROOT["run_guest"](
         folder, output / "payload.bin", args.kernel, disk_path, qemu, args.seconds,
-        entry_loaders=entry_loaders)
+        entry_loaders=entry_loaders, extra_events=MODEL_EVENTS if modeled_records else ())
     check_ids(name, screen, entry_id, record_id, verdict)
     assert metadata["readonly"] and metadata["no_ramdisk"] and metadata["sha256"] == disk_hash
     assert metadata["gpt"] == {key: gpt[key] for key in ("sector_bytes", "root_guid")}
@@ -170,15 +181,18 @@ def check_gpt_case(name, output, ids, loaders, disk, args, qemu):
         assert commands == {("0x0", "0x9e"), ("0x0", "0x88")}, commands
     else:
         assert result["stop_marker"] == ROOT["DENIED"] and not read_pass and not trace.strip(), (name, result)
+    queue_trace = {}
+    if modeled_records:
+        queue_trace = mt6897_ufs_model.check_guest_legacy_trace(trace, verdict == 1)
     return dict(entry_boot_id=hex(entry_id), bl31_boot_id=hex(record_id), verdict=verdict,
                 stop_marker=result["stop_marker"], pid1_read_pass=read_pass, write_refused=write_refused,
                 ufs_trace_events=len(trace.splitlines()), read16=len(read_lbas),
-                elapsed_seconds=result["elapsed_host_seconds"])
+                elapsed_seconds=result["elapsed_host_seconds"], **queue_trace)
 
 
 def check_matrix(args, ids, check):
     with ThreadPoolExecutor(max_workers=args.jobs) as workers:
-        futures = {name: workers.submit(check, name) for name in CASES}
+        futures = {name: workers.submit(check, name) for name in ids}
         results = {}
         for name, future in futures.items():
             results[name] = future.result()
@@ -190,7 +204,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("kernel", "ci-receipt", "fdt", "slot-b", "output"):
         parser.add_argument("--" + name, type=lambda value: Path(value).resolve(), required=True)
-    for name in ("adt", "reference", "backup", "gpt-fixture"):
+    for name in ("adt", "reference", "backup", "gpt-fixture", "mt6897-sources"):
         parser.add_argument("--" + name, type=lambda value: Path(value).resolve())
     parser.add_argument("--seconds", type=int, default=120)
     parser.add_argument("--jobs", type=int, choices=(1, 2, 3), default=3)
@@ -199,6 +213,8 @@ def main():
         parser.error("--gpt-fixture supplies its own ADT and replaces the one-block reference")
     if not args.gpt_fixture and not all((args.adt, args.reference, args.backup)):
         parser.error("the one-block test requires --adt, --reference and --backup")
+    if args.mt6897_sources and not args.gpt_fixture:
+        parser.error("--mt6897-sources requires --gpt-fixture")
     qemu = shutil.which("qemu-system-aarch64")
     if qemu is None:
         parser.error("qemu-system-aarch64 is required")
@@ -218,16 +234,24 @@ def main():
         for path in (disk_path, adt_path):
             assert sha256(path) == manifest["sha256"][path.name]
     args.output.mkdir(parents=True)
+    modeled_records = None
+    if args.mt6897_sources:
+        model_report, modeled_records = mt6897_ufs_model.exercise_model(
+            args.fdt, args.mt6897_sources, disk_path, manifest["gpt"])
+        write_json(args.output / "mt6897-ufs-model.json", model_report)
     payload, loaders, image, unpacked = build_image(args, args.output, adt_path, gpt=gpt)
     image_hash = sha256(image)
-    ids = {name: secrets.randbits(62) | (1 << 62) for name in CASES}
+    cases = (*CASES, *MODEL_CASES) if modeled_records else CASES
+    ids = {name: secrets.randbits(62) | (1 << 62) for name in cases}
     assert len(set(ids.values())) == len(ids)
     if gpt:
         disk = disk_path, manifest["sha256"][disk_path.name], manifest["gpt"]
         results = check_matrix(args, ids, lambda name: check_gpt_case(
-            name, args.output, ids, loaders, disk, args, qemu))
+            name, args.output, ids, loaders, disk, args, qemu, modeled_records))
         assert sha256(disk_path) == disk[1]
         report = dict(gpt=manifest["gpt"], readonly_disk_sha256=disk[1])
+        if modeled_records:
+            report["mt6897_model_sha256"] = sha256(args.output / "mt6897-ufs-model.json")
     else:
         checkpoint = PROBE["probe_checkpoint"](args.kernel)
         block, reference = PROBE["load_reference"](args.reference, args.backup)

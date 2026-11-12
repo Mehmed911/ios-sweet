@@ -153,6 +153,35 @@ Physical MT6897 support still depends on the documented firmware handoff,
 power and clock ownership, DMA translation and cache maintenance. See
 [the Duchamp handoff contract](MT6897-LK-HANDOFF-CONTRACT.md).
 
+## Duchamp UFS queue and DMA model
+
+`tools/mt6897_ufs_model.py` checks the saved Duchamp DTB and three pinned
+Xiaomi source blobs. The DT declares the HCI at `0x112b0000` with a `0x3000`
+byte aperture, host GIC interrupt 200, eight MCQ interrupt lines 209–216,
+and one identity DMA window on `/soc`. The model derives MCQ register offsets
+and the `0x30` stride from the Xiaomi header. Firmware permission for MCQ
+is a model input, as in the Android driver's policy. The cache simulation
+uses separate CPU and device byte arrays for the non-coherent case. These
+inputs describe the model and supply no physical authorization. [Xiaomi MCQ code](https://github.com/MiCode/MTK_kernel_device_modules/blob/3c4ccd07d5624879555ec710c11bb8818e5cb5c6/drivers/ufs/ufs-mediatek.c#L2732-L2774) and [Xiaomi register definitions](https://github.com/MiCode/MTK_kernel_device_modules/blob/3c4ccd07d5624879555ec710c11bb8818e5cb5c6/drivers/ufs/ufs-mediatek.h#L41-L58)
+
+Run `tools/test-duchamp-slot-b-handoff.py` with both `--gpt-fixture` and
+`--mt6897-sources`. The source directory must contain `ufs-mediatek.c`,
+`ufs-mediatek.h` and `ufs-mediatek-sip.h` from Xiaomi commit `3c4ccd07` under
+`drivers/ufs`. The software model reads the GPT header and HFS+ block from
+the same read-only disk used by QEMU. It checks pending transfer and task
+queues, MCQ submission and completion head/tail wrap and drain, PRDT
+publication to the device, address bounds, and stale CPU data until sync.
+
+The model generates the synthetic handoff states that the bootshim passes
+to XNU. The accepted legacy state boots via the QEMU PCI UFS device and
+reaches diagnostic PID 1. The test verifies one completion per submitted
+legacy request and checks the QEMU trace for DMA errors. A pending task
+and a drained MCQ handoff are two additional denial cases, since this XNU
+route implements legacy only. The other six denial cases are retained.
+MCQ queue movement and non-coherent cache visibility are exercised by the
+software model. The guest trace covers the virtual controller's legacy
+operations. Evidence is under `outputs/duchamp-mt6897-ufs-model-20261112`.
+
 ## Preserved raw-read failure and fix
 
 `research/xnu-ufs/guest-v1` failed after 70.61 host seconds. The initial kernel

@@ -31,12 +31,13 @@ HEARTBEAT = "DUCHAMP UFS PID1 heartbeat"
 DENIED = "DUCHAMP QUFS root unavailable: 1"
 
 
-def make_wrapper(folder, qemu, *, entry_loaders=None):
+def make_wrapper(folder, qemu, *, entry_loaders=None, extra_events=()):
     """Add an independent device trace and use sparse host RAM for parallel guests."""
     bin_dir = folder / "bin"
     bin_dir.mkdir()
     events = folder / "trace-events"
-    events.write_text("ufs_mmio_read\nufs_mmio_write\nufs_exec_scsi_cmd\nscsi_req_parsed_lba\n")
+    events.write_text("ufs_mmio_read\nufs_mmio_write\nufs_exec_scsi_cmd\nscsi_req_parsed_lba\n" +
+                      "".join(event + "\n" for event in extra_events))
     trace = folder / "ufs.trace"
     memory = folder / "guest-memory"
     path = bin_dir / "qemu-system-aarch64"
@@ -70,8 +71,9 @@ os.execv(real, [real, *args])
     return bin_dir, trace, memory
 
 
-def run_guest(folder, packed, kernel, disk, qemu, seconds, *, entry_loaders=None):
-    bin_dir, trace, memory = make_wrapper(folder, qemu, entry_loaders=entry_loaders)
+def run_guest(folder, packed, kernel, disk, qemu, seconds, *, entry_loaders=None, extra_events=()):
+    bin_dir, trace, memory = make_wrapper(folder, qemu, entry_loaders=entry_loaders,
+                                          extra_events=extra_events)
     env = dict(os.environ, PATH=f"{bin_dir}:{os.environ['PATH']}")
     run = folder / "run"
     command = [sys.executable, str(TOOLS / "qemu-sweet.py"), str(packed), str(run),

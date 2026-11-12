@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - MT6897 UFS model supplies the Slot B GPT test (2026-11-12)
+
+- Added `tools/mt6897_ufs_model.py`. The pinned Duchamp DTB provides the UFS HCI, IRQs and identity DMA aperture, and the pinned Xiaomi UFS source provides MCQ register offsets, stride and permission policy. The model runs legacy and MCQ queue drain checks and verifies that the PRDT and data stay stale until the appropriate sync. An out-of-window DMA address is rejected.
+- With `--mt6897-sources`, the Slot B verifier passes modeled handoffs to full XNU from CI 43115466836. The legacy case mounts the read-only GPT/HFS+ root and reaches diagnostic PID 1. The eight denials leave the virtual UFS trace empty, including an outstanding task and a drained MCQ state. Reports and image are under `outputs/duchamp-mt6897-ufs-model-20261112`.
+- The 27 host UFS profile checks, 560 native/ARM64 cache checks and 791 native/ARM64 DMA-route checks passed. QEMU uses its legacy PCI UFS device. The new software model does not establish physical MT6897 resource or cache ownership. No phone access or partition changes.
+
 ACTIVE HANDOFF - HakiOS storage split verified from a Slot B image to PID 1 in QEMU (2026-11-12)
 
 - Reviewed HakiOS Infinix Hot 20 at `ad65e1f4`. Its LK chainloader and BSD block device use MSDC/eMMC PIO and read the GPT system partition on demand. The MT6833 example at `c24467f3` shows QEMU/rd=md0, and its sector routine does not return data. The comparison and pinned source links are in `duchamp/QEMU-UFS-XNU.md`.
