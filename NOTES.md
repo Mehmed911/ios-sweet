@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - XNU rejects a pending inherited UFS request in QEMU (2026-11-12)
+
+- QTest configured a live legacy UFS list on the read-only LUN, consumed power-on UNIT ATTENTION with TEST UNIT READY and submitted one firmware READ(16) to LUN 2 / LBA 276480. QEMU blkdebug held the real request across guest boot.
+- The pinned XNU from CI 43115466836 admitted the synthetic handoff and rejected initialization with provider status -5. At the XNU stop loop, QTest read UTRLDBR=1 and OCS=0xf. The guest-only trace contains one HCI read (HCE=1), zero HCI writes and zero new SCSI commands. PCI mapping writes occur separately.
+- The host resumed the original request after recording the refusal and confirmed UTRLDBR=0 and OCS=0. All eleven XNU/QEMU cases and 27 host profile tests passed. The full trace separates firmware submission, XNU and the host's final readback. Evidence is in outputs/duchamp-ufs-inherited-pending-20261112. No phone access or partition writes.
+
 ACTIVE HANDOFF - XNU rejects a running inherited UFS list in QEMU (2026-11-12)
 
 - Added a QTest fixture to tools/test-duchamp-ufs-probe-xnu.py. While the ARM64 guest is paused, it starts the emulated legacy HCI and configures a running transfer list with no pending request. Readback shows HCE=1, UTRLRSR=1, UTRLBA=0x60000000 and UTRLDBR=0.
