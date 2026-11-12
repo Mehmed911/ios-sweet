@@ -1,3 +1,8 @@
+ACTIVE HANDOFF - Slot B BL31 capture attempt (2026-11-12)
+
+- Windows reported no ADB or Fastboot devices, no matching Xiaomi/MediaTek/Android USB interface and no present serial ports. No capture could be acquired from the phone. The saved Slot B launchd receipt has no boot identifier for BL31 correlation. The audited Slot B image uses md0 and has no handoff receiver.
+- The saved 2 MiB ATF export came from Android Slot A and contains no Slot B/XNU or UFS queue/cache handoff markers. Rechecked the public runtime_snapshot reader, which copies the existing runtime buffer. A documented firmware trace and matching XNU entry from one Slot B boot are still needed to establish queue drain, DMA delegation and cache ownership. No physical UFS command, reboot, flash or partition write occurred.
+
 ACTIVE HANDOFF - Full XNU verifies the MT6897 one-block probe in QEMU (2026-11-12)
 
 - macOS CI run 43115466836 built DEVELOPMENT SWEET at 9db1c1580e41173aa37229ad358797f8b75efc9e from 059b84b plus the opt-in QEMU call site and same-boot synthetic lease bridge. The unchanged artifact SHA-256 is 57ba8b32dd1b7a5ed7c70ed65d7a4aec107d12b85147f236c439cd309672fda0.
