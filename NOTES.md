@@ -1,3 +1,9 @@
+ACTIVE HANDOFF - HakiOS storage split verified from a Slot B image to PID 1 in QEMU (2026-11-12)
+
+- Reviewed HakiOS Infinix Hot 20 at `ad65e1f4`. Its LK chainloader and BSD block device use MSDC/eMMC PIO and read the GPT system partition on demand. The MT6833 example at `c24467f3` shows QEMU/rd=md0, and its sector routine does not return data. The comparison and pinned source links are in `duchamp/QEMU-UFS-XNU.md`.
+- Added `--gpt-fixture` to the existing Slot B image verifier. Full XNU from CI 43115466836 booted from the image's extracted ARM64 bootshim with a runtime synthetic handoff, mounted the HFS+ GPT slice via qufs0 without a RAM root, read a known file in diagnostic PID 1, refused write-open with EROFS and reached the heartbeat. Six rejected records left the UFS trace empty. The image and receipts are under `outputs/duchamp-slot-b-gpt-root-20261112`.
+- All 27 host UFS profile checks passed. No device access or partition writes. Physical MT6897 UFS remains gated by the separate resource, DMA and cache handoff evidence.
+
 ACTIVE HANDOFF - Public Duchamp BL31 channels reviewed against the Slot B receiver (2026-11-12)
 
 - Verified MiCode `3c4ccd07` and the pinned Android FDT. The four-byte `atag,ufs` describes RPMB key state. `GET_MCQ_EN` supplies MCQ policy. `/proc/ufs_debug` traces the Android UFS host after its initialization. The ATF snapshot copies an existing ring, and the SLC parity interface provides no UFS cache grant.

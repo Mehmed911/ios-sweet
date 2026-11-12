@@ -118,6 +118,41 @@ python3 tools/test-duchamp-ufs-xnu.py \
   --ci-run 41133993461 --ci-head 9a10068375fa1320d802e3d30fe951f8b1a07f4f
 ```
 
+## Slot B to a GPT root, following the HakiOS storage split
+
+The Infinix Hot 20 port at `ad65e1f4` splits device configuration, the loader,
+and the kernel's block device. `mtkloader.c` prepares the Apple device tree and
+boot arguments and retains logs in ramoops. The loader's `msdc.h` uses the
+eMMC controller that LK initialized. In XNU, `redwood_emmc.c` selects the
+`xnusys` GPT partition, exposes a read-only device, and supplies blocks as the
+kernel requests them. [HakiOS loader](https://github.com/oosexgang/hakios-mt6768/blob/ad65e1f4b3ba479e9d7ada98f17398b83cc6f285/mtkloader/mtkloader.c) and [HakiOS eMMC driver](https://github.com/oosexgang/hakios-mt6768/blob/ad65e1f4b3ba479e9d7ada98f17398b83cc6f285/kernel/bsd/dev/redwood_emmc.c)
+
+The MT6833 community repository at `c24467f3` contains a separate UFS adapter.
+Its `ufs_read_sectors()` returns after a controller readiness poll without
+filling its output buffer. The published log selects `platform qemu-virt` and
+`rd=md0`. Its hardware evidence is limited to that QEMU boot. [MT6833 driver](https://github.com/AnkitChoudhary-1/Hackios-mt6833-port/blob/c24467f3074d9bfbd7cb92e2d20beacd91e468b5/mtk/mt6833/drivers/storage/hakios.mt6833_ufs.c#L93-L108) and [MT6833 boot log](https://github.com/AnkitChoudhary-1/Hackios-mt6833-port/blob/c24467f3074d9bfbd7cb92e2d20beacd91e468b5/devices/light/boot.log)
+
+Duchamp uses the existing ARM64 bootshim, QEMU UFS device, and XNU `qufs0`
+adapter. The `--gpt-fixture` option in `tools/test-duchamp-slot-b-handoff.py`
+uses the fixture's `qemu-ufs.adt` and whole read-only `root.gpt.raw`. The test
+builds a single local Slot B container, extracts its actual ARM64 Image, then
+boots that image for all seven cases. The bootshim copies each synthetic record
+from guest RAM into the boot arguments and ADT. XNU checks it before touching
+the virtual controller. The diagnostic root is HFS+ with a test `/sbin/launchd`.
+
+The matched case read the partition table and sectors within the selected
+partition. PID 1 matched the file bytes, refused write-open with `EROFS` and
+reached its heartbeat. The SCSI trace contains READ CAPACITY and READ(16).
+The six rejected records produced zero UFS MMIO or SCSI events. The source
+Slot B image and GPT fixture retained their SHA-256 digests. Build, case
+logs and the framebuffer capture are under
+`outputs/duchamp-slot-b-gpt-root-20261112`.
+
+The modeled controller is QEMU's PCI UFS with a synthetic handoff record.
+Physical MT6897 support still depends on the documented firmware handoff,
+power and clock ownership, DMA translation and cache maintenance. See
+[the Duchamp handoff contract](MT6897-LK-HANDOFF-CONTRACT.md).
+
 ## Preserved raw-read failure and fix
 
 `research/xnu-ufs/guest-v1` failed after 70.61 host seconds. The initial kernel

@@ -31,12 +31,12 @@ HEARTBEAT = "DUCHAMP UFS PID1 heartbeat"
 DENIED = "DUCHAMP QUFS root unavailable: 1"
 
 
-def make_wrapper(folder, qemu):
+def make_wrapper(folder, qemu, *, entry_loaders=None):
     """Add an independent device trace and use sparse host RAM for parallel guests."""
     bin_dir = folder / "bin"
     bin_dir.mkdir()
     events = folder / "trace-events"
-    events.write_text("ufs_mmio_read\nufs_mmio_write\nufs_exec_scsi_cmd\n")
+    events.write_text("ufs_mmio_read\nufs_mmio_write\nufs_exec_scsi_cmd\nscsi_req_parsed_lba\n")
     trace = folder / "ufs.trace"
     memory = folder / "guest-memory"
     path = bin_dir / "qemu-system-aarch64"
@@ -44,6 +44,7 @@ def make_wrapper(folder, qemu):
 import os, sys
 real = {qemu!r}
 args = sys.argv[1:]
+entry_loaders = {entry_loaders!r}
 if "-M" in args and "-m" in args:
     machine = args.index("-M") + 1
     size = args[args.index("-m") + 1]
@@ -52,12 +53,43 @@ if "-M" in args and "-m" in args:
         if option in args:
             at = args.index(option)
             del args[at:at+2]
+    if entry_loaders is not None:
+        loaders = [i for i in range(len(args) - 1)
+                   if args[i] == "-device" and args[i + 1].startswith("loader,")]
+        if len(loaders) != 3 or not all(marker in args[i + 1] for i, marker in
+                zip(loaders, ("/ram.bin,", "/stub.bin,", ",cpu-num=0"))):
+            sys.exit("unexpected direct QEMU entry arguments")
+        for index in reversed(loaders):
+            del args[index:index + 2]
+        args.extend(entry_loaders)
     args += ["-object", f"memory-backend-file,id=duchamp_replay_ram,size={{size}},mem-path={memory},share=on,prealloc=off",
              "-trace", "events={events},file={trace}"]
 os.execv(real, [real, *args])
 """)
     path.chmod(0o755)
     return bin_dir, trace, memory
+
+
+def run_guest(folder, packed, kernel, disk, qemu, seconds, *, entry_loaders=None):
+    bin_dir, trace, memory = make_wrapper(folder, qemu, entry_loaders=entry_loaders)
+    env = dict(os.environ, PATH=f"{bin_dir}:{os.environ['PATH']}")
+    run = folder / "run"
+    command = [sys.executable, str(TOOLS / "qemu-sweet.py"), str(packed), str(run),
+               "--kernel", str(kernel), "--framebuffer", "duchamp", "--ufs-image", str(disk),
+               "--secs", str(seconds), "--snapshot-interval", "1",
+               "--stop-on-text", HEARTBEAT, "--stop-on-text", DENIED,
+               "--stop-on-text", "SWEET EARLY PANIC:"]
+    try:
+        with (folder / "runner.log").open("w") as log:
+            subprocess.run(command, env=env, stdout=log, stderr=subprocess.STDOUT,
+                           check=True, timeout=seconds + 35)
+    finally:
+        memory.unlink(missing_ok=True)
+    screens = sorted((run / "frames").glob("*.txt"))
+    screen = "\n".join(path.read_text() for path in [*screens, run / "fb.txt"])
+    result = json.loads((run / "result.json").read_text())
+    metadata = json.loads((run / "ufs-input.json").read_text())
+    return screen, trace.read_text(), result, metadata
 
 
 def run_case(name, spec, ids, output, kernel, base_adt, disk, qemu, seconds):
@@ -83,29 +115,11 @@ def run_case(name, spec, ids, output, kernel, base_adt, disk, qemu, seconds):
     packed = folder / "payload.bin"
     packed.write_bytes(payload)
 
-    bin_dir, trace, memory = make_wrapper(folder, qemu)
-    env = dict(os.environ, PATH=f"{bin_dir}:{os.environ['PATH']}")
-    run = folder / "run"
-    command = [sys.executable, str(TOOLS / "qemu-sweet.py"), str(packed), str(run),
-               "--kernel", str(kernel), "--framebuffer", "duchamp", "--ufs-image", str(disk),
-               "--secs", str(seconds), "--snapshot-interval", "1",
-               "--stop-on-text", HEARTBEAT, "--stop-on-text", DENIED,
-               "--stop-on-text", "SWEET EARLY PANIC:"]
-    try:
-        with (folder / "runner.log").open("w") as log:
-            subprocess.run(command, env=env, stdout=log, stderr=subprocess.STDOUT,
-                           check=True, timeout=seconds + 35)
-    finally:
-        memory.unlink(missing_ok=True)
-    screens = sorted((run / "frames").glob("*.txt"))
-    screen = "\n".join(path.read_text() for path in [*screens, run / "fb.txt"])
+    screen, text, result, metadata = run_guest(folder, packed, kernel, disk, qemu, seconds)
     seen = set(re.findall(r"UFS XNU=([0-9a-f]{16}) BL31=([0-9a-f]{16}) V=(\d+)",
                           screen, re.I))
     expected_record = (f"{entry_id:016x}", f"{bl31_id:016x}", str(expected))
     assert seen == {expected_record}, (name, seen)
-    text = trace.read_text()
-    result = json.loads((run / "result.json").read_text())
-    metadata = json.loads((run / "ufs-input.json").read_text())
     assert metadata["readonly"] and metadata["no_ramdisk"]
     if expected == 1:
         assert result["stop_marker"] == HEARTBEAT and "DUCHAMP UFS ROOT DEVICE MATCH" in screen
