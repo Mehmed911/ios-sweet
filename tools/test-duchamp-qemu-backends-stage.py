@@ -25,7 +25,8 @@ class StageTests(unittest.TestCase):
     def test_fresh(self):
         result=stage.stage(self.root)
         self.assertFalse(result['already_staged'])
-        self.assertEqual(len(result['files']),32)
+        self.assertEqual(len(result['files']),33)
+        self.assertIn('bsd/dev/qemu_ufs_observer.c',result['files'])
         self.assertIn('backend_error',self.cpp.read_text())
         for name,digest in result['files'].items():
             import hashlib

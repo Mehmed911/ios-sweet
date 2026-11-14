@@ -31,6 +31,7 @@
 
 extern ppnum_t pmap_find_phys(pmap_t,addr64_t);
 int duchamp_qemu_backends_prepare(void);
+extern int duchamp_qemu_ufs_observer_test(void);
 static LCK_GRP_DECLARE(qbt_group,"duchamp_qemu_backends");
 static LCK_MTX_DECLARE(qbt_lock,&qbt_group);
 static const char receipt[]="DUCHAMP XNU BACKENDS PASS tables=1 mmu=1 pmic=1 fw_verified=0 physical=0\n";
@@ -267,6 +268,8 @@ static const struct cdevsw diagnostic={
     .d_mmap=eno_mmap,.d_strategy=eno_strat,.d_reserved_1=eno_getc,.d_reserved_2=eno_putc,.d_type=D_TTY
 };
 int duchamp_qemu_backends_prepare(void) {
+    int observer_error=duchamp_qemu_ufs_observer_test();
+    if(observer_error)return observer_error;
     uint32_t enabled=0;
     if(!PE_parse_boot_argn("sweet-qemu-backends",&enabled,sizeof(enabled)) || !enabled)return 0;
     if(enabled!=1 || profile())return ENXIO;

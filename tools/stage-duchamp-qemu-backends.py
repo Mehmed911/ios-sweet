@@ -22,7 +22,8 @@ def stage(root):
            'mt6897_v7s.c']
     paths={'bsd/dev/'+n:repo/'duchamp/drivers'/n for n in names}
     xnu_names=['mt6897_ufs_cache_backend.h','mt6897_ufs_cache_backend.c',
-               'mt6897_ufs_observer_xnu.h','mt6897_ufs_observer_xnu.c']
+               'mt6897_ufs_observer_xnu.h','mt6897_ufs_observer_xnu.c',
+               'qemu_ufs_observer.c']
     paths.update({'bsd/dev/'+n:repo/'duchamp/xnu'/n for n in xnu_names})
     paths['bsd/dev/duchamp_qemu_backends.c']=repo/'duchamp/xnu/qemu_backends.c'
     config=root/'bsd/conf/files';iokit=root/'iokit/bsddev/IOKitBSDInit.cpp'
