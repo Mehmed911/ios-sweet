@@ -99,7 +99,7 @@ ASSERT(SIZEOF(.replay) <= {TEXT_SIZE}, "MCQ code exceeds the pinned gap")
                     "baseline_ci_run": 43115466836, "full_kernel_rebuild": False}
 
 
-def check_case(name, folder, profile, records, images, kernel, disk, qemu, seconds):
+def check_case(name, folder, profile, records, images, kernel, disk, qemu, seconds, snapshot=False):
     fault, handoff, marker = CASES[name]
     loaders, image, payload = images[fault]
     ids = {handoff: secrets.randbits(62) | 1 << 62}
@@ -107,10 +107,20 @@ def check_case(name, folder, profile, records, images, kernel, disk, qemu, secon
         handoff, folder, ids, loaders, records)
     screen, trace, result, metadata = ROOT["run_guest"](
         folder, payload, kernel, disk, qemu, seconds,
-        entry_loaders=entry_loaders, extra_events=EVENTS)
+        entry_loaders=entry_loaders, extra_events=EVENTS, capture_kernel_log=snapshot)
     SLOT["check_ids"](name, screen, entry_id, record_id, verdict)
     assert metadata["readonly"] and metadata["no_ramdisk"] and metadata["gpt"] == profile
     assert metadata["mcq"] == {"max_queues": 8, "fault": fault}
+    if snapshot and verdict == 1:
+        expected = f"DUCHAMP UFS SNAPSHOT boot=0x{entry_id:016x} status=0 reads=316 blockers=0x0"
+        kernel_log = (folder / "run/kernel-log.txt").read_text()
+        assert expected in kernel_log, (name, "snapshot marker missing from kernel log")
+        lines = trace.splitlines()
+        assert len(lines) > 316 and all(line.startswith("ufs_mmio_read ") for line in lines[:316])
+        first_write = next(i for i, line in enumerate(lines) if line.startswith("ufs_mmio_write "))
+        assert first_write >= 316, (name, first_write)
+        samples = [lines[:158], lines[158:316]]
+        assert samples[0] == samples[1], name
     assert not re.search(r"(?m)^ufs_process_db\b", trace), name
     assert not re.search(r"(?m)^ufs_mmio_write (?:addr )?(0x58|0x60)\b", trace), name
     commands = re.findall(r"(?m)^ufs_exec_scsi_cmd .*opcode (0x[\da-f]+)", trace)
@@ -144,7 +154,8 @@ def check_case(name, folder, profile, records, images, kernel, disk, qemu, secon
                 stop_marker=result["stop_marker"], elapsed_seconds=result["elapsed_host_seconds"],
                 sq_submissions=len(sq_tails), cq_acknowledgements=len(cq_heads),
                 mcq_completions=completions, read16=commands.count("0x88"),
-                dma_errors=dma_errors, rejection_marker=marker, trace_events=len(trace.splitlines()))
+                dma_errors=dma_errors, rejection_marker=marker, trace_events=len(trace.splitlines()),
+                passive_snapshot=snapshot and verdict == 1)
 
 
 def main():
@@ -157,6 +168,7 @@ def main():
     parser.add_argument("--ci-head")
     parser.add_argument("--jobs", type=int, choices=(1, 2, 3), default=2)
     parser.add_argument("--case", choices=CASES, action="append")
+    parser.add_argument("--snapshot", action="store_true", help="run the opt-in passive observer before HCI writes")
     args = parser.parse_args()
     qemu = shutil.which("qemu-system-aarch64")
     if not qemu:
@@ -179,13 +191,18 @@ def main():
             parser.error("full-build kernel SHA-256 differs from the artifact receipt")
         required = {"_dufs_mcq_bind", "_duchamp_qemu_ufs_handoff_enter",
                     "_duchamp_qemu_ufs_rootdev"}
-        if not required <= symbols(baseline).keys():
-            parser.error("full-build artifact lacks the XNU MCQ integration")
+        if args.snapshot:
+            required |= {"_dufs_snapshot_registers", "_duchamp_qemu_ufs_snapshot_boot_id"}
+        missing = required - symbols(baseline).keys()
+        if missing:
+            parser.error("full-build artifact lacks required XNU UFS symbols: " + ", ".join(sorted(missing)))
         kernel = baseline
         build = dict(kernel_sha256=baseline_sha, ci_run=args.ci_run, ci_head=args.ci_head,
                      source_sha256=digest(SOURCE.read_bytes()), full_kernel_rebuild=True,
                      replay_hooks_applied=False)
     else:
+        if args.snapshot:
+            parser.error("the snapshot integration requires a complete source-built kernel")
         if args.ci_run is not None or args.ci_head is not None:
             parser.error("CI provenance flags require --full-build-sha256")
         kernel, build = build_kernel(baseline, output)
@@ -198,6 +215,8 @@ def main():
         folder = output / f"image-{fault}"
         folder.mkdir()
         flags = " sweet-qemu-ufs-mcq=1"
+        if args.snapshot:
+            flags += " sweet-qemu-ufs-snapshot=1"
         if fault:
             flags += f" sweet-qemu-mcq-fault={fault}"
         _, loaders, image, _ = SLOT["build_image"](args, folder, adt, gpt=True, extra_boot_args=flags)
@@ -209,7 +228,7 @@ def main():
             folder = output / name
             folder.mkdir()
             future = pool.submit(check_case, name, folder, profile, records, images,
-                                 kernel, disk, qemu, args.seconds)
+                                 kernel, disk, qemu, args.seconds, args.snapshot)
             jobs[future] = name
         results = {}
         for future in as_completed(jobs):

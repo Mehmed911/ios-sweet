@@ -71,7 +71,8 @@ os.execv(real, [real, *args])
     return bin_dir, trace, memory
 
 
-def run_guest(folder, packed, kernel, disk, qemu, seconds, *, entry_loaders=None, extra_events=()):
+def run_guest(folder, packed, kernel, disk, qemu, seconds, *, entry_loaders=None, extra_events=(),
+              capture_kernel_log=False):
     bin_dir, trace, memory = make_wrapper(folder, qemu, entry_loaders=entry_loaders,
                                           extra_events=extra_events)
     env = dict(os.environ, PATH=f"{bin_dir}:{os.environ['PATH']}")
@@ -81,6 +82,9 @@ def run_guest(folder, packed, kernel, disk, qemu, seconds, *, entry_loaders=None
                "--secs", str(seconds), "--snapshot-interval", "1",
                "--stop-on-text", HEARTBEAT, "--stop-on-text", DENIED,
                "--stop-on-text", "SWEET EARLY PANIC:"]
+    if capture_kernel_log:
+        command = [sys.executable, str(TOOLS / "qemu_kernel_log.py"), str(kernel),
+                   str(run / "kernel-log.txt"), *command[1:]]
     try:
         with (folder / "runner.log").open("w") as log:
             subprocess.run(command, env=env, stdout=log, stderr=subprocess.STDOUT,

@@ -5,6 +5,7 @@
  */
 #if defined(ARM64_BOARD_CONFIG_SWEET) || defined(DUCHAMP_PINNED_QEMU_MCQ_REPLAY)
 #include "ufs_readonly.h"
+#include "ufs_register_snapshot.h"
 
 extern int PE_parse_boot_argn(const char *, void *, int);
 extern void sweet_early_mark(unsigned, const char *);
@@ -14,7 +15,10 @@ enum {
     CAP = 0, MCQCAP = 4, IS = 0x20,
     LIST_LO = 0x50, LIST_HI = 0x54, DB = 0x58, RUN = 0x60,
     CONFIG = 0x300, SQ = 0x400, CQ = 0x420,
-    SQ_TAIL = 0x1004, CQ_HEAD = 0x101c, CQ_TAIL = 0x1020, CQ_IS = 0x1024,
+    SQ_TAIL = DUFS_QEMU_MCQ_RUNTIME + DUFS_MCQ_SQ_TAIL,
+    CQ_HEAD = DUFS_QEMU_MCQ_RUNTIME + DUFS_MCQ_CQ_HEAD,
+    CQ_TAIL = DUFS_QEMU_MCQ_RUNTIME + DUFS_MCQ_CQ_TAIL,
+    CQ_IS = DUFS_QEMU_MCQ_RUNTIME + DUFS_MCQ_CQ_IS,
     ENTRY_BYTES = 32, RING_BYTES = 4 * ENTRY_BYTES,
     SQ_OFFSET = 0x2000, CQ_OFFSET = 0x3000,
     QUEUE_ENABLE = 1u << 31,

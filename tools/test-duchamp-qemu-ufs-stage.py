@@ -39,11 +39,13 @@ class StageTests(unittest.TestCase):
     def test_complete_mcq_stage(self):
         result = stage.stage(self.root)
         self.assertFalse(result["already_staged"])
-        self.assertEqual(len(result["files"]), 7)
+        self.assertEqual(len(result["files"]), 9)
         self.assertEqual(self.config.read_text().count(
             "bsd/dev/duchamp_qemu_ufs_mcq.c\t\tstandard\n"), 1)
         self.assertIn("dufs_mcq_bind(&qu.host,&setup)",
                       (self.root / "bsd/dev/duchamp_qemu_ufs.c").read_text())
+        self.assertIn("dufs_snapshot_registers", (self.root /
+                      "bsd/dev/duchamp_ufs_register_snapshot.c").read_text())
 
     def test_idempotent(self):
         stage.stage(self.root)
@@ -58,6 +60,16 @@ class StageTests(unittest.TestCase):
     def test_changed_mcq_source(self):
         stage.stage(self.root)
         path = self.root / "bsd/dev/duchamp_qemu_ufs_mcq.c"
+        path.write_text(path.read_text() + "\n/* user change */\n")
+        self.reject_unchanged()
+
+    def test_existing_observer_source(self):
+        (self.root / "bsd/dev/duchamp_ufs_register_snapshot.c").write_text("user source")
+        self.reject_unchanged()
+
+    def test_changed_observer_header(self):
+        stage.stage(self.root)
+        path = self.root / "bsd/dev/ufs_register_snapshot.h"
         path.write_text(path.read_text() + "\n/* user change */\n")
         self.reject_unchanged()
 

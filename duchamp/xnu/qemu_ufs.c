@@ -22,12 +22,14 @@
 #include <pexpert/device_tree.h>
 #include "ufs_gpt.h"
 #include "mt6897_ufs_probe.h"
+#include "ufs_register_snapshot.h"
 
 extern vm_offset_t ml_io_map(vm_offset_t, vm_size_t);
 extern ppnum_t pmap_find_phys(pmap_t, addr64_t);
 int duchamp_qemu_ufs_rootdev(dev_t *);
 int dufs_mcq_bind(struct dufs_host *, const struct dufs_config *);
 extern int duchamp_qemu_ufs_handoff_allows(void);
+extern uint64_t duchamp_qemu_ufs_snapshot_boot_id(void);
 extern int duchamp_qemu_ufs_handoff_probe_lease(struct mt6897_ufs_gate *,
     struct mt6897_ufs_gate_lease *);
 
@@ -246,8 +248,36 @@ static const struct cdevsw qu_cdevsw={
     .d_strategy=eno_strat,.d_reserved_1=eno_getc,.d_reserved_2=eno_putc,.d_type=D_DISK
 };
 static int
+qu_snapshot_permit(__unused void *context, uint64_t boot, uint64_t base, uint32_t bytes)
+{
+    return !qu.regs || !boot || boot != duchamp_qemu_ufs_snapshot_boot_id() ||
+        base != QU_BAR || bytes != 0x2000;
+}
+static int
+qu_snapshot_read(void *context, uint32_t offset, uint32_t *value)
+{
+    *value = qu_read32(context, offset);
+    __asm__ volatile("dsb ld" ::: "memory");
+    return 0;
+}
+static int
+qu_snapshot(void)
+{
+    const struct dufs_snapshot_source source = { .allow_read = qu_snapshot_permit,
+        .read32 = qu_snapshot_read, .boot_id = duchamp_qemu_ufs_snapshot_boot_id(),
+        .physical_base = QU_BAR, .bytes = 0x2000, .profile = DUFS_SNAPSHOT_QEMU };
+    struct dufs_register_snapshot sample = { 0 };
+    int status = dufs_snapshot_registers(&source, &sample);
+    printf("DUCHAMP UFS SNAPSHOT boot=0x%016llx status=%d reads=%u blockers=0x%x\n",
+        (unsigned long long)source.boot_id, status, sample.reads, sample.blockers);
+    return status || sample.blockers ? EPERM : 0;
+}
+static int
 qu_prepare(__unused void *context, struct dufs_config *setup)
 {
+    uint32_t snapshot = 0;
+    if (PE_parse_boot_argn("sweet-qemu-ufs-snapshot", &snapshot, sizeof(snapshot)) && snapshot != 1)
+        return EINVAL;
     vm_offset_t config=ml_io_map(QU_ECAM+(4u<<15),0x1000);
     if(!config) return ENOMEM;
     volatile uint32_t *pci=(void *)config;
@@ -256,11 +286,20 @@ qu_prepare(__unused void *context, struct dufs_config *setup)
     if(type!=0 && type!=4) return ENXIO;
     pci[4]=(uint32_t)QU_BAR;
     if(type==4) pci[5]=0;
-    *(volatile uint16_t *)(config+4)=6;
+    /* With passive capture enabled, leave PCI bus mastering off until after
+     * the snapshot. The existing synthetic ownership gate runs before this.
+     */
+    *(volatile uint16_t *)(config+4)=snapshot ? 2 : 6;
     qu_barrier(NULL);
     if((pci[4]&~15u)!=QU_BAR) return EIO;
     qu.regs=ml_io_map(QU_BAR,0x2000);
     if(!qu.regs) return ENOMEM;
+    if(snapshot) {
+        int error=qu_snapshot();
+        if(error) return error;
+        *(volatile uint16_t *)(config+4)=6;
+        qu_barrier(NULL);
+    }
     if(kmem_alloc_contig(kernel_map,&qu.dma,QU_DMA_BYTES,PAGE_MASK,0,0,
         KMA_DATA|KMA_ZERO|KMA_PERMANENT,VM_KERN_MEMORY_IOKIT)!=KERN_SUCCESS) return ENOMEM;
     ppnum_t first=pmap_find_phys(kernel_pmap,(addr64_t)qu.dma);

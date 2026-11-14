@@ -38,6 +38,8 @@ on:
       - "tools/force-dxb-final-patch.py"
       - "duchamp/drivers/ufs_readonly.c"
       - "duchamp/drivers/ufs_readonly.h"
+      - "duchamp/drivers/ufs_register_snapshot.c"
+      - "duchamp/drivers/ufs_register_snapshot.h"
       - "duchamp/drivers/mt6897*.c"
       - "duchamp/drivers/mt6897*.h"
       - "duchamp/xnu/**"
@@ -151,6 +153,8 @@ jobs:
           cmp ../duchamp/drivers/ufs_readonly.c xnu/bsd/dev/duchamp_ufs_core.c
           cmp ../duchamp/drivers/ufs_readonly.h xnu/bsd/dev/ufs_readonly.h
           cmp ../duchamp/xnu/qemu_ufs_mcq.c xnu/bsd/dev/duchamp_qemu_ufs_mcq.c
+          cmp ../duchamp/drivers/ufs_register_snapshot.h xnu/bsd/dev/ufs_register_snapshot.h
+          cmp ../duchamp/drivers/ufs_register_snapshot.c xnu/bsd/dev/duchamp_ufs_register_snapshot.c
           grep -Fq 'DUCHAMP QEMU backend selftest failed' xnu/iokit/bsddev/IOKitBSDInit.cpp
           grep -Fq 'QEMU XNU BACKENDS SELFTEST PASS' xnu/bsd/dev/duchamp_qemu_backends.c
           grep -Fq 'QEMU XNU UFS LEASE PROVIDER DEFAULT CLOSED' xnu/bsd/dev/duchamp_qemu_backends.c
