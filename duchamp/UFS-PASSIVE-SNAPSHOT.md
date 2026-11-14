@@ -104,6 +104,11 @@ or nonzero refusal flags stop the virtual provider. Its boot-ID accessor uses
 the existing synthetic QEMU handoff and logs once, with no per-read logging.
 Full-source verification of this option passed as recorded below.
 
+The subsequent read-provider/XNU mapping binding is documented in
+[MT6897-UFS-OBSERVER-BINDING.md](MT6897-UFS-OBSERVER-BINDING.md). Its local
+RAM-backed tests and real-header compilation are separate from this earlier
+full-kernel milestone. The physical read authority is still absent.
+
 Physical integration still needs a call from the real provider with a documented
 readable/powered aperture and same-boot permission source. A phone capture requires a supported entry
 and access contract. Before any physical storage command, separately establish

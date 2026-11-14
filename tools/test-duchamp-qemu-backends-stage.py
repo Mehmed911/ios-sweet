@@ -25,7 +25,7 @@ class StageTests(unittest.TestCase):
     def test_fresh(self):
         result=stage.stage(self.root)
         self.assertFalse(result['already_staged'])
-        self.assertEqual(len(result['files']),28)
+        self.assertEqual(len(result['files']),32)
         self.assertIn('backend_error',self.cpp.read_text())
         for name,digest in result['files'].items():
             import hashlib
@@ -50,12 +50,21 @@ class StageTests(unittest.TestCase):
     def test_partial(self):
         self.cpp.write_text(self.cpp.read_text()+'DUCHAMP QEMU backend selftest failed')
         self.rejected_unchanged()
+    def test_preexisting_observer_adapter(self):
+        (self.root/'bsd/dev/mt6897_ufs_observer_xnu.c').write_text('user source')
+        self.rejected_unchanged()
+    def test_modified_observer_header(self):
+        stage.stage(self.root)
+        p=self.root/'bsd/dev/mt6897_ufs_observer.h'
+        p.write_text(p.read_text()+'\n/* user change */\n')
+        self.rejected_unchanged()
     def test_all_workflow_core_globs_staged(self):
         result=stage.stage(self.root)
         expected={p.name for glob in ('mt6897*.c','mt6897*.h') for p in (REPO/'duchamp/drivers').glob(glob)}
         # These are owned by stage-duchamp-qemu-spi2.py.
         expected-={'mt6897_spi2_probe.c','mt6897_spi2_probe.h'}
-        expected|={'mt6897_ufs_cache_backend.c','mt6897_ufs_cache_backend.h'}
+        expected|={'mt6897_ufs_cache_backend.c','mt6897_ufs_cache_backend.h',
+                   'mt6897_ufs_observer_xnu.c','mt6897_ufs_observer_xnu.h'}
         actual={Path(p).name for p in result['files'] if p.startswith('bsd/dev/mt6897')}
         self.assertEqual(expected,actual)
 

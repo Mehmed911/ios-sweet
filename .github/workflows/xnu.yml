@@ -166,6 +166,8 @@ jobs:
           done
           cmp ../duchamp/xnu/mt6897_ufs_cache_backend.c xnu/bsd/dev/mt6897_ufs_cache_backend.c
           cmp ../duchamp/xnu/mt6897_ufs_cache_backend.h xnu/bsd/dev/mt6897_ufs_cache_backend.h
+          cmp ../duchamp/xnu/mt6897_ufs_observer_xnu.c xnu/bsd/dev/mt6897_ufs_observer_xnu.c
+          cmp ../duchamp/xnu/mt6897_ufs_observer_xnu.h xnu/bsd/dev/mt6897_ufs_observer_xnu.h
           grep -Fq 'QEMU RAM ROOT MOUNTED' xnu/bsd/kern/bsd_init.c
           grep -Fq 'QEMU RAM ROOT MOUNT FAILED' xnu/bsd/kern/bsd_init.c
           grep -Fq 'QEMU ROOTVNODE READY' xnu/bsd/kern/bsd_init.c
