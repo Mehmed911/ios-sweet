@@ -67,7 +67,7 @@ jobs:
       - name: Fetch build script
         run: |
           shasum -a 256 -c .github/xnu-inputs-491ff8b.sha256
-          echo 'Baseline 491ff8b5695a44c0aa8caa1a55b4aa6b5408bf27 plus the passive UFS observer (319 verified inputs)'
+          echo 'Baseline 491ff8b5695a44c0aa8caa1a55b4aa6b5408bf27 plus the MT6897 read-only XNU observer integration (324 verified inputs)'
           git init -q dxb
           git -C dxb fetch -q --depth 1 "$DXB_REPO" "$DXB_SHA"
           git -C dxb checkout -q FETCH_HEAD
@@ -201,6 +201,9 @@ jobs:
           done
           cmp ../duchamp/xnu/mt6897_ufs_cache_backend.c xnu/bsd/dev/mt6897_ufs_cache_backend.c
           cmp ../duchamp/xnu/mt6897_ufs_cache_backend.h xnu/bsd/dev/mt6897_ufs_cache_backend.h
+          cmp ../duchamp/xnu/mt6897_ufs_observer_xnu.c xnu/bsd/dev/mt6897_ufs_observer_xnu.c
+          cmp ../duchamp/xnu/mt6897_ufs_observer_xnu.h xnu/bsd/dev/mt6897_ufs_observer_xnu.h
+          cmp ../duchamp/xnu/qemu_ufs_observer.c xnu/bsd/dev/qemu_ufs_observer.c
           grep -Fq 'QEMU RAM ROOT MOUNTED' xnu/bsd/kern/bsd_init.c
           grep -Fq 'QEMU RAM ROOT MOUNT FAILED' xnu/bsd/kern/bsd_init.c
           grep -Fq 'QEMU ROOTVNODE READY' xnu/bsd/kern/bsd_init.c
