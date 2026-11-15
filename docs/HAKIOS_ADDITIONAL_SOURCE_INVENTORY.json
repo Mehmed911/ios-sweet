@@ -1,0 +1,1284 @@
+{
+  "linux": {
+    "commit": "fa2933aac170dd19c6a7f0d7b81a8f537e40915c",
+    "scope": [
+      "drivers/ufs/",
+      "include/ufs/",
+      "drivers/phy/mediatek/",
+      "Documentation/devicetree/bindings/ufs/"
+    ],
+    "files": [
+      {
+        "path": "Documentation/devicetree/bindings/ufs/amd,versal2-ufs.yaml",
+        "sha256": "ff5564b6321de764c2bdd94bda7662cb473debd0c99ccd41b66d66224471d0fd",
+        "bytes": 1135,
+        "text_lines": 61
+      },
+      {
+        "path": "Documentation/devicetree/bindings/ufs/cdns,ufshc.yaml",
+        "sha256": "03290e9f2a78a4d5bbc326a09af55003f4d745c230db8486f66293238e2121a8",
+        "bytes": 1402,
+        "text_lines": 73
+      },
+      {
+        "path": "Documentation/devicetree/bindings/ufs/hisilicon,ufs.yaml",
+        "sha256": "4cd06b92b9337a8ff867382fb0387308a5684f1c3385e858974ac465d7ef812c",
+        "bytes": 1972,
+        "text_lines": 90
+      },
+      {
+        "path": "Documentation/devicetree/bindings/ufs/mediatek,ufs.yaml",
+        "sha256": "5467407f595590285af0b3ff56d1b98df35d008ec46d878034cb91f05effede9",
+        "bytes": 2135,
+        "text_lines": 102
+      },
+      {
+        "path": "Documentation/devicetree/bindings/ufs/qcom,sa8255p-ufshc.yaml",
+        "sha256": "66226e1a443d1a0d1c5ccb5d91daa2010e22ff0ff6d7100f324832ccaf23e519",
+        "bytes": 1231,
+        "text_lines": 67
+      },
+      {
+        "path": "Documentation/devicetree/bindings/ufs/qcom,sc7180-ufshc.yaml",
+        "sha256": "228f6f7c28a019668b1349ade3d4e999590321595d601e8a72357036be3e72ff",
+        "bytes": 4919,
+        "text_lines": 175
+      },
+      {
+        "path": "Documentation/devicetree/bindings/ufs/qcom,sm8650-ufshc.yaml",
+        "sha256": "2e20332a881f4565e9b8c49d2682e26dd28ead57be96821e361166662acae827",
+        "bytes": 6048,
+        "text_lines": 205
+      },
+      {
+        "path": "Documentation/devicetree/bindings/ufs/qcom,ufs-common.yaml",
+        "sha256": "95741a3656ba28c2dba36cc69824e3a4c228b94ce28d4b9aa9088b6028ccea7b",
+        "bytes": 1043,
+        "text_lines": 67
+      },
+      {
+        "path": "Documentation/devicetree/bindings/ufs/qcom,ufs.yaml",
+        "sha256": "2bec7d56ec2185f2943ff8ac84c37fde681ec3f0fca13afb0f3264fa83073278",
+        "bytes": 6259,
+        "text_lines": 240
+      },
+      {
+        "path": "Documentation/devicetree/bindings/ufs/renesas,ufs.yaml",
+        "sha256": "535fe3a1a98d0199400c8f897db2c6262bb7f46c94c1a9fb70ae541367156536",
+        "bytes": 1498,
+        "text_lines": 73
+      },
+      {
+        "path": "Documentation/devicetree/bindings/ufs/rockchip,rk3576-ufshc.yaml",
+        "sha256": "9b11742d657e320350c07a23b0f4e4bc05386859894a29046058b048360c0086",
+        "bytes": 2702,
+        "text_lines": 106
+      },
+      {
+        "path": "Documentation/devicetree/bindings/ufs/samsung,exynos-ufs.yaml",
+        "sha256": "27705b774a3552f6030fe711fb2004e8df02839e39c2fa2e471328b7c2209c3b",
+        "bytes": 2986,
+        "text_lines": 134
+      },
+      {
+        "path": "Documentation/devicetree/bindings/ufs/snps,tc-dwc-g210.yaml",
+        "sha256": "dc0f22f6f6c26d2c7c987be7f4a0e71c4536ed485024ddc0423c68f88ba8f280",
+        "bytes": 1030,
+        "text_lines": 51
+      },
+      {
+        "path": "Documentation/devicetree/bindings/ufs/sprd,ums9620-ufs.yaml",
+        "sha256": "951e1052d918f5e529cbe76b533e20ccd2fdce194f8c3631d1aa13c7fb23342e",
+        "bytes": 1859,
+        "text_lines": 79
+      },
+      {
+        "path": "Documentation/devicetree/bindings/ufs/ti,j721e-ufs.yaml",
+        "sha256": "af72fe6b41352ab5d6db5f7c6ed016802747fecc1ad3ff675f865e1942a02152",
+        "bytes": 2097,
+        "text_lines": 90
+      },
+      {
+        "path": "Documentation/devicetree/bindings/ufs/ufs-common.yaml",
+        "sha256": "7d0af2d5b851a7ffd353f4fa451718d1573cc36793b76f40d36d9862fd4e281c",
+        "bytes": 5583,
+        "text_lines": 187
+      },
+      {
+        "path": "drivers/phy/mediatek/Kconfig",
+        "sha256": "aa8fe23bcbefc2381eb6ab0a7d4edf507f6304d2a928394f5d2aab59ca508363",
+        "bytes": 3436,
+        "text_lines": 112
+      },
+      {
+        "path": "drivers/phy/mediatek/Makefile",
+        "sha256": "0f93abd48a11fe0cc0370a964730a32820de57774850befca5e909537c1e0917",
+        "bytes": 966,
+        "text_lines": 26
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-dp.c",
+        "sha256": "99035e3613260fe16507b3ce3ee79226287b874d20a0c16d742d8fa2d50a33c4",
+        "bytes": 24499,
+        "text_lines": 838
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-hdmi-mt2701.c",
+        "sha256": "40c56b5d95142589fdc5bb05a7d95370e34f9d9c426eb0ac7f8a95990d0cc364",
+        "bytes": 7817,
+        "text_lines": 221
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-hdmi-mt8173.c",
+        "sha256": "71320db4275350bf00321680d19107a83fc33cc03f950e36979b816d4aa95986",
+        "bytes": 8991,
+        "text_lines": 254
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-hdmi-mt8195.c",
+        "sha256": "1923d56f3dab818ea596f04c323409a6ae5c92513b494e5415f20d1ebe602a18",
+        "bytes": 16189,
+        "text_lines": 535
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-hdmi-mt8195.h",
+        "sha256": "1674552a8f47b1b8b93e33eeb8c1ecc0fa75e26c1b4fc12037d78a1a323f65bf",
+        "bytes": 3670,
+        "text_lines": 119
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-hdmi.c",
+        "sha256": "3cd4f499b0706921cee3f336b3af012302b6307d7607acc451255d30aae40ae4",
+        "bytes": 5717,
+        "text_lines": 209
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-hdmi.h",
+        "sha256": "335173f4f3fd03821729f21953332dd048acc76e9076fc952605fa45220f2cb8",
+        "bytes": 1502,
+        "text_lines": 55
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-io.h",
+        "sha256": "518e3da709794b27e77528a92a09b2205aafec3b9a3b9c1239c18442dc99aa5c",
+        "bytes": 897,
+        "text_lines": 46
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-mipi-csi-0-5-rx-reg.h",
+        "sha256": "9de22c1461545eae35c39eebf2dae414aa51d27a2079449a97f64871fd5cd68c",
+        "bytes": 2090,
+        "text_lines": 62
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-mipi-csi-0-5.c",
+        "sha256": "06637562458a6c539b778853953b8eef6d66136099767fbeb21d28267ad026df",
+        "bytes": 9814,
+        "text_lines": 294
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-mipi-dsi-mt8173.c",
+        "sha256": "5f4f3ce70aab3fe641dff1569feb9bdf916d48fd8f5b695ffbf25f2b22221f85",
+        "bytes": 8951,
+        "text_lines": 294
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-mipi-dsi-mt8183.c",
+        "sha256": "18e5e24ad5b1df0661c8baf5d1f55ea6ddbbe2a53eb9802d387e394881130e29",
+        "bytes": 5451,
+        "text_lines": 179
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-mipi-dsi-mt8196.c",
+        "sha256": "bc8446db588ba7cc061314ff7c0de7a1e1f3d51d2bb33669a1a649acf7851a3f",
+        "bytes": 6479,
+        "text_lines": 201
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-mipi-dsi.c",
+        "sha256": "1faf867c6813cf64e4b5a0c272cd3b4e18f7d6918e09890337221154248e8652",
+        "bytes": 5478,
+        "text_lines": 201
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-mipi-dsi.h",
+        "sha256": "d9b707930c1a2fbb97b815fce8407af7dd6fe7e858660ca33c058fa677b2bf5a",
+        "bytes": 1280,
+        "text_lines": 46
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-pcie-sphy.c",
+        "sha256": "28fb9bc72b155abf9edafbae37f421fc612c5207d1113a228bfc2e7e40d4ceef",
+        "bytes": 18773,
+        "text_lines": 561
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-pcie.c",
+        "sha256": "1bf21782922b10bb1dcc9515a749a3b8f372334b5e010fcc2d78840fb59f1951",
+        "bytes": 7233,
+        "text_lines": 266
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-tphy.c",
+        "sha256": "50f060ba77f20550457894e8997780260ab1cc6b2165d571d55eda0487d50345",
+        "bytes": 46820,
+        "text_lines": 1678
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-ufs.c",
+        "sha256": "b3351571b9a56b2c62ee6b216c857ca10d50bd1da51a1e04c3a4d25fd8decb8a",
+        "bytes": 5231,
+        "text_lines": 199
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-xfi-tphy.c",
+        "sha256": "9f423cadcfaf62322728db7f281b695f2cd019c27ae7be57fdcb24f7ac6e26ab",
+        "bytes": 14836,
+        "text_lines": 451
+      },
+      {
+        "path": "drivers/phy/mediatek/phy-mtk-xsphy.c",
+        "sha256": "8f639d5b9a14fac77e639ed55bf2a63f7b582a0f3dc6fc23aa0757b8a4d51ef3",
+        "bytes": 16829,
+        "text_lines": 646
+      },
+      {
+        "path": "drivers/ufs/Kconfig",
+        "sha256": "dedae701cffc91be7735b62007aba58f5a16fa4376ca368656038da109dacf4f",
+        "bytes": 943,
+        "text_lines": 32
+      },
+      {
+        "path": "drivers/ufs/Makefile",
+        "sha256": "39536c3adc7af30548fb94f2fa982e5688f91ba25f64d0d43736b59430794ce3",
+        "bytes": 166,
+        "text_lines": 5
+      },
+      {
+        "path": "drivers/ufs/core/Kconfig",
+        "sha256": "e5d151d898d5cb5e58f182dcd3556e2dc063332376ed21b91fc5f586ba41500e",
+        "bytes": 1856,
+        "text_lines": 52
+      },
+      {
+        "path": "drivers/ufs/core/Makefile",
+        "sha256": "7429924d01a4f586e59c4c99ab99d4699beae36c99ba005428f8ab5f9595d63a",
+        "bytes": 485,
+        "text_lines": 12
+      },
+      {
+        "path": "drivers/ufs/core/ufs-debugfs.c",
+        "sha256": "89067be9292cc11ac86595fa2a763a6d2a3b56279d541675e02197b5c0590234",
+        "bytes": 14893,
+        "text_lines": 533
+      },
+      {
+        "path": "drivers/ufs/core/ufs-debugfs.h",
+        "sha256": "c3da5477679df7df8aa57858bca56a4c715eb1476151652d451d71b7536e9e47",
+        "bytes": 777,
+        "text_lines": 27
+      },
+      {
+        "path": "drivers/ufs/core/ufs-fault-injection.c",
+        "sha256": "e8e71baad67973f03f092d7d34cc86b5ed39f471334f530e20de4163c59f505e",
+        "bytes": 2283,
+        "text_lines": 82
+      },
+      {
+        "path": "drivers/ufs/core/ufs-fault-injection.h",
+        "sha256": "5d4e6a557265dd06656024e9adc52d479e99ad350346789c857440adf251f862",
+        "bytes": 629,
+        "text_lines": 31
+      },
+      {
+        "path": "drivers/ufs/core/ufs-hwmon.c",
+        "sha256": "a552bf319df7d74b024980dc2dea5e824a0bcb27626b3089c6c92510497e6f06",
+        "bytes": 4266,
+        "text_lines": 212
+      },
+      {
+        "path": "drivers/ufs/core/ufs-mcq.c",
+        "sha256": "3c7564c23f92b04e906e7183c53bbf1699b8a1d692bd8af37a970ab9feb17e59",
+        "bytes": 20971,
+        "text_lines": 747
+      },
+      {
+        "path": "drivers/ufs/core/ufs-rpmb.c",
+        "sha256": "7823b86db79658a4d056b331e530dabdf29ac08108c6e3d624fec344e69ec26a",
+        "bytes": 7264,
+        "text_lines": 280
+      },
+      {
+        "path": "drivers/ufs/core/ufs-sysfs.c",
+        "sha256": "b013c89c7fd368d97a64db7e11c4823932e43ce635d27784c5b2eb779d50b037",
+        "bytes": 63156,
+        "text_lines": 2164
+      },
+      {
+        "path": "drivers/ufs/core/ufs-sysfs.h",
+        "sha256": "c4c1ba8cb142d9b0f9816acd41c9672b5153b5ccd0bf85f6cf6fbd2541cf1833",
+        "bytes": 426,
+        "text_lines": 18
+      },
+      {
+        "path": "drivers/ufs/core/ufs-txeq.c",
+        "sha256": "5123ddbacd76a493b5bfa8380fd68801452a8f982dec70fc61d73ba215bc6041",
+        "bytes": 51825,
+        "text_lines": 1626
+      },
+      {
+        "path": "drivers/ufs/core/ufs_bsg.c",
+        "sha256": "e6c019f3775b0c39f8eccf75ae0c0af65f84a8894e99e3e21be1c6919613b5de",
+        "bytes": 7031,
+        "text_lines": 287
+      },
+      {
+        "path": "drivers/ufs/core/ufs_bsg.h",
+        "sha256": "30b9212ee320563a8375624f53452f93a36ac1bcdd939593147fd388d1d13c3b",
+        "bytes": 420,
+        "text_lines": 18
+      },
+      {
+        "path": "drivers/ufs/core/ufs_trace.h",
+        "sha256": "c3c9631447438d78f2ce9ca728e483993c9cb3d856308ceb4d5812a495e18fdd",
+        "bytes": 11658,
+        "text_lines": 426
+      },
+      {
+        "path": "drivers/ufs/core/ufs_trace_types.h",
+        "sha256": "660692e5c6b199bf6963ff1e7be9dfd3691262b48de16d83846c5a0afdd4c36b",
+        "bytes": 374,
+        "text_lines": 23
+      },
+      {
+        "path": "drivers/ufs/core/ufshcd-crypto.c",
+        "sha256": "d7bdd53907560889811f9a3c969e1b520d03bbc18fd705a2772d5ed46737205f",
+        "bytes": 6885,
+        "text_lines": 237
+      },
+      {
+        "path": "drivers/ufs/core/ufshcd-crypto.h",
+        "sha256": "ff68cdb1b46f7ee23e99ad726269108d435db4ffcc1c23ea7848429ede1fc96f",
+        "bytes": 2814,
+        "text_lines": 113
+      },
+      {
+        "path": "drivers/ufs/core/ufshcd-priv.h",
+        "sha256": "d39b3f24c221519fb14c7c5230de29a448aece5b2768706f1950584be5f41871",
+        "bytes": 14842,
+        "text_lines": 509
+      },
+      {
+        "path": "drivers/ufs/core/ufshcd.c",
+        "sha256": "c69a8d8ba1729528f5f50b39848297e2d4b4c557799265cb7af49daea93390fa",
+        "bytes": 321146,
+        "text_lines": 11695
+      },
+      {
+        "path": "drivers/ufs/host/Kconfig",
+        "sha256": "593072cefd8ed970cb4244eab19787ba8ec8fd52ff94f8b0ff1fa4f17e15ee27",
+        "bytes": 5721,
+        "text_lines": 170
+      },
+      {
+        "path": "drivers/ufs/host/Makefile",
+        "sha256": "47ac78612bf73b2240f22e7c37b2a1667d6ac398efa8473acb7d96f9c5e15027",
+        "bytes": 824,
+        "text_lines": 18
+      },
+      {
+        "path": "drivers/ufs/host/cdns-pltfrm.c",
+        "sha256": "7af21629d1496e2b721d52a50e39e6b98785018d07d8d8849d6ce03f8e2cda12",
+        "bytes": 9217,
+        "text_lines": 334
+      },
+      {
+        "path": "drivers/ufs/host/tc-dwc-g210-pci.c",
+        "sha256": "00d5e295b75af5d1551bd62e4fa32c76a3f0cd841a7f58743393f76fe5c19b38",
+        "bytes": 3487,
+        "text_lines": 138
+      },
+      {
+        "path": "drivers/ufs/host/tc-dwc-g210-pltfrm.c",
+        "sha256": "ea228941d308e42ad419694e0f968b70515cad1d17ef2893c7a0b943570917cd",
+        "bytes": 2716,
+        "text_lines": 102
+      },
+      {
+        "path": "drivers/ufs/host/tc-dwc-g210.c",
+        "sha256": "b4902592d1e2c05ead75fc1a76545529edc001aa8f679fc62b9451bec72d8850",
+        "bytes": 9344,
+        "text_lines": 311
+      },
+      {
+        "path": "drivers/ufs/host/tc-dwc-g210.h",
+        "sha256": "f5dbabaabe80b60f2aba9d689f53b14636562c70423d6b0be7e9d46c8c7e9f50",
+        "bytes": 394,
+        "text_lines": 18
+      },
+      {
+        "path": "drivers/ufs/host/ti-j721e-ufs.c",
+        "sha256": "e9ba5b63ff0a965f4cd0de68d169c0f318567e392383fab31a8596fc5a5f5883",
+        "bytes": 2664,
+        "text_lines": 117
+      },
+      {
+        "path": "drivers/ufs/host/ufs-amd-versal2.c",
+        "sha256": "54249d961dba31c50ccea2e164a8ba9482459a6612e9bf89f279ff3d907a8dab",
+        "bytes": 13077,
+        "text_lines": 539
+      },
+      {
+        "path": "drivers/ufs/host/ufs-exynos.c",
+        "sha256": "f13379872e148620c4ba7e3010b9200b371c693787f14fc5963b9ebf85fe1551",
+        "bytes": 69499,
+        "text_lines": 2352
+      },
+      {
+        "path": "drivers/ufs/host/ufs-exynos.h",
+        "sha256": "66753bc25e2ceb767c60cb1a3e0a6b3e09e24ab2c642e754fef1eeac3a140235",
+        "bytes": 8211,
+        "text_lines": 294
+      },
+      {
+        "path": "drivers/ufs/host/ufs-hisi.c",
+        "sha256": "8de5b5fff50cc714619afefebda52c273291063a3691f85a4da0fbffaf628aee",
+        "bytes": 17190,
+        "text_lines": 605
+      },
+      {
+        "path": "drivers/ufs/host/ufs-hisi.h",
+        "sha256": "6cb7bf5e883bc4f1f127a22b6ac9b54857c37db5b0a2c7eca556fe58471b0df6",
+        "bytes": 2795,
+        "text_lines": 104
+      },
+      {
+        "path": "drivers/ufs/host/ufs-mediatek-sip.h",
+        "sha256": "04f37783a70b73a557f55af4f1ce47b78e4082ef24741654fb4c5c4df6d44095",
+        "bytes": 2344,
+        "text_lines": 94
+      },
+      {
+        "path": "drivers/ufs/host/ufs-mediatek-trace.h",
+        "sha256": "c9a9a08759b51846b3ce62a51841881da2f4ec09efbdd833337988842f199879",
+        "bytes": 1276,
+        "text_lines": 59
+      },
+      {
+        "path": "drivers/ufs/host/ufs-mediatek.c",
+        "sha256": "7d1490950a237b544a907576defc57bda98877e076dffa0134a210d93bb94362",
+        "bytes": 64256,
+        "text_lines": 2588
+      },
+      {
+        "path": "drivers/ufs/host/ufs-mediatek.h",
+        "sha256": "db51ee1317bd553af2a5b8ab0b5b5971d596759343de5d4a8e7d23224651af25",
+        "bytes": 5807,
+        "text_lines": 236
+      },
+      {
+        "path": "drivers/ufs/host/ufs-qcom.c",
+        "sha256": "ab39394c1de45a8ea46052f9b7c0919093ead560864141a87cf67706a1f38ca7",
+        "bytes": 85605,
+        "text_lines": 3097
+      },
+      {
+        "path": "drivers/ufs/host/ufs-qcom.h",
+        "sha256": "a8e48b18df59dd896bb9d0e3e5f5adf25ef4b3988286f368dd8bfc5280f6698e",
+        "bytes": 11817,
+        "text_lines": 390
+      },
+      {
+        "path": "drivers/ufs/host/ufs-renesas.c",
+        "sha256": "6eacc76cb2b3f544ac3af5ff0640d0ac45eb2bf2d18c2e343391cd672aba3007",
+        "bytes": 17426,
+        "text_lines": 558
+      },
+      {
+        "path": "drivers/ufs/host/ufs-rockchip.c",
+        "sha256": "7fe4876005f5f2316d52527a1ba44cb0e43bd8ddc431a1c44f3710ca6fa4fa16",
+        "bytes": 10871,
+        "text_lines": 361
+      },
+      {
+        "path": "drivers/ufs/host/ufs-rockchip.h",
+        "sha256": "69038844c44007be406f5353551d0760b1b248056dc82a8f3d6792a5a9fb1233",
+        "bytes": 3243,
+        "text_lines": 90
+      },
+      {
+        "path": "drivers/ufs/host/ufs-sprd.c",
+        "sha256": "7f1e196fc84bd6cfc58f7df7695b043ede2eafd17d716762a4a047234aaf08ae",
+        "bytes": 11552,
+        "text_lines": 450
+      },
+      {
+        "path": "drivers/ufs/host/ufs-sprd.h",
+        "sha256": "eda2ac61695169e30c92ba33a136bfb57a43470b54f29712dffba8a80dbb9331",
+        "bytes": 1686,
+        "text_lines": 85
+      },
+      {
+        "path": "drivers/ufs/host/ufshcd-dwc.c",
+        "sha256": "593d650bb960f71d30e737162055c8d4de2c925a066b6ebb02c0bc3eb2fa6cfe",
+        "bytes": 4042,
+        "text_lines": 146
+      },
+      {
+        "path": "drivers/ufs/host/ufshcd-dwc.h",
+        "sha256": "463cb4b2dbfe04e9beaeda2735bf122e928bd65c2c7ccb0700dee0e387d7dec2",
+        "bytes": 1703,
+        "text_lines": 71
+      },
+      {
+        "path": "drivers/ufs/host/ufshcd-pci.c",
+        "sha256": "7e08322ebb0cd142f9cf5b0b2268490c4ed23c7f80871b77d1b8d1f941849fff",
+        "bytes": 20039,
+        "text_lines": 778
+      },
+      {
+        "path": "drivers/ufs/host/ufshcd-pltfrm.c",
+        "sha256": "271115c17a205fb676cbd5edaddf27d591ecd81645659cd024ef1946951443df",
+        "bytes": 18891,
+        "text_lines": 726
+      },
+      {
+        "path": "drivers/ufs/host/ufshcd-pltfrm.h",
+        "sha256": "a74af48418a97a136eeb23d9ad300648671ce85f8a0732dbd9afea1bb33d4a7c",
+        "bytes": 1485,
+        "text_lines": 39
+      },
+      {
+        "path": "drivers/ufs/host/ufshci-dwc.h",
+        "sha256": "96bb244413bc1491f3a7e5e5544838ae4fb8ccd49f5848e498a793935ca2a34f",
+        "bytes": 730,
+        "text_lines": 33
+      },
+      {
+        "path": "include/ufs/ufs.h",
+        "sha256": "ff2a5028256c7d904d73c60f7cd48aa4e18eb2a22a246bf31aeb0795db9dca55",
+        "bytes": 20300,
+        "text_lines": 673
+      },
+      {
+        "path": "include/ufs/ufs_quirks.h",
+        "sha256": "6cb2eee2757781894ac7341c40292f38469a35bd1beebb78e978baaade0519c2",
+        "bytes": 4098,
+        "text_lines": 112
+      },
+      {
+        "path": "include/ufs/ufshcd.h",
+        "sha256": "d18553f9c990e7c882a5b4a5d2fa1b0386b067c74c132158408f5750eadd02a1",
+        "bytes": 57269,
+        "text_lines": 1695
+      },
+      {
+        "path": "include/ufs/ufshci.h",
+        "sha256": "faa230e703bd6e065d7e315aae63132a4efe4f374f26a71f707e3f4b6c1d0e4b",
+        "bytes": 16549,
+        "text_lines": 640
+      },
+      {
+        "path": "include/ufs/unipro.h",
+        "sha256": "dd4d2cebafc18aab7895c22a93b6c3373ababa7c19326b88fb4aedb503ff8800",
+        "bytes": 13945,
+        "text_lines": 469
+      }
+    ]
+  },
+  "common_mtk": {
+    "commit": "a962798418fa1ebaa06554a69955803860907c6b",
+    "scope": [
+      "mtkloader/",
+      "tools/chainboot.py",
+      "tools/boot-xnu.sh",
+      "tools/xnu-cycle.sh",
+      "xnu/files/osfmk/arm64/",
+      "xnu/apply.sh"
+    ],
+    "files": [
+      {
+        "path": "mtkloader/build.sh",
+        "sha256": "da8292fd84131426e42389838a3d814d2d62cf034f837cf3c2b40f15a2be7f92",
+        "bytes": 939,
+        "text_lines": 17
+      },
+      {
+        "path": "mtkloader/build_fbdiag.sh",
+        "sha256": "54ca5207f7fdf1cd9d301b6c9f44b62ab0d0eb86fff50c937f9c3102e4064621",
+        "bytes": 976,
+        "text_lines": 16
+      },
+      {
+        "path": "mtkloader/build_flashed.py",
+        "sha256": "6baaadb2b5400e76c82988bb078414af721548bdde28e1381db4f174452198f2",
+        "bytes": 1097,
+        "text_lines": 23
+      },
+      {
+        "path": "mtkloader/diag.c",
+        "sha256": "623db0e0c345be1bde0f494a3510232d5e60c416415736267c72bdce0e841cad",
+        "bytes": 7427,
+        "text_lines": 213
+      },
+      {
+        "path": "mtkloader/diag_start.S",
+        "sha256": "bfd2365dfe7d55a11b546f9d67c57ff91463a48cec1f18e8e1b1d726bccc03ca",
+        "bytes": 2310,
+        "text_lines": 103
+      },
+      {
+        "path": "mtkloader/fbdiag.c",
+        "sha256": "c99156d06b19f60b25146f5f84c41ce38ebe649ad6cbedcf00ab6b6a0eebe065",
+        "bytes": 8913,
+        "text_lines": 291
+      },
+      {
+        "path": "mtkloader/fbdiag_start.S",
+        "sha256": "8ef66663d7921780792063c729989cc33e3b908a3c8d1c161192eca5629d1122",
+        "bytes": 2538,
+        "text_lines": 115
+      },
+      {
+        "path": "mtkloader/font8x16.h",
+        "sha256": "5bdaa7350cfde7a7c04b4d26cf308b8c63b6399a685868b8a0fee10db640094e",
+        "bytes": 9376,
+        "text_lines": 98
+      },
+      {
+        "path": "mtkloader/link.ld",
+        "sha256": "4d3a097533e9f10161083b5b35014ceb6ad45612c5206173ded0f838d433f4ec",
+        "bytes": 365,
+        "text_lines": 29
+      },
+      {
+        "path": "mtkloader/loop.S",
+        "sha256": "82f4312f364f7c886aa8e92243f3b4df362464246fbf7d9978bf7c29edaee5d9",
+        "bytes": 359,
+        "text_lines": 19
+      },
+      {
+        "path": "mtkloader/msdc.h",
+        "sha256": "3a49897520a6a99e9c73075fd608f850db7f688577cbd2514c27935f6b20e91c",
+        "bytes": 5699,
+        "text_lines": 196
+      },
+      {
+        "path": "mtkloader/mtkcam.h",
+        "sha256": "2f539ae103121b0e2a8e9c05b9f793f88ac47ea87b91ad74798cc43de30640ce",
+        "bytes": 41020,
+        "text_lines": 1300
+      },
+      {
+        "path": "mtkloader/mtkconnsys.h",
+        "sha256": "a0739d338823e0ee0496811bc396919eca4612423a9a587af84545711b8f24d3",
+        "bytes": 6881,
+        "text_lines": 225
+      },
+      {
+        "path": "mtkloader/mtkdbg.h",
+        "sha256": "98bc1b729fd13e72178abef5ba3585052236da963abeb598859f8163562af7da",
+        "bytes": 7114,
+        "text_lines": 285
+      },
+      {
+        "path": "mtkloader/mtkloader.c",
+        "sha256": "d460c91fe932775273145cf572e94f6ed4a02328d3fd0d46fff12d1cf75c7f9b",
+        "bytes": 106754,
+        "text_lines": 3453
+      },
+      {
+        "path": "mtkloader/mtkmali.h",
+        "sha256": "673f124df0637831eef8bf06ff5fcb5e073394cf3f17ceda25677ebc665ccc90",
+        "bytes": 9165,
+        "text_lines": 262
+      },
+      {
+        "path": "mtkloader/mtkpwrap.h",
+        "sha256": "d6b1a2220d1ef036e384971cbfe07f21b5c5c39a2e526d20e8e1e1df249a3bdb",
+        "bytes": 2705,
+        "text_lines": 79
+      },
+      {
+        "path": "mtkloader/mtkspi.h",
+        "sha256": "3d8aab5e7ac186792cf098e3f6c8e8fc29b39ca448f92996a53f929454f9942e",
+        "bytes": 10192,
+        "text_lines": 283
+      },
+      {
+        "path": "mtkloader/start.S",
+        "sha256": "cfddb8c627366016f0d9c4e834d06fdcb1955bcb7841190ccfa357516fc45ad5",
+        "bytes": 9124,
+        "text_lines": 348
+      },
+      {
+        "path": "mtkloader/tcm.h",
+        "sha256": "22bc4cf88b9577c13caae677d64279e730581040168b8928e090a937d60216ac",
+        "bytes": 10536,
+        "text_lines": 312
+      },
+      {
+        "path": "mtkloader/touchfw.h",
+        "sha256": "4e83c9bb9ec29c3a18585440318967375aea485ae2d451795751738db355ba32",
+        "bytes": 621092,
+        "text_lines": 6413
+      },
+      {
+        "path": "tools/boot-xnu.sh",
+        "sha256": "70d4576031b845fe2e312f34470b13ad604f3d4fd002e7d45d33a7ca58a04520",
+        "bytes": 354,
+        "text_lines": 7
+      },
+      {
+        "path": "tools/chainboot.py",
+        "sha256": "6c830dac83ce9882b9454940c119c69e15891d6aed7f169d517fa857aa7b630e",
+        "bytes": 3615,
+        "text_lines": 83
+      },
+      {
+        "path": "tools/xnu-cycle.sh",
+        "sha256": "65968650e5dbc362586c13fe9addb80a6acc81b22303119ec196671dc59a2003",
+        "bytes": 3458,
+        "text_lines": 53
+      },
+      {
+        "path": "xnu/apply.sh",
+        "sha256": "5d3d5d6c88c8b1b5639f5712035a65d3a9872a59ea0c586cc31cfcedb4931435",
+        "bytes": 1842,
+        "text_lines": 30
+      },
+      {
+        "path": "xnu/files/osfmk/arm64/generic_arm64_support.c",
+        "sha256": "4936afa2d728d6bd968c6fb401b6027fa162209cb1e7cc61a845787774a7e72d",
+        "bytes": 1869,
+        "text_lines": 57
+      },
+      {
+        "path": "xnu/files/osfmk/arm64/gic_v3_irq.c",
+        "sha256": "4aebdc94d1c82ad1c1e27e6b2cb359275f0b00e670b0ad31c43cf94781bb2435",
+        "bytes": 19073,
+        "text_lines": 530
+      },
+      {
+        "path": "xnu/files/osfmk/arm64/kpc.c",
+        "sha256": "31cd51ee78b5cc06eb5787ee18bf22b75a9592c1dbff758c461ab445521f1365",
+        "bytes": 1979,
+        "text_lines": 152
+      },
+      {
+        "path": "xnu/files/osfmk/arm64/loader_return.c",
+        "sha256": "2ffdb0c51cb843dbed615e34221054624349f662b20645c625ed6900ed803335",
+        "bytes": 22250,
+        "text_lines": 599
+      },
+      {
+        "path": "xnu/files/osfmk/arm64/ppl/sart.h",
+        "sha256": "0630ec54c77fee801bd6ee16fcccbe3ad42ac6f3cfbb64a95ef57f5bbead8250",
+        "bytes": 273,
+        "text_lines": 11
+      },
+      {
+        "path": "xnu/files/osfmk/arm64/ppl/uat.h",
+        "sha256": "ef93267d8b4c6582a708d08722f202a0b9e16cef0ea35f777ef0f8c443a4aca2",
+        "bytes": 277,
+        "text_lines": 11
+      },
+      {
+        "path": "xnu/files/osfmk/arm64/psci_smp.c",
+        "sha256": "0088573ef2f9afee1b8792cd6f43567b6a355aab2975eedb05d281090916dacd",
+        "bytes": 14567,
+        "text_lines": 390
+      },
+      {
+        "path": "xnu/files/osfmk/arm64/psci_smp.h",
+        "sha256": "861b78c09bacf88c733d2c989d2f20c9b31854e050e06883822e0aba833f5ba4",
+        "bytes": 1359,
+        "text_lines": 35
+      },
+      {
+        "path": "xnu/files/osfmk/arm64/tunables/tunables.s",
+        "sha256": "acc19ceded1615350c7a8d1c100598115592ff09b164a3363a58a2a8cf9c0018",
+        "bytes": 206,
+        "text_lines": 7
+      },
+      {
+        "path": "xnu/files/osfmk/arm64/user_exception_trace.c",
+        "sha256": "eaa1a3c246a58bc1ebdc3082f38a5f0c12b7ea8e236c8049b3589f6d27a785a5",
+        "bytes": 14443,
+        "text_lines": 440
+      }
+    ]
+  },
+  "common_main": {
+    "commit": "63fc2b4633bac3af8e57dadab9f5a8d4cb940438",
+    "scope": [
+      "tools/hakios-",
+      "configs/",
+      "drivers/",
+      "Makefile"
+    ],
+    "files": [
+      {
+        "path": "Makefile",
+        "sha256": "1030e1d2b4ca8262ce936fbf5b5050d1ec0f6f682edb642d8a44da7df8b81eff",
+        "bytes": 7321,
+        "text_lines": 159
+      },
+      {
+        "path": "configs/boot-args.lst",
+        "sha256": "62bc38d2bdcea6db45941fd61b61af4b571e8406dd56fbadd88b345d31039dd7",
+        "bytes": 4679,
+        "text_lines": 350
+      },
+      {
+        "path": "configs/common_defconfig",
+        "sha256": "963a9d86299851d2cf5fa2973b615cb3ddcc3278abf5561acd6d769c95e7f2a2",
+        "bytes": 34412,
+        "text_lines": 1192
+      },
+      {
+        "path": "configs/defconfig",
+        "sha256": "14fabe629a58159879ca7fd627779e822a01fb91b624c7f4226516e63ede99ca",
+        "bytes": 245,
+        "text_lines": 4
+      },
+      {
+        "path": "configs/open.config",
+        "sha256": "ee04aa9925ac8243d28f5244694a51f63c9b161ee108f303a6fdf619f2cca414",
+        "bytes": 528,
+        "text_lines": 13
+      },
+      {
+        "path": "configs/persist.config",
+        "sha256": "90c546b0ee1255b3ba5c3f7ad1e71b776ceb3adf6c79f9f4ff2c4f1c1e44e746",
+        "bytes": 443,
+        "text_lines": 7
+      },
+      {
+        "path": "configs/symbols.tsv",
+        "sha256": "641aefb43d169110cefc73170d05201db81a68a070e8e05830dfc3e7cb438e5d",
+        "bytes": 26674,
+        "text_lines": 316
+      },
+      {
+        "path": "configs/trace.config",
+        "sha256": "4decc4372273971f6b7e2e0978b23b16e80508e3b82001f5bda67984eaa78710",
+        "bytes": 232,
+        "text_lines": 3
+      },
+      {
+        "path": "configs/virt.config",
+        "sha256": "ede629d972aabdfe276107cfb878203801c46f883f272e3eaf82f9deda573f70",
+        "bytes": 156,
+        "text_lines": 3
+      },
+      {
+        "path": "drivers/README.md",
+        "sha256": "63fd950a7019656ba4f2e25c6d64174361354e6878c5ee99e426afddc17dd64b",
+        "bytes": 4919,
+        "text_lines": 46
+      },
+      {
+        "path": "drivers/audio/conf",
+        "sha256": "628808467484fb481ca8c9282405698c70c249d4ae18793b409cfc5c95a98ba6",
+        "bytes": 1391,
+        "text_lines": 32
+      },
+      {
+        "path": "drivers/audio/hakios.adsp.c",
+        "sha256": "bacf1a7f7ff6528fc930cbae6e73bdc0506859a0c12ed356c5acc52d315ad92f",
+        "bytes": 123950,
+        "text_lines": 3306
+      },
+      {
+        "path": "drivers/audio/hakios.audio.c",
+        "sha256": "d7c778fea6297c79f2138780e2b3ff5613d347cdb154d09362758fd34e985953",
+        "bytes": 12589,
+        "text_lines": 362
+      },
+      {
+        "path": "drivers/audio/hakios.guard.c",
+        "sha256": "9fd6a51185bef552ad8ebbe9a35a2fc20393fbe73aec853a6516d31ab65d6f46",
+        "bytes": 13310,
+        "text_lines": 318
+      },
+      {
+        "path": "drivers/audio/hakios.mic.c",
+        "sha256": "c24d5f2c651ac6c9547b8f17c1c004f1b00b3161663534e854583a5b8f666f7a",
+        "bytes": 73999,
+        "text_lines": 1852
+      },
+      {
+        "path": "drivers/audio/hakios.sound.c",
+        "sha256": "f8743e9c18e5a23981bbfe05300de5942185b1011ece6ac1ffe3d3a6ac0f49ac",
+        "bytes": 59740,
+        "text_lines": 1541
+      },
+      {
+        "path": "drivers/audio/hakios.speaker.c",
+        "sha256": "52a2df3ff361b369daaf284f47db36a818e87448ab3b80291afd656897345857",
+        "bytes": 43467,
+        "text_lines": 1242
+      },
+      {
+        "path": "drivers/audio/hakios.virtio_sound.c",
+        "sha256": "81c314d4ecd51f93dd4ce31b34126e3b1721cc41c8fae690c417be6d0d3da39d",
+        "bytes": 14879,
+        "text_lines": 416
+      },
+      {
+        "path": "drivers/bluetooth/conf",
+        "sha256": "1068eb056ef4186d8b855424602a71f04a858a09d6bd869590c9dfc849a7e4f7",
+        "bytes": 396,
+        "text_lines": 7
+      },
+      {
+        "path": "drivers/bluetooth/hakios.bt.c",
+        "sha256": "bef8a1ef1af3c593290c1d9355a7b6547a4136b776d7bcd87efce6f91b6dd31b",
+        "bytes": 6333,
+        "text_lines": 143
+      },
+      {
+        "path": "drivers/camera/conf",
+        "sha256": "9add44f4547291ce0ba2f4059dc60d435d2261efd7edbda96523def32a64ac59",
+        "bytes": 652,
+        "text_lines": 12
+      },
+      {
+        "path": "drivers/camera/hakios.camera.c",
+        "sha256": "7a675ff23910722fa346de2c721859320c6c4400636d404587f769f42c32512d",
+        "bytes": 164816,
+        "text_lines": 4309
+      },
+      {
+        "path": "drivers/camera/hakios.torch.c",
+        "sha256": "6ecaeff44402ab94b1da2181a97cf30200cc48e8b057b454495bedd1f411057e",
+        "bytes": 27257,
+        "text_lines": 778
+      },
+      {
+        "path": "drivers/core/conf",
+        "sha256": "6e8967fa338f8b77d2e7f2b3d0a6cfe3efcd570bd7cad222848b47a7f4829cb7",
+        "bytes": 1152,
+        "text_lines": 21
+      },
+      {
+        "path": "drivers/core/hakios.platform.c",
+        "sha256": "20902fddf834acff66914e32a902716291cc7f65fcd11c9efba3c119fdbf11f4",
+        "bytes": 3144,
+        "text_lines": 67
+      },
+      {
+        "path": "drivers/core/hakios.socinfo.c",
+        "sha256": "4d2f0b513777afb6c2400241656c1aa94c4f30bb1dd8afc98733eb13e04ccc81",
+        "bytes": 13971,
+        "text_lines": 336
+      },
+      {
+        "path": "drivers/core/hakios.stubs.c",
+        "sha256": "53f395750a91748b397182e6065e35e8a7f827d3c7dc63ee700c0323fa9d4171",
+        "bytes": 4420,
+        "text_lines": 137
+      },
+      {
+        "path": "drivers/core/hakios.stubs.cpp",
+        "sha256": "8bc87974f8615cbb3a400a29fada73b76820e2ea70f19994736d628f7af12218",
+        "bytes": 474,
+        "text_lines": 14
+      },
+      {
+        "path": "drivers/core/hakios.version.c",
+        "sha256": "b8a8f417d51b8d6ca2f0e28c5738e9593d6421fccc1316cdee624727cb757f22",
+        "bytes": 2203,
+        "text_lines": 45
+      },
+      {
+        "path": "drivers/gpu/conf",
+        "sha256": "112b89313ee755c08041428bf11e6e669ce9c399ef4024c4edc8990fa7181b36",
+        "bytes": 604,
+        "text_lines": 9
+      },
+      {
+        "path": "drivers/gpu/hakios.adreno.c",
+        "sha256": "bc7a4c255364dbf0efa23ecdf933c6a2ddbd973c9339b2646afd9e2dbc730645",
+        "bytes": 167033,
+        "text_lines": 3852
+      },
+      {
+        "path": "drivers/gpu/hakios.gpu.cpp",
+        "sha256": "2d3ba9f37a45980438299137bb24f89fe81ff3376850337a3b5df51ff4ef8eb8",
+        "bytes": 47089,
+        "text_lines": 1326
+      },
+      {
+        "path": "drivers/haptic/conf",
+        "sha256": "b82db8257a88314a4de9bca5a2c5f4c239e82b84ac13c54b07f264998e8bf241",
+        "bytes": 449,
+        "text_lines": 8
+      },
+      {
+        "path": "drivers/haptic/hakios.haptic.c",
+        "sha256": "271530fc117b5116a5f9de62a546c4a288646ed4e034c398831ee49d5b126224",
+        "bytes": 34566,
+        "text_lines": 1012
+      },
+      {
+        "path": "drivers/input/conf",
+        "sha256": "7ae5056fa488639f2c17cc4cec323d18d686a21f53e8efd21baf4287cb5b8934",
+        "bytes": 1007,
+        "text_lines": 19
+      },
+      {
+        "path": "drivers/input/hakios.buttons.c",
+        "sha256": "e5bc4912d8f37d91804fa3b8427a87f54a96907a00f8a1f8468034b3a3cd3779",
+        "bytes": 24694,
+        "text_lines": 615
+      },
+      {
+        "path": "drivers/input/hakios.focaltech_fw.h",
+        "sha256": "59e06f76c38888b881a31601a78713fe2ace092624400cde65f6246eabdaa70b",
+        "bytes": 706209,
+        "text_lines": 7288
+      },
+      {
+        "path": "drivers/input/hakios.goodix.c",
+        "sha256": "023806f01aad5a2c20a6367b1770d6cff00cd21f71b37a54181934a02c448d1f",
+        "bytes": 52907,
+        "text_lines": 1564
+      },
+      {
+        "path": "drivers/input/hakios.input.c",
+        "sha256": "a8a427f1fb7c9c78cd69c531bdde87ee38d80ea1ed2a2f93dd58b0c0313c09dc",
+        "bytes": 8940,
+        "text_lines": 295
+      },
+      {
+        "path": "drivers/input/hakios.virtio_input.c",
+        "sha256": "a4991ada1413477b51fa224e6145361363d8c984807e606522f8b8a14fb706f3",
+        "bytes": 11820,
+        "text_lines": 374
+      },
+      {
+        "path": "drivers/map",
+        "sha256": "6fe1665cb4fe518b628f2898f89bfacd86bf9a0505dd37ffe12a7232b6089702",
+        "bytes": 2214,
+        "text_lines": 69
+      },
+      {
+        "path": "drivers/modem/conf",
+        "sha256": "c54df140386c7c98dc4a3200d81cfb85768750c0c3d09f1e918513865107c5ad",
+        "bytes": 771,
+        "text_lines": 16
+      },
+      {
+        "path": "drivers/modem/hakios.cell.c",
+        "sha256": "55ef36f37aad381434e4b020d3f227d117e8957acb0bc402303afb6e4dfedd78",
+        "bytes": 13435,
+        "text_lines": 358
+      },
+      {
+        "path": "drivers/modem/hakios.ipa.c",
+        "sha256": "ea26b1c858be45bfbb4ac07d7e9d2064ac7677735bb2ad3b818a6466067ecb86",
+        "bytes": 34007,
+        "text_lines": 874
+      },
+      {
+        "path": "drivers/modem/hakios.mpss.c",
+        "sha256": "085e44ec0ee2c27d1be70225adc6042977b8a822487c79338760afc6c98c0262",
+        "bytes": 250615,
+        "text_lines": 6395
+      },
+      {
+        "path": "drivers/modem/hakios.nas.c",
+        "sha256": "a304a72eee593e6563648ebb492697538355532e4903f9d9755d9d877ee72a73",
+        "bytes": 7020,
+        "text_lines": 191
+      },
+      {
+        "path": "drivers/modem/hakios.qmi.c",
+        "sha256": "5feb3ddc9c4244701e2f462e77500a732a3fe1f55d43127a2341ca9a55c1c0a1",
+        "bytes": 25300,
+        "text_lines": 963
+      },
+      {
+        "path": "drivers/net/conf",
+        "sha256": "e311535613fc60d3993d33cffbd8b7ec4046f36b01b28f81295da7c208685c59",
+        "bytes": 549,
+        "text_lines": 10
+      },
+      {
+        "path": "drivers/net/hakios.net.c",
+        "sha256": "5ed99766af4858137fc41f39498fb384e8d142220411159522fd8b8bdb5507e5",
+        "bytes": 15009,
+        "text_lines": 428
+      },
+      {
+        "path": "drivers/net/hakios.virtio_net.c",
+        "sha256": "ccc36788c2fe95f57cdf71d74094fdb8ce6a74fe072c62356ef3d37787f7706a",
+        "bytes": 10120,
+        "text_lines": 293
+      },
+      {
+        "path": "drivers/power/conf",
+        "sha256": "7935332f74cbc6bb559010a36e701da9b7bc3681b66938a690b9828eeb309fb6",
+        "bytes": 1300,
+        "text_lines": 26
+      },
+      {
+        "path": "drivers/power/hakios.battery.c",
+        "sha256": "0facf6d2eed5b093823f86728dfa6494a12fa926aef9c472c9b7fd1835b5dbe5",
+        "bytes": 9370,
+        "text_lines": 205
+      },
+      {
+        "path": "drivers/power/hakios.battery.cpp",
+        "sha256": "695718935e1b6d78c8450f6cf4c2005605e984bcaf93e7796eb9a6d84a56b56a",
+        "bytes": 8453,
+        "text_lines": 233
+      },
+      {
+        "path": "drivers/power/hakios.battguard.c",
+        "sha256": "705c3a39c30a5e47a453cf40a81e868b36c1f7f8e073ff4cb88ea364afc43f5b",
+        "bytes": 4940,
+        "text_lines": 119
+      },
+      {
+        "path": "drivers/power/hakios.cpufreq.c",
+        "sha256": "6048378648cb1ea6d4125f31036dfddaab799ba126b192dcd4855d7c4713c35c",
+        "bytes": 22175,
+        "text_lines": 601
+      },
+      {
+        "path": "drivers/power/hakios.pmic.c",
+        "sha256": "b78a9bf43c90877439ca5260ead42b86e839beaee5b6bcd39c3f00acebe3ab11",
+        "bytes": 12371,
+        "text_lines": 304
+      },
+      {
+        "path": "drivers/power/hakios.thermal.c",
+        "sha256": "08f5b641a985679e3d3b8bb88694b08e22aa0c6b6a6f21cd86fcb65fb4f10a0c",
+        "bytes": 11984,
+        "text_lines": 283
+      },
+      {
+        "path": "drivers/storage/conf",
+        "sha256": "babecc4e11c3dba9593dcd6c9cbf51ec9447e1de1005eef2e475ee55c30632a2",
+        "bytes": 1239,
+        "text_lines": 23
+      },
+      {
+        "path": "drivers/storage/hakios.apfs_check.c",
+        "sha256": "1b1d0d7f361c94a51647a74f65d484d9387eb16f3141f4a3ecfc62fc751e6e60",
+        "bytes": 58051,
+        "text_lines": 1872
+      },
+      {
+        "path": "drivers/storage/hakios.image.c",
+        "sha256": "509d4793309c52efe321b1b710a46b7b3d3bd6674464940e159883e11194efaa",
+        "bytes": 5532,
+        "text_lines": 187
+      },
+      {
+        "path": "drivers/storage/hakios.sparse.c",
+        "sha256": "614538183266c310800ed8be647153911d89e0adb4401b897dde235244fc67e8",
+        "bytes": 8570,
+        "text_lines": 289
+      },
+      {
+        "path": "drivers/storage/hakios.ufs.c",
+        "sha256": "ef6e1985e910333cf8675c43015ce96deb3a8aff24fd3c921986425a0ea6f6a2",
+        "bytes": 70167,
+        "text_lines": 1891
+      },
+      {
+        "path": "drivers/storage/hakios.ufshc.c",
+        "sha256": "a535ec001c6bb54f58932ecc77949f17d2e307d768b2dd7ba9bb68b9d4be49ce",
+        "bytes": 51284,
+        "text_lines": 1351
+      },
+      {
+        "path": "drivers/storage/hakios.ufshc.h",
+        "sha256": "51623bbaac4539707e421b5d0d5a69c5afd6e4d409ffd9494a927250dc03f197",
+        "bytes": 1289,
+        "text_lines": 32
+      },
+      {
+        "path": "drivers/storage/hakios.virtio_blk.c",
+        "sha256": "fecd3f6b1b584962325aa7be1f16a66168cae16b1e5a6c8f30054770860a4a32",
+        "bytes": 17575,
+        "text_lines": 573
+      },
+      {
+        "path": "drivers/wifi/conf",
+        "sha256": "113a3e786735c3c8bd7cbbac81dd021d12b5b1ce8925046396d5dfce15e70540",
+        "bytes": 773,
+        "text_lines": 15
+      },
+      {
+        "path": "drivers/wifi/hakios.apple80211.c",
+        "sha256": "d4763a51413998c0c46a0eff0c8bcef5716b59402ceab6d473e524b4431e86b9",
+        "bytes": 29061,
+        "text_lines": 739
+      },
+      {
+        "path": "drivers/wifi/hakios.lx.c",
+        "sha256": "7ee76d56202c9c5529842d45ee20c9ea2410940719b365c95db08207fb809f84",
+        "bytes": 15511,
+        "text_lines": 582
+      },
+      {
+        "path": "drivers/wifi/hakios.sta.c",
+        "sha256": "9ea972a32152402badbbcc162846fe00e61f02f2de355ea8cd770cfd2b462174",
+        "bytes": 10335,
+        "text_lines": 371
+      },
+      {
+        "path": "drivers/wifi/hakios.wifi.c",
+        "sha256": "7a413b1b8b46a899c4d3fd33832aac2159d976c5fea4d285f7f0351ec014a411",
+        "bytes": 193222,
+        "text_lines": 4444
+      },
+      {
+        "path": "drivers/wifi/hakios.wlan.cpp",
+        "sha256": "c09833d2d1f486f0623fa588985bde692434b0e8023f99e23869bf0895aad551",
+        "bytes": 6742,
+        "text_lines": 171
+      },
+      {
+        "path": "drivers/wifi/hakios.wlfw.c",
+        "sha256": "4282f0973383948c16cbdf5e29c7b9943bdbc5246b67ad7620d6c448ca969c0c",
+        "bytes": 23667,
+        "text_lines": 545
+      },
+      {
+        "path": "tools/hakios-config-test.py",
+        "sha256": "4c781f112619db43eb570ad74f104033167273ac8fef059db833837cae9da1c5",
+        "bytes": 23900,
+        "text_lines": 314
+      },
+      {
+        "path": "tools/hakios-config.py",
+        "sha256": "9df6e3f237b8da33a0d65854a17cf479a84b953d79bd197166a35a099c67d477",
+        "bytes": 59610,
+        "text_lines": 1098
+      },
+      {
+        "path": "tools/hakios-device-test.py",
+        "sha256": "bf99844dc62021acd7317b0c816940723cb036fa983f47773773df7af707df76",
+        "bytes": 9288,
+        "text_lines": 136
+      },
+      {
+        "path": "tools/hakios-device.py",
+        "sha256": "bc1e2a25f80ef5ea5dffe2dfd4c47ac7e5c26b9685aadada4d4178641a2c0ddb",
+        "bytes": 27356,
+        "text_lines": 490
+      }
+    ]
+  },
+  "ios_sweet_baseline": {
+    "commit": "60ae971e0cfd05defdea7a94c318aee37bbd2b3a",
+    "branch": "duchamp-bootstrap",
+    "changes_preserved": true
+  }
+}

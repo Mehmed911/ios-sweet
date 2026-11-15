@@ -58,6 +58,15 @@ int dufs_bind(struct dufs_host *, const struct dufs_config *);
 int dufs_start(struct dufs_host *);
 int dufs_nop(struct dufs_host *);
 int dufs_device_init(struct dufs_host *);
+struct dufs_inquiry {
+    uint8_t version;
+    uint8_t vendor[8], product[16], revision[4];
+};
+/* Standard, non-EVPD INQUIRY only. Output is unchanged on failure; no arbitrary
+ * command interface. Requires the same exclusive DMA/cache-ready platform as
+ * capacity/read, and does not establish physical MT6897 ownership itself.
+ */
+int dufs_inquiry(struct dufs_host *, struct dufs_inquiry *);
 int dufs_capacity(struct dufs_host *, uint64_t *blocks, uint32_t *block_bytes);
 int dufs_read(struct dufs_host *, uint64_t lba, uint32_t blocks,
               void *destination, size_t destination_bytes);

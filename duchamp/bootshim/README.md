@@ -123,6 +123,14 @@ reads the pmsg ring after a QEMU guest reset, consumes complete requests in
 its valid data, and requests a return to A. The test compares the ring and
 adjacent bytes across resets. XNU dispatch in this preview is simulated.
 
+For a real XNU entry in the same test, build a second image with BOOT_ONCE=1,
+QEMU_ONLY=1, BOOT_MENU=1, PAYLOAD set to the existing SWEETXNU payload, and
+MATERIALIZE=1 READY=1 JUMP=1. Pass its Image as `--with-xnu` to the runner
+above. The test verifies one kernel entry after simulated A readback, then
+uses a host reset to prove that entering B again cannot replay the request.
+Wrong or missing readback halts before the handoff. The QEMU request fixture
+is at 0x47000000, clear of the linked image and separate from retained pmsg.
+
 To rehearse a recovery request from Slot B in QEMU, provide the uncompressed
 stock Duchamp ARM64 Linux Image and the uncompressed OrangeFox recovery cpio:
 

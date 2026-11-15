@@ -99,7 +99,7 @@ ASSERT(SIZEOF(.replay) <= {TEXT_SIZE}, "MCQ code exceeds the pinned gap")
                     "baseline_ci_run": 43115466836, "full_kernel_rebuild": False}
 
 
-def check_case(name, folder, profile, records, images, kernel, disk, qemu, seconds, snapshot=False):
+def check_case(name, folder, profile, records, images, kernel, disk, qemu, seconds, snapshot=False, inquiry=False):
     fault, handoff, marker = CASES[name]
     loaders, image, payload = images[fault]
     ids = {handoff: secrets.randbits(62) | 1 << 62}
@@ -107,7 +107,7 @@ def check_case(name, folder, profile, records, images, kernel, disk, qemu, secon
         handoff, folder, ids, loaders, records)
     screen, trace, result, metadata = ROOT["run_guest"](
         folder, payload, kernel, disk, qemu, seconds,
-        entry_loaders=entry_loaders, extra_events=EVENTS, capture_kernel_log=snapshot)
+        entry_loaders=entry_loaders, extra_events=EVENTS, capture_kernel_log=snapshot or inquiry)
     SLOT["check_ids"](name, screen, entry_id, record_id, verdict)
     assert metadata["readonly"] and metadata["no_ramdisk"] and metadata["gpt"] == profile
     assert metadata["mcq"] == {"max_queues": 8, "fault": fault}
@@ -124,13 +124,18 @@ def check_case(name, folder, profile, records, images, kernel, disk, qemu, secon
     assert not re.search(r"(?m)^ufs_process_db\b", trace), name
     assert not re.search(r"(?m)^ufs_mmio_write (?:addr )?(0x58|0x60)\b", trace), name
     commands = re.findall(r"(?m)^ufs_exec_scsi_cmd .*opcode (0x[\da-f]+)", trace)
-    assert set(commands) <= {"0x9e", "0x88"}, (name, commands)
+    assert set(commands) <= ({"0x9e", "0x88", "0x12"} if inquiry else {"0x9e", "0x88"}), (name, commands)
     completions = len(re.findall(r"(?m)^ufs_mcq_complete_req\b", trace))
     dma_errors = re.findall(r"(?m)^ufs_err_dma_\w+.*$", trace)
     sq_tails = re.findall(r"(?m)^ufs_mmio_write (?:addr )?0x1004\b.*$", trace)
     cq_heads = re.findall(r"(?m)^ufs_mmio_write (?:addr )?0x101c\b.*$", trace)
     assert ("ufs_mcq_create_sq" in trace) == ("ufs_mcq_create_cq" in trace) == (verdict == 1), name
     if name == "matched":
+        if inquiry:
+            kernel_log = (folder / "run/kernel-log.txt").read_text()
+            identity = re.findall(r"DUCHAMP UFS INQUIRY PASS lun=0 version=(\d+) vendor=(.*?) product=(.*?) revision=([^\n]*)", kernel_log)
+            assert len(identity) == 1 and commands.count("0x12") >= 1, (identity, commands)
+            assert all(field.strip() for field in identity[0][1:]), identity
         assert result["stop_marker"] == ROOT["HEARTBEAT"]
         assert "DUCHAMP UFS ROOT DEVICE MATCH" in screen and "DUCHAMP UFS PID1 READ PASS" in screen
         assert "DUCHAMP UFS WRITE OPEN REFUSED EROFS" in screen
@@ -155,7 +160,8 @@ def check_case(name, folder, profile, records, images, kernel, disk, qemu, secon
                 sq_submissions=len(sq_tails), cq_acknowledgements=len(cq_heads),
                 mcq_completions=completions, read16=commands.count("0x88"),
                 dma_errors=dma_errors, rejection_marker=marker, trace_events=len(trace.splitlines()),
-                passive_snapshot=snapshot and verdict == 1)
+                passive_snapshot=snapshot and verdict == 1,
+                inquiry_verified=inquiry and name == "matched")
 
 
 def main():
@@ -169,6 +175,7 @@ def main():
     parser.add_argument("--jobs", type=int, choices=(1, 2, 3), default=2)
     parser.add_argument("--case", choices=CASES, action="append")
     parser.add_argument("--snapshot", action="store_true", help="run the opt-in passive observer before HCI writes")
+    parser.add_argument("--inquiry", action="store_true", help="verify the complete-kernel standard INQUIRY before root discovery")
     args = parser.parse_args()
     qemu = shutil.which("qemu-system-aarch64")
     if not qemu:
@@ -193,6 +200,8 @@ def main():
                     "_duchamp_qemu_ufs_rootdev"}
         if args.snapshot:
             required |= {"_dufs_snapshot_registers", "_duchamp_qemu_ufs_snapshot_boot_id"}
+        if args.inquiry:
+            required.add("_dufs_inquiry")
         missing = required - symbols(baseline).keys()
         if missing:
             parser.error("full-build artifact lacks required XNU UFS symbols: " + ", ".join(sorted(missing)))
@@ -201,6 +210,8 @@ def main():
                      source_sha256=digest(SOURCE.read_bytes()), full_kernel_rebuild=True,
                      replay_hooks_applied=False)
     else:
+        if args.inquiry:
+            parser.error("INQUIRY requires a complete source-built kernel")
         if args.snapshot:
             parser.error("the snapshot integration requires a complete source-built kernel")
         if args.ci_run is not None or args.ci_head is not None:
@@ -217,6 +228,8 @@ def main():
         flags = " sweet-qemu-ufs-mcq=1"
         if args.snapshot:
             flags += " sweet-qemu-ufs-snapshot=1"
+        if args.inquiry:
+            flags += " sweet-qemu-ufs-inquiry=1"
         if fault:
             flags += f" sweet-qemu-mcq-fault={fault}"
         _, loaders, image, _ = SLOT["build_image"](args, folder, adt, gpt=True, extra_boot_args=flags)
@@ -228,7 +241,7 @@ def main():
             folder = output / name
             folder.mkdir()
             future = pool.submit(check_case, name, folder, profile, records, images,
-                                 kernel, disk, qemu, args.seconds, args.snapshot)
+                                 kernel, disk, qemu, args.seconds, args.snapshot, args.inquiry)
             jobs[future] = name
         results = {}
         for future in as_completed(jobs):

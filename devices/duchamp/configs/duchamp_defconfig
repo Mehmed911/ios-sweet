@@ -1,0 +1,4 @@
+# Native HakiOS configuration conventions; no implicit MT6768/Qualcomm layer.
+#include common_defconfig
+#include mt6897.config
+#include duchamp.config

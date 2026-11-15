@@ -45,8 +45,12 @@ if [ -n "$recovery_chain" ]; then
 fi
 if [ -n "$boot_once" ]; then
 	if [ "$boot_once:$boot_menu:${QEMU_ONLY:-}" != 1:1:1 ] ||
-	    [ -n "${PAYLOAD:-}$entry_keys" ]; then
-		echo "BOOT_ONCE=1 requires the QEMU menu preview without a payload or entry-key fixture" >&2
+	    [ -n "$entry_keys$recovery_chain" ]; then
+		echo "BOOT_ONCE=1 requires the isolated QEMU menu" >&2
+		exit 2
+	fi
+	if [ -n "${PAYLOAD:-}" ] && [ "${MATERIALIZE:-}:${READY:-}:${JUMP:-}" != 1:1:1 ]; then
+		echo "BOOT_ONCE with a payload requires MATERIALIZE=1 READY=1 JUMP=1" >&2
 		exit 2
 	fi
 	cflags="$cflags -DDUCHAMP_BOOT_ONCE=1"
@@ -217,6 +221,10 @@ if [ -n "$boot_menu" ]; then
 	$cc $cflags -c boot_menu.c -o "$out/boot_menu.o"
 	$cc $cflags -c boot_menu_keys.c -o "$out/boot_menu_keys.o"
 	objects="$objects $out/boot_menu.o $out/boot_menu_keys.o"
+	if [ -n "$boot_once" ]; then
+		$cc $cflags -c ../../devices/duchamp/mtkloader/boot_choice.c -o "$out/boot_choice.o"
+		objects="$objects $out/boot_choice.o"
+	fi
 fi
 if [ -n "$bl31_receiver" ]; then
 	$cc $cflags -c qemu_bl31_receiver.c -o "$out/qemu_bl31_receiver.o"
@@ -291,6 +299,10 @@ $cc $cflags -fuse-ld=lld -static -T shim.ld -Wl,--build-id=none -Wl,-N \
 $objcopy -O binary "$out/duchamp-diagnostic.elf" "$out/Image"
 head=$(llvm-nm "$out/duchamp-diagnostic.elf" | awk '$3 == "_head" { print "0x" $1 }')
 end=$(llvm-nm "$out/duchamp-diagnostic.elf" | awk '$3 == "_end" { print "0x" $1 }')
+if [ -n "$boot_once" ] && [ "$((end))" -gt "$((0x47000000))" ]; then
+	echo "one-shot loader overlaps the QEMU request fixture" >&2
+	exit 2
+fi
 truncate -s "$((end - head))" "$out/Image"
 llvm-readelf -r "$out/duchamp-diagnostic.elf"
 if [ -n "$phone_layout" ]; then

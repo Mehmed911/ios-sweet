@@ -4,6 +4,9 @@
 #include "boot_menu.h"
 #include "boot_menu_keys.h"
 #include "../../shim/font.h"
+#if defined(DUCHAMP_BOOT_ONCE)
+#include "../../devices/duchamp/mtkloader/boot_choice.h"
+#endif
 
 #if !defined(DUCHAMP_QEMU_ONLY)
 #error "The boot menu input backend requires QEMU virt"
@@ -201,8 +204,8 @@ draw_choices(const struct duchamp_framebuffer *fb, unsigned y, unsigned focus)
 }
 
 /* A QEMU host stands in for the firmware's next-slot selector and readback. */
-static void
-request_android(const struct duchamp_framebuffer *fb, unsigned y, uint64_t frequency)
+static int
+confirm_android_return(const struct duchamp_framebuffer *fb, unsigned y, uint64_t frequency)
 {
 	draw_text(fb, MARGIN, y, 3, "Requesting Android Slot A...", ACCENT);
 	__asm__ volatile("dsb sy" ::: "memory");
@@ -221,9 +224,7 @@ request_android(const struct duchamp_framebuffer *fb, unsigned y, uint64_t frequ
 		const uint32_t readback = *uart(UART_DR);
 		if (readback == 'A') {
 			uart_log("DUCHAMP ANDROID NEXT SLOT VERIFIED A\n");
-			qemu_reset();
-			failure = "DUCHAMP ANDROID BLOCKED RESET RETURNED\n";
-			break;
+			return 1;
 		}
 		if (readback == 'B' || readback == '!') {
 			failure = "DUCHAMP ANDROID BLOCKED NEXT SLOT\n";
@@ -234,50 +235,26 @@ request_android(const struct duchamp_framebuffer *fb, unsigned y, uint64_t frequ
 	draw_text(fb, MARGIN, y, 3, "Android return unavailable", MUTED);
 	__asm__ volatile("dsb sy" ::: "memory");
 	uart_log(failure);
-}
-
-#if defined(DUCHAMP_BOOT_ONCE)
-/* QEMU RAM at the pmsg address derived from the saved Duchamp GKI layout. */
-#define QEMU_PMSG_ADDRESS UINT64_C(0x48160000)
-#define QEMU_PMSG_FIXTURE UINT64_C(0x41000000)
-#define QEMU_PMSG_SIZE 0x10000U
-#define RAMOOPS_HEADER_SIZE 12U
-#define PMSG_CAPACITY (QEMU_PMSG_SIZE - RAMOOPS_HEADER_SIZE)
-#define RAMOOPS_SIGNATURE UINT32_C(0x43474244)
-
-static int
-take_boot_request(volatile uint32_t *zone)
-{
-	static const char request[] = "\nDUCHAMP:BOOT-XNU-ONCE\n";
-	const uint32_t end = zone[1];
-	const uint32_t size = zone[2];
-	const unsigned length = sizeof(request) - 1;
-	if (zone[0] != RAMOOPS_SIGNATURE || end >= PMSG_CAPACITY ||
-	    size > PMSG_CAPACITY || (size < PMSG_CAPACITY && end != size))
-		return -1;
-	if (size < length)
-		return 0;
-
-	/* Ignore bytes outside the live ring. Consume duplicate requests together. */
-	volatile unsigned char *data = (volatile unsigned char *)(zone + 3);
-	const unsigned start = (end + PMSG_CAPACITY - size) % PMSG_CAPACITY;
-	int found = 0;
-	for (unsigned pos = 0; pos <= size - length; pos++) {
-		unsigned i = 0;
-		while (i < length && data[(start + pos + i) % PMSG_CAPACITY] ==
-		    (unsigned char)request[i])
-			i++;
-		if (i == length) {
-			data[(start + pos + 1) % PMSG_CAPACITY] = '!';
-			found = 1;
-		}
-	}
-	__asm__ volatile("dsb sy" ::: "memory");
-	return found;
+	return 0;
 }
 
 static void
-qemu_one_shot(const struct duchamp_framebuffer *fb, uint64_t frequency)
+request_android(const struct duchamp_framebuffer *fb, unsigned y, uint64_t frequency)
+{
+	if (confirm_android_return(fb, y, frequency)) {
+		qemu_reset();
+		uart_log("DUCHAMP ANDROID BLOCKED RESET RETURNED\n");
+	}
+}
+
+#if defined(DUCHAMP_BOOT_ONCE)
+/* Shared guest RAM and a separate producer fixture above the linked image. */
+#define QEMU_PMSG_ADDRESS UINT64_C(0x48160000)
+#define QEMU_PMSG_FIXTURE UINT64_C(0x47000000)
+#define QEMU_PMSG_SIZE 0x10000U
+
+static int
+qemu_one_shot(const struct duchamp_framebuffer *fb, uint64_t frequency, int xnu_available)
 {
 	volatile uint32_t *zone = (volatile uint32_t *)(uintptr_t)QEMU_PMSG_ADDRESS;
 	uart_log("DUCHAMP ONCE SELECT SLOT\n");
@@ -285,7 +262,7 @@ qemu_one_shot(const struct duchamp_framebuffer *fb, uint64_t frequency)
 	if (slot == 'A') {
 		uart_log("DUCHAMP ONCE ANDROID A READY\n");
 		if (timed_input(frequency) != 'W')
-			return;
+			return 0;
 		/* The test supplies an Android-compatible pmsg ring to the A model. */
 		const volatile uint32_t *fixture =
 		    (const volatile uint32_t *)(uintptr_t)QEMU_PMSG_FIXTURE;
@@ -294,20 +271,35 @@ qemu_one_shot(const struct duchamp_framebuffer *fb, uint64_t frequency)
 		__asm__ volatile("dsb sy" ::: "memory");
 		uart_log("DUCHAMP ONCE ANDROID A PMSG PUBLISHED\n");
 		qemu_reset();
-		return;
+		return 0;
 	}
 	if (slot != 'B')
-		return;
+		return 0;
 
-	const int request = take_boot_request(zone);
+	/* These capabilities belong to the QEMU fixture only. The ARM64
+	 * entry gate has already required translation and caches to be off.
+	 */
+	static const struct duchamp_boot_choice_access access = {
+		.readable = 1, .writable = 1, .retained = 1,
+		.cache_publication_ready = 1, .android_fallback_ready = 1
+	};
+	const int request = duchamp_take_xnu_request(zone, QEMU_PMSG_SIZE, &access);
+	__asm__ volatile("dsb sy" ::: "memory");
 	if (request > 0) {
 		uart_log("DUCHAMP ONCE B CONSUMED REQUEST\n");
+		if (xnu_available) {
+			if (!confirm_android_return(fb, 32, frequency))
+				return 0;
+			uart_log("DUCHAMP ONCE B XNU DISPATCH\n");
+			return 1;
+		}
 		uart_log("DUCHAMP ONCE B XNU DISPATCH SIMULATED\n");
 	} else {
 		uart_log(request == 0 ? "DUCHAMP ONCE B NO REQUEST\n" :
 		    "DUCHAMP ONCE B INVALID PMSG\n");
 	}
 	request_android(fb, 32, frequency);
+	return 0;
 }
 #endif
 
@@ -370,8 +362,7 @@ duchamp_boot_menu_qemu(const struct duchamp_framebuffer *fb, int xnu_available)
 	*uart(UART_CR) = 0x301;
 
 #if defined(DUCHAMP_BOOT_ONCE)
-	qemu_one_shot(fb, frequency);
-	return 0;
+	return qemu_one_shot(fb, frequency, xnu_available);
 #endif
 #if defined(DUCHAMP_QEMU_RECOVERY_CHAIN)
 	qemu_chain_recovery(frequency);

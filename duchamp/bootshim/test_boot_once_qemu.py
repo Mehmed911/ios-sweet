@@ -7,14 +7,15 @@ import json
 from pathlib import Path
 import struct
 import subprocess
+import time
 
-from test_boot_menu_qemu import boot, expect, press, qmp_session
+from test_boot_menu_qemu import boot, expect, framebuffer, press, qmp_session, save_screen
 from test_qemu import qmp_call
 
 
 PMSG_ADDRESS = 0x48160000
 PMSG_SIZE = 0x10000
-FIXTURE_ADDRESS = 0x41000000
+FIXTURE_ADDRESS = 0x47000000
 GUARD_SIZE = 16
 HEADER = struct.Struct("<4sII")
 CAPACITY = PMSG_SIZE - HEADER.size
@@ -158,11 +159,84 @@ def verify_case(image, dtb, output, name, ring, outcome, readback):
             "replay_rejected_after_reset": replay_checked}
 
 
+def verify_xnu_dispatch(image, dtb, output, name, reply):
+    ring = android_ring(b"x" * (CAPACITY - 7) + REQUEST)
+    fixture = output / f"{name}.fixture.bin"
+    fixture.write_bytes(ring)
+    with boot(image, output, name, dtb, ram_fixtures=((fixture, FIXTURE_ADDRESS),),
+              warm_reset=True) as (guest, qmp, temp, log):
+        cursor = 0
+
+        def serial(marker):
+            nonlocal cursor
+            cursor = expect(guest, log, marker, after=cursor)
+
+        def select_slot(slot):
+            serial("DUCHAMP ONCE SELECT SLOT")
+            press(guest, slot)
+
+        select_slot(b"A")
+        serial("DUCHAMP ONCE ANDROID A READY")
+        empty = read_zone(qmp, temp)
+        assert empty == bytes(PMSG_SIZE + 2 * GUARD_SIZE)
+        with qmp_session(qmp) as stream:
+            press(guest, b"W")
+            serial("DUCHAMP ONCE ANDROID A PMSG PUBLISHED")
+            expect_guest_reset(stream)
+        select_slot(b"B")
+        serial("DUCHAMP ONCE B CONSUMED REQUEST")
+        serial("DUCHAMP ANDROID NEXT SLOT REQUEST A")
+        expected = empty[:GUARD_SIZE] + consumed(ring) + empty[-GUARD_SIZE:]
+        assert read_zone(qmp, temp) == expected
+        if reply is not None:
+            press(guest, reply)
+        if reply != b"A":
+            serial("DUCHAMP ANDROID BLOCKED NEXT SLOT" if reply else
+                   "DUCHAMP ANDROID BLOCKED NO READBACK")
+            with qmp_session(qmp) as stream:
+                expect_no_reset(stream)
+            _, registers = framebuffer(qmp, temp)
+            assert "PC=fffffe" not in registers
+        else:
+            serial("DUCHAMP ANDROID NEXT SLOT VERIFIED A")
+            serial("DUCHAMP ONCE B XNU DISPATCH")
+            deadline = time.monotonic() + 15
+            while time.monotonic() < deadline:
+                raw, registers = framebuffer(qmp, temp)
+                if "PC=fffffe" in registers and raw.count(b"\xff" * 4) >= 512:
+                    break
+                time.sleep(0.3)
+            else:
+                raise RuntimeError("XNU kernel PC and framebuffer output were not observed")
+            save_screen(output, name, raw)
+            assert read_zone(qmp, temp) == expected
+            # Explicit host reset models the next boot after XNU. The test
+            # exercises retained RAM, not reset firmware or Android itself.
+            with qmp_session(qmp) as stream:
+                qmp_call(stream, "system_reset")
+            select_slot(b"B")
+            serial("DUCHAMP ONCE B NO REQUEST")
+            serial("DUCHAMP ANDROID NEXT SLOT REQUEST A")
+            assert read_zone(qmp, temp) == expected
+            with qmp_session(qmp) as stream:
+                press(guest, b"A")
+                serial("DUCHAMP ANDROID NEXT SLOT VERIFIED A")
+                expect_guest_reset(stream)
+            select_slot(b"A")
+            serial("DUCHAMP ONCE ANDROID A READY")
+        (output / f"{name}.registers.txt").write_text(registers)
+    assert log.count(b"DUCHAMP ONCE B XNU DISPATCH\n") == int(reply == b"A")
+    return dict(xnu_kernel_executed=reply == b"A", readback=reply.decode() if reply else None,
+                replay_rejected_after_host_reset=reply == b"A",
+                model_a_reentered=reply == b"A", ring_and_guards_verified=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("image", type=Path)
     parser.add_argument("dtb", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--with-xnu", type=Path, help="one-shot build with an embedded SWEETXNU payload")
     args = parser.parse_args()
     dtb = args.dtb.resolve()
     node = "/reserved-memory/mblock-2-pstore"
@@ -195,6 +269,13 @@ def main():
               "cases": {name: verify_case(args.image.resolve(), dtb, output, name,
                                           ring, outcome, reply)
                         for name, ring, outcome, reply in cases}}
+    if args.with_xnu:
+        result["real_dispatch"] = {
+            name: verify_xnu_dispatch(args.with_xnu.resolve(), dtb, output, name, reply)
+            for name, reply in (("real-xnu", b"A"), ("real-wrong-slot", b"B"),
+                                ("real-no-readback", None))
+        }
+        result["xnu_kernel_executed"] = True
     (output / "verification.json").write_text(json.dumps(result, indent=2) + "\n")
 
 

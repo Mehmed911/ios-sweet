@@ -8,3 +8,5 @@ shim/out/
 xnu/out/
 xnu/out-*/
 __pycache__/
+# Offline Duchamp builds may contain local kernels, payloads and screenshots.
+out/duchamp/
