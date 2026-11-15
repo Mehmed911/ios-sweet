@@ -377,6 +377,9 @@ int duchamp_qemu_ufs_rootdev(dev_t *device) {
     int error=qu_profile(&gpt);
     if(error) { printf("DUCHAMP QUFS PROFILE REJECTED\n"); return error; }
     printf("DUCHAMP QUFS PROFILE VERIFIED\n");
+    uint32_t inquiry = 0;
+    if (PE_parse_boot_argn("sweet-qemu-ufs-inquiry", &inquiry, sizeof(inquiry)) && inquiry != 1)
+        return EINVAL;
     if (probe_requested) {
         qu_probe_stop(&gpt);
         __builtin_unreachable();
@@ -388,6 +391,13 @@ int duchamp_qemu_ufs_rootdev(dev_t *device) {
     if(!result) result=dufs_start(&qu.host);
     if(!result) result=dufs_nop(&qu.host);
     if(!result) result=dufs_device_init(&qu.host);
+    if(!result && inquiry) {
+        struct dufs_inquiry identity;
+        result=dufs_inquiry(&qu.host,&identity);
+        if(!result) printf("DUCHAMP UFS INQUIRY PASS lun=%u version=%u vendor=%.8s product=%.16s revision=%.4s\n",
+            setup.lun,identity.version,(const char *)identity.vendor,
+            (const char *)identity.product,(const char *)identity.revision);
+    }
     uint64_t blocks=0;
     if(!result) result=dufs_capacity(&qu.host,&blocks,&qu.physical_bytes);
     if(result) { printf("DUCHAMP QUFS ATTACH FAILED result=%d timeout_cause=%u\n",

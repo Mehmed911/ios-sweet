@@ -110,7 +110,7 @@ int dufs_start(struct dufs_host *h) {
         return bad(h,DUFS_STATE);
     h->state=2; return 0;
 }
-/* Only NOP, fDeviceInit queries, READ CAPACITY(16) and READ(16) reach this.
+/* Only NOP, fDeviceInit queries, INQUIRY, READ CAPACITY(16) and READ(16) reach this.
  * There is intentionally no public arbitrary-CDB or write interface.
  */
 static int request(struct dufs_host *h, const uint8_t *cdb, uint32_t bytes, uint8_t query) {
@@ -193,6 +193,23 @@ int dufs_device_init(struct dufs_host *h) {
         /* Every READ_FLAG request consumes the same operation-wide budget. */
     } while(now(h)-start<h->config.timeout_ms);
     return timeout(h,DUFS_WAIT_DEADLINE);
+}
+int dufs_inquiry(struct dufs_host *h, struct dufs_inquiry *out) {
+    if(!h || !out) return DUFS_ARGUMENT;
+    if(h->state!=2 || !h->device_ready) return DUFS_STATE;
+    begin(h);
+    uint8_t cdb[16]={0x12,0,0,0,36};
+    int r=scsi_read(h,cdb,36); if(r) return r;
+    /* Connected direct-access logical unit, standard response format and the
+     * complete fixed identification fields. Never publish cleared/stale data
+     * as successful discovery (the community MT6833 reader does no transfer).
+     */
+    if(h->data[0]!=0 || (h->data[3]&15)!=2 || h->data[4]<31)
+        return bad(h,DUFS_RESPONSE);
+    struct dufs_inquiry result;
+    clear(&result,sizeof(result)); result.version=h->data[2];
+    copy(result.vendor,h->data+8,8); copy(result.product,h->data+16,16);
+    copy(result.revision,h->data+32,4); *out=result; return 0;
 }
 int dufs_capacity(struct dufs_host *h, uint64_t *blocks, uint32_t *block_bytes) {
     if(!h || !blocks || !block_bytes) return DUFS_ARGUMENT;
