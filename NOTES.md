@@ -1,3 +1,10 @@
+ACTIVE HANDOFF - MT6897 cold UFS initialization modeled offline (2026-11-15)
+
+- Reverified pinned LK/BL31. LK writes AHIT/HCE zero and attempts device PowerDown with no final HCE/queue readback. The saved BL31 bootloader UFS service conditionally changes one AO syscon bit, distinct from published clock gates. No same-boot continuity, reset, PHY, DMA or MMIO grant follows.
+- Prefer independent, exclusive cold initialization under a supported firmware/resource contract. Added a test-only state machine under duchamp/drivers/model using the existing gate and provider. It covers resources, power/clocks, PHY, quiescence, reset, DMA, IRQ, HCE and UIC readiness. Failures stop and quarantine after any potentially mutable step. No storage write or physical backend is exposed.
+- All 67 model cases pass in native ASan/UBSan and ARM64 QEMU with identical output and zero virtual UFS events. The gate/provider, passive diagnostic, register snapshot, cache, DMA and staging regressions pass. Existing CI 43631086106 kernel passes 11 fresh QEMU cases. Two read-only boots reach PID 1 at 33.992 s and 33.914 s and nine stopped cases issue zero virtual UFS events. No new kernel was built.
+- See docs/DUCHAMP_MT6897_UFS_INIT_DESIGN.md, docs/DUCHAMP_UFS_LK_SHUTDOWN_ANALYSIS.md and outputs/duchamp-mt6897-ufs-init-20261115. Physical UFS remains disabled pending a verified cold-init resource grant and safe DMA baseline. No phone access, slot switch, reboot, flash or partition write.
+
 ACTIVE HANDOFF - Passive Slot B UFS handoff evidence audited and tested (2026-11-15)
 
 - Re-ran pinned LK/BL31 analysis and verified the retained Fastboot log reports UFS/M-PHY initialization during firmware startup. It is distinct from the archived XNU Slot B boot. LK attempts shutdown before the BL31 callbacks. No record proves final power, clocks, PHY, ownership or non-secure read permission at XNU entry.
