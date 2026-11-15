@@ -1,3 +1,10 @@
+ACTIVE HANDOFF - MT6897 UFS ownership and DMA handoff validated offline (2026-11-15)
+
+- Audited the pinned LK and BL31 again. In the saved BL31, both device-reset dispatch paths resolve to helper 0x44f84. The pinned Xiaomi client identifies 0x112b8090 bit 0 as device reset-level control, active low. The companion read is the HCI IP version register. No same-boot evidence of the electrical reset state, clocks, PHY, power or DMA drain was found.
+- Added a test-only DUCHUFS1 parser and session validator under duchamp/drivers/model. Its fixed-size record requires independently authenticated provenance and live boot/sequence/lease/ownership scope. It checks separate queue, fabric drain, no-resume, DMA isolation, descriptor/cache and range evidence. Direct and IOMMU rules are distinct. Failure or revocation is terminal. It creates no grant and dispatches no I/O.
+- 80 format cases pass in each of native ASan/UBSan and ARM64 QEMU, with all 448 shorter lengths rejected and zero virtual UFS events. The existing bootloader host/payload and eight QEMU entry cases, exact firmware audit, gate, route, cache, snapshot, staging and init regressions pass. Fresh full-XNU QEMU passes 11/11 on existing CI 43631086106, with nine stopped cases emitting zero UFS events.
+- See docs/DUCHAMP_UFS_OWNERSHIP.md, docs/DUCHAMP_UFS_DMA_SAFETY.md and docs/DUCHAMP_UFS_HANDOFF_FORMAT.md. Commands, exit codes, logs and verified reset trace are in outputs/duchamp-ufs-ownership-dma-20261115. Physical UFS stays disabled. No phone access, flash, reboot, slot change, MMIO, DMA or partition writes occurred.
+
 ACTIVE HANDOFF - MT6897 cold UFS initialization modeled offline (2026-11-15)
 
 - Reverified pinned LK/BL31. LK writes AHIT/HCE zero and attempts device PowerDown with no final HCE/queue readback. The saved BL31 bootloader UFS service conditionally changes one AO syscon bit, distinct from published clock gates. No same-boot continuity, reset, PHY, DMA or MMIO grant follows.
