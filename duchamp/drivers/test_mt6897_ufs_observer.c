@@ -13,10 +13,12 @@ extern int memcmp(const void *, const void *, size_t);
 #define CHECK(e) assert(e)
 #endif
 
-enum { BOOT = 0x1234 };
+enum { BOOT = 0x1234, SLOT_A = 1, SLOT_B = 2 };
 static struct fixture {
     struct mt6897_ufs_xnu_observer x;
     struct mt6897_ufs_read_grant grant;
+    unsigned entry_slot, evidence_slot;
+    uint64_t current_epoch;
     unsigned verifies, checks, maps, deny_verify, deny_at, revoke_at;
     unsigned revoke_verify, revoke_map, map_fail, map_alignment, map_overflow, reentrant;
     _Alignas(16) uint32_t reg[DUFS_MTK_HCI_BYTES / 4];
@@ -28,20 +30,23 @@ static int verify(void *context, uint64_t boot, struct mt6897_ufs_read_grant *gr
     CHECK(context == &f && boot == BOOT);
     ++f.verifies;
     if (f.revoke_verify) mt6897_ufs_observer_revoke(&f.x.provider);
-    if (f.deny_verify) return -1;
+    /* Test fixture only. The observed slot is independent of the record's
+     * claim. The physical bootshim's FDT hint is not a source of authority. */
+    if (f.deny_verify || f.entry_slot != SLOT_B || f.evidence_slot != f.entry_slot)
+        return -1;
     *grant = f.grant;
     return 0;
 }
 static int check(void *context, const struct mt6897_ufs_read_grant *grant)
 {
-    CHECK(context == &f && grant->grant_id == 1 && grant->resource_epoch == 3);
+    CHECK(context == &f && grant->grant_id == 1);
     ++f.checks;
     if (f.reentrant) {
         struct dufs_register_snapshot other = { 0 };
         CHECK(mt6897_ufs_observer_capture(&f.x.provider, &other) == MUO_STATE);
     }
     if (f.checks == f.revoke_at) mt6897_ufs_observer_revoke(&f.x.provider);
-    return f.checks == f.deny_at ? -1 : 0;
+    return grant->resource_epoch != f.current_epoch || f.checks == f.deny_at ? -1 : 0;
 }
 uintptr_t ml_io_map_with_prot(uintptr_t base, size_t bytes, int protection)
 {
@@ -57,6 +62,8 @@ uintptr_t ml_io_map_with_prot(uintptr_t base, size_t bytes, int protection)
 static void reset(void)
 {
     memset(&f, 0, sizeof(f));
+    f.entry_slot = f.evidence_slot = SLOT_B;
+    f.current_epoch = 3;
     f.grant = (struct mt6897_ufs_read_grant){ .version = MUO_GRANT_VERSION, .rights = MUO_REQUIRED,
         .boot_id = BOOT, .grant_id = 1, .owner_id = 2, .resource_epoch = 3,
         .base = DUFS_MTK_HCI_BASE, .bytes = DUFS_MTK_HCI_BYTES };
@@ -103,7 +110,10 @@ int main(void)
     run(0, 1, 316, DUFS_SNAPSHOT_HCE_ACTIVE | DUFS_SNAPSHOT_MCQ_ENABLED | DUFS_SNAPSHOT_LISTS_CONFIGURED);
     reset(); f.reentrant = 1; run(0, 1, 316, 0); CHECK(f.verifies == 1 && f.maps == 1);
     reset(); f.deny_verify = 1; run(MUO_DENIED, 0, 0, 0);
-    reset(); f.grant.boot_id++; run(MUO_DENIED, 0, 0, 0);
+    reset(); f.grant.boot_id++; run(MUO_DENIED, 0, 0, 0); CHECK(f.checks == 0);
+    reset(); f.entry_slot = SLOT_A; run(MUO_DENIED, 0, 0, 0); CHECK(f.checks == 0);
+    reset(); f.evidence_slot = SLOT_A; run(MUO_DENIED, 0, 0, 0); CHECK(f.checks == 0);
+    reset(); f.current_epoch++; run(MUO_DENIED, 0, 0, 0); CHECK(f.checks == 1);
     for (unsigned bit = 0; bit < 6; ++bit) {
         reset(); f.grant.rights &= ~(1u << bit); run(MUO_DENIED, 0, 0, 0);
     }

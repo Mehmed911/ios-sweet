@@ -133,7 +133,7 @@ def main():
         host, guest, objects = host_job.result(), arm_job.result(), xnu_job.result()
     assert re.findall(r"(?m)^UFS OBSERVER case=.*$", host) == re.findall(r"(?m)^UFS OBSERVER case=.*$", guest)
     for log in (host, guest):
-        assert "UFS OBSERVER PASS cases=25 physical_access=0" in log
+        assert "UFS OBSERVER PASS cases=28 physical_access=0" in log
         assert "UFS OBSERVER authority_failures=318 revocations=318 no_later_read=1" in log
     files = [*UNIT, DRIVERS / "ufs_register_snapshot.h", DRIVERS / "mt6897_ufs_observer.h",
              XNU / "mt6897_ufs_observer_xnu.h", DRIVERS / "test_mt6897_ufs_observer_race.c",
@@ -141,7 +141,7 @@ def main():
              Path(__file__).resolve()]
     artifacts = ("unit.native", "races.native", "model.elf", "native.log", "qemu.log",
                  "races.log", "ufs.trace")
-    report = dict(passed=True, cases=25, denied_authority_positions=318, revoked_positions=318,
+    report = dict(passed=True, cases=28, denied_authority_positions=318, revoked_positions=318,
         concurrency_cases=4, sanitizers="ASan/UBSan", arm64_qemu=True, real_xnu_objects=objects,
         full_kernel_rebuild=False, actual_xnu_execution=False,
         scope="Standalone tests of the provider and XNU adapter with RAM mapping shims. "
@@ -151,7 +151,7 @@ def main():
         artifact_sha256={name: digest(out / name) for name in artifacts},
         source_sha256={str(path.relative_to(REPO)): digest(path) for path in files})
     (out / "verification.json").write_text(json.dumps(report, indent=2) + "\n")
-    print("MT6897 observer binding PASS: 25 cases, 318 denials, 318 revocations, 4 races; "
+    print("MT6897 observer binding PASS: 28 cases, 318 denials, 318 revocations, 4 races; "
           "ARM64 QEMU and real XNU-header compile. Physical capture remains disabled.")
 
 

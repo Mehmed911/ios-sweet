@@ -42,7 +42,7 @@ RAM_PROVIDER_SIZE = struct.calcsize(RAM_PROVIDER_FORMAT)
 PHONE_CAPTURE_FORMAT = "<QII4QIIQ"
 PHONE_CAPTURE_SIZE = struct.calcsize(PHONE_CAPTURE_FORMAT)
 PHONE_CAPTURE_MAGIC = 0x3130435048435544
-UFS_HANDOFF_FORMAT = "<QIIQII"
+UFS_HANDOFF_FORMAT = "<QIIQ4I"
 UFS_HANDOFF_SIZE = struct.calcsize(UFS_HANDOFF_FORMAT)
 KPD_RECORD_FORMAT = "<I6H"
 KPD_RECORD_SIZE = struct.calcsize(KPD_RECORD_FORMAT)
@@ -198,6 +198,8 @@ def main():
     parser.add_argument("--expect-capture-x0",
                         type=lambda value: int(value, 0))
     parser.add_argument("--ufs-handoff-record-pa", type=lambda value: int(value, 0))
+    parser.add_argument("--expect-ufs-fdt", nargs=2, type=lambda value: int(value, 0),
+                        default=(0, 0), metavar=("SLOT_HINT", "DECLARATIONS"))
     parser.add_argument("--kpd-record-pa", type=lambda value: int(value, 0))
     parser.add_argument("--kpd-expected", nargs=7, type=lambda value: int(value, 0),
                         metavar=("STAGE", "ENABLE", "MEM1", "INITIAL", "PRESSED", "RELEASED", "RAW"))
@@ -395,8 +397,9 @@ def main():
                     capture = struct.unpack(PHONE_CAPTURE_FORMAT, capture_record_raw.read_bytes())
                     fdt_address = capture[4]
                     fdt_bytes = ufs_record[4]
-                    if (ufs_record[:3] != (0x3153465548435544, 1, UFS_HANDOFF_SIZE) or
-                            ufs_record[5] != 15 or not 40 <= fdt_bytes <= 2 << 20 or
+                    if (ufs_record[:3] != (0x3153465548435544, 2, UFS_HANDOFF_SIZE) or
+                            ufs_record[5] != 0x7ef or ufs_record[6:] != tuple(args.expect_ufs_fdt) or
+                            not 40 <= fdt_bytes <= 2 << 20 or
                             not 0x40000000 <= fdt_address <= 0x80000000 - fdt_bytes):
                         raise SystemExit(f"invalid UFS handoff receiver report: {ufs_record}")
                     qmp_call(stream, "pmemsave", val=fdt_address, size=fdt_bytes,
@@ -407,7 +410,8 @@ def main():
                         raise SystemExit("UFS handoff receiver FDT fingerprint mismatch")
                     print("bootshim-ufs-handoff-receiver: PASS "
                           f"fdt_bytes={fdt_bytes} fdt_fingerprint={ufs_record[3]:#018x} "
-                          "blockers=0xf physical-read=blocked")
+                          f"slot_hint={ufs_record[6]} declarations={ufs_record[7]:#x} "
+                          f"blockers={ufs_record[5]:#x} physical-read=blocked")
                 if args.exception_record_pa is not None:
                     qmp_call(stream, "pmemsave", val=args.exception_record_pa,
                              size=40, filename=str(exception_raw))

@@ -217,6 +217,10 @@ else
 	$cc $cflags -c shim.c -o "$out/shim.o"
 	objects="$out/start.o $out/shim.o $out/mt6897_entry.o"
 fi
+if [ -n "$ufs_handoff_probe" ]; then
+	$cc $cflags -c ufs_handoff_evidence.c -o "$out/ufs_handoff_evidence.o"
+	objects="$objects $out/ufs_handoff_evidence.o"
+fi
 if [ -n "$boot_menu" ]; then
 	$cc $cflags -c boot_menu.c -o "$out/boot_menu.o"
 	$cc $cflags -c boot_menu_keys.c -o "$out/boot_menu_keys.o"

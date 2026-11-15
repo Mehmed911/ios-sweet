@@ -1,3 +1,10 @@
+ACTIVE HANDOFF - Passive Slot B UFS handoff evidence audited and tested (2026-11-15)
+
+- Re-ran pinned LK/BL31 analysis and verified the retained Fastboot log reports UFS/M-PHY initialization during firmware startup. It is distinct from the archived XNU Slot B boot. LK attempts shutdown before the BL31 callbacks. No record proves final power, clocks, PHY, ownership or non-secure read permission at XNU entry.
+- Extended the isolated PHONE_CAPTURE/UFS_HANDOFF_PROBE with a version 2 RAM-only FDT record. It reports the slot hint, declared UFS dependencies and unproven rights. The saved Duchamp FDT shows no slot hint. All valid metadata captures leave blockers at 0x7ef. No physical grant producer or XNU mapping caller was added.
+- Eight metadata cases each pass in native ASan/UBSan and bootshim QEMU. The observer passes 28 cases each in host/ARM64 QEMU, including wrong slots and stale epoch, 318 denial positions, 318 revocations and four native races. In four fresh regressions of the existing CI 43631086106 kernel, cold QEMU reaches read-only GPT/HFS+ PID 1 in 33.953 s and all three denials have zero maps, reads and virtual UFS events. No new full kernel was built.
+- Details and next hardware procedure are in docs/DUCHAMP_SLOT_B_UFS_HANDOFF.md. Receipts and logs are in outputs/duchamp-slot-b-ufs-handoff-passive-20261115. Physical capture stays gated pending a trusted same-boot read and power/clock lifetime grant. No phone commands, reboot, flash, slot change, partition write or physical MMIO.
+
 ACTIVE HANDOFF - Slot B UFS read authority unproven after live ADB check (2026-11-15)
 
 - Verified Duchamp / MT6897 fully booted from Android A, with a matching hashed boot ID before and after capture. The Android UFS host and PHY drivers reported runtime-active.

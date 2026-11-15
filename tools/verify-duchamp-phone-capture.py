@@ -122,9 +122,9 @@ def inspect_build(elf, image, ufs_handoff_probe=False, kpd_probe=False, pmif_pro
             symbols["duchamp_bootshim_main"] < symbols["_end"],
             "phone-capture symbols are out of order")
     verify_capture_store(image, symbols)
-    probe_symbol = "duchamp_bootshim_ufs_handoff_record"
-    require((probe_symbol in symbols) == ufs_handoff_probe,
-            "UFS handoff probe selection differs from the linked image")
+    for probe_symbol in ("duchamp_bootshim_ufs_handoff_record", "duchamp_ufs_handoff_collect"):
+        require((probe_symbol in symbols) == ufs_handoff_probe,
+                f"UFS handoff probe selection differs from the linked image: {probe_symbol}")
     require(("duchamp_bootshim_kpd_probe_record" in symbols) == kpd_probe,
             "keypad probe selection differs from the linked image")
     require(("duchamp_bootshim_pmif_probe_record" in symbols) == pmif_probe,
