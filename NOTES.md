@@ -1,3 +1,10 @@
+ACTIVE HANDOFF - Slot B UFS read authority unproven after live ADB check (2026-11-15)
+
+- Verified Duchamp / MT6897 fully booted from Android A, with a matching hashed boot ID before and after capture. The Android UFS host and PHY drivers reported runtime-active.
+- Read 128 KiB of the ATF runtime snapshot, a bounded 2 MiB raw ATF export, PL/LK and both pstore entries without a reboot or slot change. BL31 reported lts-v2.8.6(release):2fbca47. PL/LK had 142 UFS mentions. The scanned exports included no correlated Slot B XNU entry, non-secure read grant or power/bus-clock pin evidence. The archived LK shutdown attempt lacks HCE readback. Physical register read permission and duration of stable resources remain unproven.
+- Re-ran 25 observer cases on native ASan/UBSan and standalone ARM64 QEMU, with 318 authority denials and 318 revocations apiece, four native races and an empty virtual UFS trace. No full XNU rebuild made in this pass. The prior full XNU/QEMU integration result supplies only synthetic authority.
+- See duchamp/MT6897-UFS-OBSERVER-BINDING.md and outputs/duchamp-slot-b-ufs-read-authority-20261115/verification.json. The physical provider remains disabled. Before any physical queue capture, obtain a trusted same-boot grant for non-destructive reads and stable power/bus clocks until reset, or verified initialization that establishes the same contract. This run used ADB log/status reads only, with no physical MMIO, storage commands, flashing or partition change.
+
 ACTIVE HANDOFF - HakiOS reference port and one-session XNU boot verified in QEMU (2026-11-15)
 
 - Audited MT6768 ad65e1f4b3ba479e9d7ada98f17398b83cc6f285 and community MT6833 c24467f3074d9bfbd7cb92e2d20beacd91e468b5. Mapped all 770 device-reference files. The extracted MT6833 reader returned success with 0 bytes transferred. No hardware implementation was copied.

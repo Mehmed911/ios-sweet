@@ -236,3 +236,38 @@ This adds no physical grant producer, phone action, reboot, slot change, flashin
 or partition write. The next physical step still requires a verified same-boot
 read-access and stable-resource contract at XNU entry. Cold QEMU bytes do not
 prove that the real controller is idle, powered, accessible or delegated.
+
+## Live Slot A check and Slot B decision (2026-11-15)
+
+ADB identified Duchamp / MT6897 on Android Slot A. The slot and hashed Android
+boot ID matched before and after capture. Linux reported the UFS host
+(`ufshcd-mtk`) and PHY (`ufs_mtk_phy`) as runtime-active.
+
+ATF's 128 KiB runtime snapshot and bounded 2 MiB raw export identified BL31
+`lts-v2.8.6(release):2fbca47`. The PL/LK export had 142 UFS mentions. Both
+pstore entries (`console-ramoops-0`, `pmsg-ramoops-0`) were readable. The
+scanned ASCII and UTF-16LE bytes contained no correlated Slot B / XNU entry,
+read grant, or resource pin record. The published ATF readers copy existing
+debug RAM. They do not take a live UFS register sample.
+[MiCode ATF reader](https://github.com/MiCode/MTK_kernel_device_modules/blob/3c4ccd07d5624879555ec710c11bb8818e5cb5c6/drivers/misc/mediatek/atf/tfa_debug.c#L175-L227)
+
+The archived LK analysis shows an attempted UFS shutdown in the final cleanup
+path, with no HCE readback on that path. It supplies no hardware observation
+at XNU entry. The saved FDT fixes the physical aperture at `0x112b0000` /
+`0x3000`. The Android driver manages UFS and PHY power during its own runtime
+PM lifecycle. Physical read permission and the duration of power and bus-clock
+availability at a Slot B XNU entry remain unproven.
+[LK handoff audit](MT6897-LK-HANDOFF-CONTRACT.md),
+[MiCode UFS driver](https://github.com/MiCode/MTK_kernel_device_modules/blob/3c4ccd07d5624879555ec710c11bb8818e5cb5c6/drivers/ufs/ufs-mediatek.c)
+
+Before connecting the observer to the phone path, obtain a supported record
+or verified platform initialization tied to the same Slot B XNU entry. It
+must cover safe non-secure reads of the selected aperture and power/bus-clock
+pins through reset for the current permanent mapping. The observer can then
+measure queue state. Any future UFS command additionally requires separate
+ownership, DMA and cache evidence.
+
+The live report, source hashes, host capture helper and local recheck are in
+the outer workspace's `outputs/duchamp-slot-b-ufs-read-authority-20261115`.
+ADB accessed existing log and status files only. There was no reboot, slot
+change, partition write, or physical UFS register access.
