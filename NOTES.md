@@ -1,3 +1,10 @@
+ACTIVE HANDOFF - Final BL31/XNU capture correlation and one-boot procedure prepared (2026-11-16)
+
+- Reverified LK/BL31 shutdown and reset instructions, including the first-entry BL31 group-5 callbacks and subsequent helper. Archived Android ATF, Fastboot PL/LK, and pstore exports provide no authenticated same-boot Slot B XNU handoff. Generic TF-A instrumentation and CoreSight supply no evidence of supported trace on this handset.
+- Added an offline verifier for independent final-exit and actual XNU-entry witnesses. It checks pinned Ed25519 keys, attempt and image identity, final FDT and entry ADT, ordering, entry coordinates and observation receipts. 44 mock cases pass, including synthetic-scope rejection by the physical-input CLI. The verifier grants no physical access.
+- The exact November 11 Slot B services triplet and three historical B rollback files rehashed correctly. The exact decompressed B image reached the XNU marker in 7 GiB QEMU and its 11-segment payload passed preflight. The archived stock A init_boot file does not match the recorded A baseline. Confirm the matching A recovery set and the currently installed B digest set before any future physical attempt.
+- 12 passive entry and 98 handoff model tests each pass on native sanitizers and ARM64 QEMU. Existing CI 43631086106 passes 11/11 fresh full-XNU regressions with nine blocked cases and zero virtual UFS events in each. See docs/DUCHAMP_FINAL_BL31_XNU_HANDOFF.md and outputs/duchamp-final-bl31-xnu-20261116. No phone operations performed. Physical UFS remains disabled.
+
 ACTIVE HANDOFF - Duchamp trusted boot evidence boundaries and passive capture (2026-11-16)
 
 - Reverified the saved LK/BL31 cleanup and reset path. LK is the last identified HCI writer in the static trace, attempts PowerDown and writes HCE zero without post-store queue confirmation. BL31's active-low device-reset helper is conditional. No same-boot reset, clock/power, resource, DMA drain, IOMMU or cache evidence was obtained.
