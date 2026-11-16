@@ -77,7 +77,9 @@ Absent and unknown mask bits fail closed.
    Trust is supplied by the verification channel and authority policy.
    The mock uses an allow-listed fixture and carries no production key.
 4. Sample trusted Slot B, boot ID, sequence, authority ID, image digests,
-   route/domain/stream/epoch, range and time independently of the record.
+   route/domain/stream/epoch, range, resource prerequisites, cache owner
+   and time independently of the record. Require the current prerequisites
+   and cache owner to match the authenticated record on every check.
    Require a nonzero policy freshness budget, bounded issue-to-expiry
    interval and current time in `[issue, expiry)`. An apparent clock
    regression between checks or a changed sequence fails. Time and the

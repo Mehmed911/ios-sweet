@@ -62,9 +62,10 @@ struct uhf_record {
  * monotonic clock domain. Stream 0 is legal with a verified SMMU domain.
  */
 struct uhf_current {
-    uint32_t slot, route, stream_id;
+    uint32_t slot, route, stream_id, prerequisites;
     uint64_t boot_id, sequence, now_ms, max_age_ms, authority_id;
     uint64_t isolation_epoch, iommu_domain, protected_pa, protected_bytes;
+    uint64_t cache_owner;
     uint8_t kernel_digest[UHF_DIGEST_BYTES], firmware_digest[UHF_DIGEST_BYTES];
     uint8_t fdt_digest[UHF_DIGEST_BYTES];
 };

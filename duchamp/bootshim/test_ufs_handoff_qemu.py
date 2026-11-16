@@ -4,8 +4,10 @@
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
+import json
 import os
 from pathlib import Path
+import struct
 import subprocess
 import sys
 
@@ -37,11 +39,17 @@ DTS = """\
 """
 
 
-def run(args, log, **kw):
+def run(args, log, *, env=None):
+    args = list(map(str, args))
     result = subprocess.run(args, cwd=SHIM, stdin=subprocess.DEVNULL,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            text=True, timeout=40, **kw)
+                            text=True, timeout=40, env=env)
     log.write_text(result.stdout)
+    receipt = dict(argv=args, cwd=str(SHIM), log=log.name, exit_code=result.returncode)
+    if env:
+        receipt["diagnostic_env"] = {key: env[key] for key in
+                                     ("SHIM_OUT", "PHONE_CAPTURE", "PHONE_CONTRACT", "UFS_HANDOFF_PROBE")}
+    log.with_suffix(".command.json").write_text(json.dumps(receipt, indent=2) + "\n")
     if result.returncode:
         raise RuntimeError(f"{args[0]} failed with {result.returncode}, see {log}")
     return result.stdout
@@ -106,6 +114,21 @@ def main():
         path = out / f"{name}.dtb"
         fixture(generic, path, slot, extension, omit)
         dtbs.append((name, path, expected_slot, declarations))
+    claims = out / "untrusted-chosen-claims.dtb"
+    fixture(generic, claims, "androidboot.slot_suffix=_b sweet-qemu-boot-id=0x1234")
+    edit_dtb(claims, ("-t", "s"), "/chosen", "qemu-bl31-ufs", "untrusted")
+    edit_dtb(claims, ("-t", "x"), "/soc/ufshci@112b0000", "iommus", "1", "2")
+    edit_dtb(claims, (), "/soc/ufshci@112b0000", "dma-coherent")
+    dtbs.append(("untrusted_chosen_claims", claims, 2, 0x3ff))
+
+    # Exercise both SHA-256 padding branches and a block-aligned FDT.
+    for remainder in (0, 55, 56):
+        path = out / f"padding-{remainder}.dtb"
+        data = bytearray(generic.read_bytes())
+        data.extend(bytes((remainder - len(data)) % 64))
+        struct.pack_into(">I", data, 4, len(data))
+        path.write_bytes(data)
+        dtbs.append((f"padding_{remainder}", path, 0, 0xff))
     if args.saved_duchamp_fdt:
         # The saved final Android FDT contains the HCI, clocks, PHY, RTFF,
         # resets and rails, and carries no recognized slot hint.
@@ -115,14 +138,15 @@ def main():
         name, dtb, slot, declarations = case
         values = (str(slot), hex(declarations))
         before = hashlib.sha256(dtb.read_bytes()).digest()
-        run([str(binary), str(dtb), *values], out / f"{name}-native.log")
+        run([binary, dtb, *values, before.hex()], out / f"{name}-native.log")
         qemu_args = [sys.executable, "test_qemu.py", "--image", str(image),
                      "--dtb", str(dtb), "--pattern", "pc-x0", "--wait", "4",
                      "--capture-record-pa", guest_pa("duchamp_bootshim_phone_capture_record"),
                      "--ufs-handoff-record-pa", guest_pa("duchamp_bootshim_ufs_handoff_record"),
                      "--expect-ufs-fdt", *values]
         log = run(qemu_args, out / f"{name}-qemu.log")
-        if "bootshim-ufs-handoff-receiver: PASS" not in log:
+        if ("bootshim-ufs-handoff-receiver: PASS" not in log or
+                "bootshim-ufs-handoff-digest-framebuffer: PASS" not in log):
             raise RuntimeError(f"missing QEMU success marker for {name}")
         if hashlib.sha256(dtb.read_bytes()).digest() != before:
             raise RuntimeError(f"input FDT changed for {name}")

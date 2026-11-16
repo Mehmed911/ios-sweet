@@ -378,7 +378,7 @@ capture_pmif(volatile unsigned char *base, size_t stride, size_t x,
 struct duchamp_ufs_handoff_record duchamp_bootshim_ufs_handoff_record;
 
 static void
-capture_ufs_handoff(uint64_t address, unsigned entry_result)
+capture_ufs_handoff(uint64_t entry_pc, uint64_t address, unsigned entry_result)
 {
 	const volatile unsigned char *fdt = NULL;
 	size_t available = 0;
@@ -388,7 +388,7 @@ capture_ufs_handoff(uint64_t address, unsigned entry_result)
 		available = UFS_PROBE_FDT_END - address;
 	}
 	duchamp_ufs_handoff_collect(&duchamp_bootshim_ufs_handoff_record,
-	    fdt, available);
+	    fdt, available, entry_pc, address);
 }
 #endif
 
@@ -465,7 +465,7 @@ duchamp_phone_capture_run(volatile void *framebuffer, size_t stride,
 #if defined(DUCHAMP_UFS_HANDOFF_PROBE)
 	const size_t line_step = (GLYPH_HEIGHT + 4U) * GLYPH_SCALE;
 	const size_t fourth_y = second_y + 2U * line_step;
-	capture_ufs_handoff(entry_x0, entry_result);
+	capture_ufs_handoff(entry_pc, entry_x0, entry_result);
 	if (fourth_y + GLYPH_HEIGHT * GLYPH_SCALE <= height) {
 		char line[LINE_CHARACTERS];
 		format_line(line, 'D', '0',
@@ -481,6 +481,18 @@ duchamp_phone_capture_run(volatile void *framebuffer, size_t stride,
 			format_line(line, 'D', '2',
 			    (uint64_t)evidence->slot_hint << 32 | evidence->declarations);
 			draw_line(base, stride, start_x, fifth_y, line);
+			if (evidence->fdt_bytes != 0) {
+				for (size_t i = 0; i < sizeof(evidence->fdt_sha256) / 8; i++) {
+					const size_t y = fifth_y + (i + 1) * line_step;
+					if (y + GLYPH_HEIGHT * GLYPH_SCALE > height)
+						break;
+					uint64_t word = 0;
+					for (size_t j = 0; j < 8; j++)
+						word = word << 8 | evidence->fdt_sha256[i * 8 + j];
+					format_line(line, 'D', '3' + i, word);
+					draw_line(base, stride, start_x, y, line);
+				}
+			}
 		}
 	}
 #endif

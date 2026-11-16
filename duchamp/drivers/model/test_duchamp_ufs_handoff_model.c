@@ -117,6 +117,7 @@ reset(struct fixture *f, unsigned route)
     f->gate_evidence = e;
     f->current = (struct uhf_current){
         .slot = UHF_SLOT_B, .route = route, .boot_id = BOOT,
+        .prerequisites = UHF_PREREQ_REQUIRED, .cache_owner = f->lease.cache_owner_id,
         .sequence = 17, .now_ms = 110, .max_age_ms = 30, .authority_id = 91,
         .isolation_epoch = 44, .iommu_domain = e.iommu_domain_id,
         .protected_pa = PA, .protected_bytes = PA_BYTES
@@ -274,6 +275,22 @@ main(void)
     reset(&f, direct); f.current.fdt_digest[15] ^= 1;
     deny(&f, UHF_BYTES, UHF_IDENTITY, 1, 1);
     reset(&f, direct); f.current.authority_id++; deny(&f, UHF_BYTES, UHF_PROVENANCE, 1, 1);
+    const uint32_t missing_resources[] = {
+        UHF_RESET_DEASSERTED, UHF_BUS_CLOCKS_PINNED, UHF_REFCLK_PINNED,
+        UHF_DOMAIN_ON, UHF_RAILS_PINNED, UHF_LIFETIME_PINNED
+    };
+    for (unsigned i = 0; i < sizeof(missing_resources) / sizeof(missing_resources[0]); ++i) {
+        reset(&f, direct);
+        f.current.prerequisites &= ~missing_resources[i];
+        deny(&f, UHF_BYTES, UHF_RESOURCE, 1, 1);
+    }
+    reset(&f, direct); f.current.cache_owner = 0; deny(&f, UHF_BYTES, UHF_RESOURCE, 1, 1);
+    reset(&f, direct); f.current.cache_owner++; deny(&f, UHF_BYTES, UHF_RESOURCE, 1, 1);
+    reset(&f, direct);
+    CHECK(accept(&f, UHF_BYTES) == UHF_OK && uhf_claim(&f.session) == UHF_OK);
+    f.current.prerequisites &= ~UHF_RESET_DEASSERTED;
+    CHECK(uhf_check(&f.session) == UHF_RESOURCE);
+    terminal(&f); record_case(UHF_RESOURCE);
     reset(&f, direct); f.current.now_ms = 99; deny(&f, UHF_BYTES, UHF_FRESHNESS, 1, 1);
     reset(&f, direct); f.current.sequence++; deny(&f, UHF_BYTES, UHF_FRESHNESS, 1, 1);
     reset(&f, direct); f.current.max_age_ms = 19; deny(&f, UHF_BYTES, UHF_FRESHNESS, 1, 1);

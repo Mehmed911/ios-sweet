@@ -107,6 +107,8 @@ check_scope(const struct uhf_record *r, const struct uhf_current *c, uint64_t la
         return UHF_FRESHNESS;
     if (c->authority_id != r->authority_id)
         return UHF_PROVENANCE;
+    if (c->prerequisites != r->prerequisites || c->cache_owner != r->cache_owner)
+        return UHF_RESOURCE;
     if (c->route != r->route || c->isolation_epoch != r->isolation_epoch ||
         c->stream_id != r->stream_id || c->iommu_domain != r->iommu_domain ||
         c->protected_pa != r->protected_pa || c->protected_bytes != r->protected_bytes)

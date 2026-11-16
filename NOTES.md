@@ -1,3 +1,10 @@
+ACTIVE HANDOFF - Duchamp trusted boot evidence boundaries and passive capture (2026-11-16)
+
+- Reverified the saved LK/BL31 cleanup and reset path. LK is the last identified HCI writer in the static trace, attempts PowerDown and writes HCE zero without post-store queue confirmation. BL31's active-low device-reset helper is conditional. No same-boot reset, clock/power, resource, DMA drain, IOMMU or cache evidence was obtained.
+- The isolated PHONE_CAPTURE/UFS_HANDOFF_PROBE v3 records PC, x0 and SHA-256 of the bounded incoming FDT and shows all 64 digest digits. A valid capture leaves blockers at 0xffef. DT declarations, a B hint and boot identity-like fields confer no grant. The offline DUCHUFS1 model now independently rechecks resource prerequisites and cache ownership against the authenticated receipt and existing lease.
+- 12 passive diagnostic and 98 handoff format cases each pass in native ASan/UBSan and ARM64 QEMU. The 28 observer cases, 318 denials and revocations, four native races, bootshim host/payload/QEMU, static audit and staging checks pass. The existing CI 43631086106 kernel passed 11/11 fresh XNU QEMU runs, with nine blocked cases recording zero virtual UFS events.
+- See docs/DUCHAMP_SLOT_B_TRUSTED_HANDOFF.md and docs/DUCHAMP_UFS_HARDWARE_VALIDATION_PLAN.md. Receipts and logs are in outputs/duchamp-trusted-boot-handoff-20261116. The proposed hardware experiment requires an authenticated or independently witnessed final BL31 and XNU entry from one actual Slot B boot and an independently verifiable resource authority. No phone access or physical changes occurred.
+
 ACTIVE HANDOFF - MT6897 UFS handoff bound to the existing lease scope (2026-11-16)
 
 - Extended the test-only DUCHUFS1 model to bind the candidate BL31/FDT digests and DMA route to the retained evidence for the existing gate lease. IOMMU receipts must also match the approved stream, domain and mapping epoch. A provenance callback that revokes the session skips the current-context sampler. The production gate and XNU staging are unchanged.

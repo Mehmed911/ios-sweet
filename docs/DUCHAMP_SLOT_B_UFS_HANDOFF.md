@@ -1,5 +1,9 @@
 # Duchamp Slot B UFS handoff
 
+This report records the original version 2 capture and its tests.
+The [current trusted handoff report](DUCHAMP_SLOT_B_TRUSTED_HANDOFF.md)
+describes the version 3 diagnostic and outstanding evidence requirements.
+
 ## 1. Verified observations
 
 - The November 15 ADB receipt identifies Duchamp/MT6897 with Android boot

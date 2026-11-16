@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import hashlib
 import json
 import shutil
 import socket
@@ -42,7 +43,7 @@ RAM_PROVIDER_SIZE = struct.calcsize(RAM_PROVIDER_FORMAT)
 PHONE_CAPTURE_FORMAT = "<QII4QIIQ"
 PHONE_CAPTURE_SIZE = struct.calcsize(PHONE_CAPTURE_FORMAT)
 PHONE_CAPTURE_MAGIC = 0x3130435048435544
-UFS_HANDOFF_FORMAT = "<QIIQ4I"
+UFS_HANDOFF_FORMAT = "<QIIQ4I2Q32s"
 UFS_HANDOFF_SIZE = struct.calcsize(UFS_HANDOFF_FORMAT)
 KPD_RECORD_FORMAT = "<I6H"
 KPD_RECORD_SIZE = struct.calcsize(KPD_RECORD_FORMAT)
@@ -397,8 +398,9 @@ def main():
                     capture = struct.unpack(PHONE_CAPTURE_FORMAT, capture_record_raw.read_bytes())
                     fdt_address = capture[4]
                     fdt_bytes = ufs_record[4]
-                    if (ufs_record[:3] != (0x3153465548435544, 2, UFS_HANDOFF_SIZE) or
-                            ufs_record[5] != 0x7ef or ufs_record[6:] != tuple(args.expect_ufs_fdt) or
+                    if (ufs_record[:3] != (0x3153465548435544, 3, UFS_HANDOFF_SIZE) or
+                            ufs_record[5] != 0xffef or ufs_record[6:8] != tuple(args.expect_ufs_fdt) or
+                            ufs_record[8:10] != capture[3:5] or
                             not 40 <= fdt_bytes <= 2 << 20 or
                             not 0x40000000 <= fdt_address <= 0x80000000 - fdt_bytes):
                         raise SystemExit(f"invalid UFS handoff receiver report: {ufs_record}")
@@ -406,10 +408,12 @@ def main():
                              filename=str(ufs_fdt_raw))
                     fdt = ufs_fdt_raw.read_bytes()
                     if (struct.unpack_from(">II", fdt) != (0xd00dfeed, fdt_bytes) or
-                            mutation_receipt(fdt) != ufs_record[3]):
-                        raise SystemExit("UFS handoff receiver FDT fingerprint mismatch")
+                            mutation_receipt(fdt) != ufs_record[3] or
+                            hashlib.sha256(fdt).digest() != ufs_record[10]):
+                        raise SystemExit("UFS handoff receiver FDT digest mismatch")
                     print("bootshim-ufs-handoff-receiver: PASS "
                           f"fdt_bytes={fdt_bytes} fdt_fingerprint={ufs_record[3]:#018x} "
+                          f"fdt_sha256={ufs_record[10].hex()} "
                           f"slot_hint={ufs_record[6]} declarations={ufs_record[7]:#x} "
                           f"blockers={ufs_record[5]:#x} physical-read=blocked")
                 if args.exception_record_pa is not None:
@@ -665,6 +669,23 @@ def main():
                     raise SystemExit(
                         f"{name} pixel={actual:#010x} "
                         f"expected={expected:#010x} at {x},{y}")
+            if args.ufs_handoff_record_pa is not None:
+                hex_glyphs = tuple(bytes.fromhex(rows) for rows in (
+                    "0e11131519110e", "040c040404040e", "0e11010204081f", "1e01010e01011e",
+                    "02060a121f0202", "1f10101e01011e", "0e10101e11110e", "1f010204080808",
+                    "0e11110e11110e", "0e11110f01010e", "0e11111f111111", "1e11111e11111e",
+                    "0f10101010100f", "1e11111111111e", "1f10101e10101f", "1f10101e101010",
+                ))
+                for index, digit in enumerate(ufs_record[10].hex()):
+                    line, column = divmod(index, 16)
+                    x = start_x + (5 + column) * 48
+                    y = second_y + (4 + line) * line_step
+                    for row, expected_bits in enumerate(hex_glyphs[int(digit, 16)]):
+                        bits = sum((framebuffer_pixel(x + bit * 8, y + row * 8) == 0xFFFFFFFF)
+                                   << (4 - bit) for bit in range(5))
+                        if bits != expected_bits:
+                            raise SystemExit(f"DTB digest display mismatch at hex digit {index}")
+                print("bootshim-ufs-handoff-digest-framebuffer: PASS")
             padding = struct.unpack_from("<I", data, FB_WIDTH * 4)[0]
             if padding != 0:
                 raise SystemExit(
