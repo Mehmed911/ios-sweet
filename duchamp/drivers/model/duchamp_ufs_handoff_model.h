@@ -91,6 +91,7 @@ struct uhf_session {
     uint32_t state;
     struct mt6897_ufs_gate *gate;
     struct mt6897_ufs_gate_lease lease;
+    struct mt6897_ufs_gate_evidence gate_evidence;
     struct uhf_ops ops;
     uint64_t last_now;
     uint8_t wire[UHF_BYTES];
@@ -98,14 +99,16 @@ struct uhf_session {
 
 /* Parse only. The output remains untouched on a malformed wire header. */
 enum uhf_result uhf_parse(const void *, size_t, struct uhf_record *);
-/* Start from zero. Accept takes one private copy from stable caller RAM.
+/* Start from zero. Accept copies stable caller RAM and the independently
+ * retained evidence used to issue the lease. The evidence must come from
+ * the trusted gate caller, never from the candidate record.
  * Borrowed gate/context must outlive the session. No operation grants access
  * or publishes a replacement lease. Concurrent or reentrant operations are
  * refused, and revocation is terminal. Use separate sessions only in tests.
  */
 enum uhf_result uhf_accept(struct uhf_session *, const void *, size_t,
     struct mt6897_ufs_gate *, const struct mt6897_ufs_gate_lease *,
-    const struct uhf_ops *);
+    const struct mt6897_ufs_gate_evidence *, const struct uhf_ops *);
 enum uhf_result uhf_claim(struct uhf_session *);
 enum uhf_result uhf_check(struct uhf_session *);
 void uhf_revoke(struct uhf_session *);

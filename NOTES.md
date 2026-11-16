@@ -1,3 +1,10 @@
+ACTIVE HANDOFF - MT6897 UFS handoff bound to the existing lease scope (2026-11-16)
+
+- Extended the test-only DUCHUFS1 model to bind the candidate BL31/FDT digests and DMA route to the retained evidence for the existing gate lease. IOMMU receipts must also match the approved stream, domain and mapping epoch. A provenance callback that revokes the session skips the current-context sampler. The production gate and XNU staging are unchanged.
+- 89 cases pass in each of native ASan/UBSan and ARM64 QEMU, with all 448 shorter lengths refused and a zero-event virtual UFS trace. Independent cross-route, IOMMU scope, evidence fingerprint and digest mismatch cases are covered. Existing bootshim host/payload/QEMU and gate/provider, DMA route, cache, snapshot, cold-init, handoff and staging suites pass.
+- Fresh full-XNU QEMU passed 11/11 on the existing CI 43631086106 kernel. Read-only GPT/HFS+ boots reached diagnostic PID 1. The nine stopped cases had zero virtual UFS events. Commands, logs, traces and the repeated static reset-selector audit are in outputs/duchamp-ufs-ownership-dma-20261116.
+- The reset-level role is established for the saved BL31 code. Same-boot Slot B ownership, resource continuity and fabric DMA drain remain unproven. There was no phone access, reboot, slot change, flashing, MMIO, DMA or partition write.
+
 ACTIVE HANDOFF - MT6897 UFS ownership and DMA handoff validated offline (2026-11-15)
 
 - Audited the pinned LK and BL31 again. In the saved BL31, both device-reset dispatch paths resolve to helper 0x44f84. The pinned Xiaomi client identifies 0x112b8090 bit 0 as device reset-level control, active low. The companion read is the HCI IP version register. No same-boot evidence of the electrical reset state, clocks, PHY, power or DMA drain was found.

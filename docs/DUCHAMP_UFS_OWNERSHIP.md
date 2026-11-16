@@ -52,7 +52,7 @@ registers. The same-boot XNU evidence must still establish them.
 [Xiaomi IP version register](https://github.com/MiCode/MTK_kernel_device_modules/blob/3c4ccd07d5624879555ec710c11bb8818e5cb5c6/drivers/ufs/ufs-mediatek.h#L41-L49)
 
 The exact decoded table, firmware digest, source blob and match results
-are in `outputs/duchamp-ufs-ownership-dma-20261115/reset-selector-audit.json`.
+are in `outputs/duchamp-ufs-ownership-dma-20261116/reset-selector-audit.json`.
 The output directory includes both dispatcher disassemblies and the
 matching helper. The existing exact LK/BL31 audit and its nine unit
 checks passed. No firmware operation was invoked.
@@ -65,7 +65,9 @@ It must account for the exclusivity and lifetime of HCI access, power and
 rails, clock votes, PHY, reset, interrupts, firmware control, DMA and cache.
 Unknown fields or a shared owner that can subsequently reconfigure resources
 block validation. The new format binds those assertions to the existing
-gate lease and the independent DMA evidence. The stock LK and BL31 samples
-provide no producer for this record.
+gate lease and the independent DMA evidence. Its BL31 and FDT digests
+must match the evidence retained when the lease was issued and the
+independently sampled identities for the current boot. The stock LK and
+BL31 samples provide no producer for this record.
 [DMA safety requirements](DUCHAMP_UFS_DMA_SAFETY.md),
 [handoff format and tests](DUCHAMP_UFS_HANDOFF_FORMAT.md)

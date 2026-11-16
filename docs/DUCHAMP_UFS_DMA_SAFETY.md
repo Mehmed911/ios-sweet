@@ -38,9 +38,10 @@ count, positive drain/fence/isolation flags, isolation epoch, protected
 range and separate snapshot, descriptor pool, cache and fence receipts.
 A direct record must show a verified direct filter, with no IOMMU metadata.
 An IOMMU record must show stream blocking, completed invalidation and
-device-translation accounting, with its precise stream/domain matched
-against the current trusted context. Version 1 also requires zero
-outstanding DMA for a translated route. Neither format variant programs
+device-translation accounting. The DMA route must match the gate's
+retained evidence. For IOMMU, the stream, domain and mapping epoch must
+match both that evidence and the current trusted context. Version 1
+requires zero outstanding DMA for a translated route. Neither format variant programs
 hardware. Its protected interval is one contiguous envelope and must
 cover all XNU memory that needs protection.
 
@@ -61,7 +62,7 @@ The new mock suite covers accepted direct and translated receipts and
 refuses incomplete queues, outstanding DMA, missing drain or fence,
 missing cache sync, missing direct filter or SMMU invalidation, stale
 domain/stream/epoch, and invalid protected ranges. The attached virtual
-UFS device recorded zero accesses across all 80 cases. The existing
+UFS device recorded zero accesses across all 89 cases. The existing
 DMA route, cache, gate/provider and passive register tests also passed.
 [Handoff format and test receipts](DUCHAMP_UFS_HANDOFF_FORMAT.md)
 

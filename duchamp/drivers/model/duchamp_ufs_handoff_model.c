@@ -115,6 +115,25 @@ check_scope(const struct uhf_record *r, const struct uhf_current *c, uint64_t la
 }
 
 static enum uhf_result
+check_gate_scope(const struct uhf_record *r, const struct mt6897_ufs_gate_evidence *e,
+    const struct mt6897_ufs_gate_lease *l)
+{
+    if (e->boot_generation != l->boot_generation ||
+        mt6897_ufs_gate_evidence_fingerprint(e) != l->evidence_fingerprint)
+        return UHF_LEASE;
+    if (!equal(r->firmware_digest, e->firmware_sha256, UHF_DIGEST_BYTES) ||
+        !equal(r->fdt_digest, e->fdt_sha256, UHF_DIGEST_BYTES))
+        return UHF_IDENTITY;
+    if (r->route != e->route)
+        return UHF_DMA_UNSAFE;
+    if (r->route == MT6897_UFS_GATE_ROUTE_IOMMU &&
+        (r->stream_id != e->iommu_stream_id || r->iommu_domain != e->iommu_domain_id ||
+        r->isolation_epoch != e->iommu_mapping_epoch))
+        return UHF_DMA_UNSAFE;
+    return UHF_OK;
+}
+
+static enum uhf_result
 validate(struct uhf_session *s)
 {
     struct uhf_record r;
@@ -142,6 +161,9 @@ validate(struct uhf_session *s)
         r.firmware_owner != l->firmware_owner_id || r.dma_owner != l->dma_owner_id ||
         r.cache_owner != l->cache_owner_id)
         return UHF_LEASE;
+    status = check_gate_scope(&r, &s->gate_evidence, l);
+    if (status)
+        return status;
     if (!r.authority_id || !nonzero(s->wire + UHF_SIGNED_BYTES, UHF_BYTES - UHF_SIGNED_BYTES))
         return UHF_PROVENANCE;
 
@@ -151,6 +173,8 @@ validate(struct uhf_session *s)
     if (s->ops.verify_provenance(s->ops.context, s->wire, sizeof(s->wire)) != 1)
         return UHF_PROVENANCE;
 
+    if (__atomic_load_n(&s->state, __ATOMIC_ACQUIRE) != UHF_CHECKING)
+        return UHF_REVOKED;
     struct uhf_current current = {0};
     if (s->ops.sample_current(s->ops.context, &current) != 1)
         return UHF_FRESHNESS;
@@ -187,9 +211,10 @@ finish(struct uhf_session *s, enum uhf_result result, uint32_t to)
 enum uhf_result
 uhf_accept(struct uhf_session *s, const void *wire, size_t size,
     struct mt6897_ufs_gate *gate, const struct mt6897_ufs_gate_lease *lease,
-    const struct uhf_ops *ops)
+    const struct mt6897_ufs_gate_evidence *gate_evidence, const struct uhf_ops *ops)
 {
-    if (!gate || !lease || !ops || !ops->verify_provenance || !ops->sample_current || !wire)
+    if (!gate || !lease || !gate_evidence || !ops ||
+        !ops->verify_provenance || !ops->sample_current || !wire)
         return UHF_ARGUMENT;
     enum uhf_result result = enter(s, UHF_NEW);
     if (result)
@@ -198,6 +223,7 @@ uhf_accept(struct uhf_session *s, const void *wire, size_t size,
         return finish(s, UHF_FORMAT, UHF_VALIDATED);
     s->gate = gate;
     s->lease = *lease;
+    s->gate_evidence = *gate_evidence;
     s->ops = *ops;
     const uint8_t *b = wire;
     for (size_t i = 0; i < size; ++i) s->wire[i] = b[i];

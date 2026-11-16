@@ -65,8 +65,13 @@ Absent and unknown mask bits fail closed.
 2. Require the exact platform and HCI range, complete positive
    resources/DMA proof and meaningful evidence IDs. Bind the recorded
    owners, boot generation, gate evidence fingerprint and epoch to the
-   caller's existing gate lease. The lease is independently revalidated
-   through the unchanged gate API.
+   caller's existing gate lease. The gate caller supplies a privately
+   retained copy of the evidence used to issue the lease. Check its boot
+   generation and fingerprint, then bind the record's BL31 and FDT digests
+   and DMA route to that evidence. An IOMMU record must also match its
+   stream, domain and mapping epoch. The lease is revalidated through
+   the existing gate API. The fingerprint serves as a consistency check
+   within this trusted channel. The next step establishes provenance.
 3. Require the external verifier to authenticate the exact byte copy
    and validate all referenced receipts and their still-current scope.
    Trust is supplied by the verification channel and authority policy.
@@ -82,8 +87,9 @@ Absent and unknown mask bits fail closed.
    transition revalidates the record, provenance, current context and
    existing lease. Failed validation or explicit revocation makes the
    session terminal. Calls racing an in-progress check are refused and
-   revocation wins any later publication. A check and a later I/O
-   dispatch cannot share this model's status as an access grant. Any
+   revocation wins any later publication. If the provenance callback
+   revokes the session, the current-context callback is skipped. A later
+   I/O dispatch requires authorization beyond this model's status. Any
    future integration must serialize controller lifetime and preserve
    existing per-operation authorization and hardware locks. Trusted
    intake must own one session per boot and enforce replay policy
@@ -91,12 +97,15 @@ Absent and unknown mask bits fail closed.
 
 ## Offline verification
 
-- **80 cases passed** on both native ASan/UBSan and standalone ARM64 QEMU
+- **89 cases passed** on both native ASan/UBSan and standalone ARM64 QEMU
   with identical decisions. The parser refused all 448 shorter lengths and
   an oversized record. Negative cases include wrong slot, boot or digest,
   stale sequence/time, unknown owners, altered body/proof, missing power
   or clocks, incomplete DMA proof, revocation, and a changed live stream or
-  range. The virtual UFS trace contains zero register and SCSI events.
+  range. Additional cases reject cross-route receipts in both directions,
+  mismatched stream/domain/mapping epoch, tampered gate evidence, and
+  mismatched BL31 or FDT digests before calling the provenance verifier.
+  The virtual UFS trace contains zero register and SCSI events.
 - **11/11 full-XNU QEMU regressions passed** with the existing CI
   43631086106 kernel. Cold and default-off read-only GPT/HFS+ boots reached
   diagnostic PID 1. All nine stopped cases produced zero virtual UFS
@@ -108,9 +117,9 @@ Absent and unknown mask bits fail closed.
 
 ### Test receipt
 
-The outer workspace directory `outputs/duchamp-ufs-ownership-dma-20261115`
+The outer workspace directory `outputs/duchamp-ufs-ownership-dma-20261116`
 contains `verification.json`, `SHA256SUMS`, the root regression
-`*.command.json` files, and their named logs. The new model's compiler,
+`*.command.json` files, and their named logs and traces. The new model's compiler,
 native executable and QEMU commands with exit codes are under
 `format-tests`. The compile-rejection check is expected to exit 1.
 The rest of the verification runs exit 0.

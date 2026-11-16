@@ -21,6 +21,7 @@ struct fixture {
     struct uhf_session session;
     struct mt6897_ufs_gate gate;
     struct mt6897_ufs_gate_lease lease;
+    struct mt6897_ufs_gate_evidence gate_evidence;
     struct uhf_current current;
     struct uhf_ops ops;
     uint8_t input[UHF_BYTES + 2], trusted[UHF_BYTES];
@@ -113,6 +114,7 @@ reset(struct fixture *f, unsigned route)
     CHECK(mt6897_ufs_gate_init(&f->gate, BOOT) == MT6897_UFS_GATE_INIT_OK);
     CHECK(mt6897_ufs_gate_authorize(&f->gate, &e, approve, NULL, &f->lease, &blockers) ==
         MT6897_UFS_GATE_LEASED);
+    f->gate_evidence = e;
     f->current = (struct uhf_current){
         .slot = UHF_SLOT_B, .route = route, .boot_id = BOOT,
         .sequence = 17, .now_ms = 110, .max_age_ms = 30, .authority_id = 91,
@@ -121,8 +123,8 @@ reset(struct fixture *f, unsigned route)
     };
     for (unsigned i = 0; i < UHF_DIGEST_BYTES; ++i) {
         f->current.kernel_digest[i] = wire(f)[288 + i] = (uint8_t)(i + 1);
-        f->current.firmware_digest[i] = wire(f)[320 + i] = (uint8_t)(i + 65);
-        f->current.fdt_digest[i] = wire(f)[352 + i] = (uint8_t)(i + 129);
+        f->current.firmware_digest[i] = wire(f)[320 + i] = e.firmware_sha256[i];
+        f->current.fdt_digest[i] = wire(f)[352 + i] = e.fdt_sha256[i];
     }
     for (unsigned i = 0; i < 8; ++i) wire(f)[i] = (uint8_t)"DUCHUFS1"[i];
     put(f, 8, 4, UHF_VERSION); put(f, 12, 4, UHF_BYTES);
@@ -153,7 +155,8 @@ reset(struct fixture *f, unsigned route)
 static enum uhf_result
 accept(struct fixture *f, size_t bytes)
 {
-    return uhf_accept(&f->session, wire(f), bytes, &f->gate, &f->lease, &f->ops);
+    return uhf_accept(&f->session, wire(f), bytes, &f->gate, &f->lease,
+        &f->gate_evidence, &f->ops);
 }
 
 static void
@@ -203,6 +206,7 @@ main(void)
     f.mutate_input = f.reenter = 1;
     CHECK(accept(&f, UHF_BYTES) == UHF_OK);
     CHECK(uhf_check(&f.session) == UHF_STATE);
+    f.gate_evidence.route = 0; /* The session owns its evidence copy. */
     CHECK(uhf_claim(&f.session) == UHF_OK && uhf_check(&f.session) == UHF_OK);
     CHECK(uhf_claim(&f.session) == UHF_STATE);
     CHECK(f.auth_calls == 3 && f.sample_calls == 3);
@@ -287,6 +291,60 @@ main(void)
     reset(&f, iommu); put(&f, 60, 4, UINT32_MAX);
     deny(&f, UHF_BYTES, UHF_DMA_UNSAFE, 0, 0);
 
+    /* A matching provenance/current fixture cannot change the gate's scope. */
+    reset(&f, direct);
+    f.current.route = iommu;
+    f.current.iommu_domain = 42;
+    put(&f, 28, 4, iommu);
+    put(&f, 40, 4, UHF_DMA_IOMMU_REQUIRED);
+    put(&f, 224, 8, f.current.iommu_domain);
+    approve_packet(&f);
+    deny(&f, UHF_BYTES, UHF_DMA_UNSAFE, 0, 0);
+
+    reset(&f, iommu);
+    f.current.route = direct;
+    f.current.iommu_domain = 0;
+    put(&f, 28, 4, direct);
+    put(&f, 40, 4, UHF_DMA_DIRECT_REQUIRED);
+    put(&f, 224, 8, 0);
+    approve_packet(&f);
+    deny(&f, UHF_BYTES, UHF_DMA_UNSAFE, 0, 0);
+
+    reset(&f, iommu);
+    put(&f, 60, 4, ++f.current.stream_id);
+    approve_packet(&f);
+    deny(&f, UHF_BYTES, UHF_DMA_UNSAFE, 0, 0);
+
+    reset(&f, iommu);
+    put(&f, 224, 8, ++f.current.iommu_domain);
+    approve_packet(&f);
+    deny(&f, UHF_BYTES, UHF_DMA_UNSAFE, 0, 0);
+
+    reset(&f, iommu);
+    put(&f, 216, 8, ++f.current.isolation_epoch);
+    approve_packet(&f);
+    deny(&f, UHF_BYTES, UHF_DMA_UNSAFE, 0, 0);
+
+    reset(&f, direct);
+    f.gate_evidence.boot_generation++;
+    deny(&f, UHF_BYTES, UHF_LEASE, 0, 0);
+
+    reset(&f, iommu);
+    f.gate_evidence.iommu_table_id++;
+    deny(&f, UHF_BYTES, UHF_LEASE, 0, 0);
+
+    reset(&f, direct);
+    f.current.firmware_digest[0] ^= 1;
+    put(&f, 320, 1, f.current.firmware_digest[0]);
+    approve_packet(&f);
+    deny(&f, UHF_BYTES, UHF_IDENTITY, 0, 0);
+
+    reset(&f, direct);
+    f.current.fdt_digest[0] ^= 1;
+    put(&f, 352, 1, f.current.fdt_digest[0]);
+    approve_packet(&f);
+    deny(&f, UHF_BYTES, UHF_IDENTITY, 0, 0);
+
     reset(&f, direct);
     CHECK(accept(&f, UHF_BYTES) == UHF_OK);
     f.current.now_ms--;
@@ -297,6 +355,7 @@ main(void)
     CHECK(accept(&f, UHF_BYTES) == UHF_OK);
     f.revoke_auth = 1;
     CHECK(uhf_claim(&f.session) == UHF_REVOKED);
+    CHECK(f.auth_calls == 2 && f.sample_calls == 1);
     terminal(&f); record_case(UHF_REVOKED);
 
     reset(&f, direct);
