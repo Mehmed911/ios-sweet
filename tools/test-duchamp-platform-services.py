@@ -42,10 +42,18 @@ def main():
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--output',required=True,type=Path)
     ap.add_argument('--seconds',type=int,default=360)
+    ap.add_argument('--kernel-manifest',type=Path,
+        help='explicit source-link receipt; preserve the historical default when omitted')
     ap.add_argument('--ui-probes',action='store_true',help='after core transport, probe original runningboardd/backboardd')
     ap.add_argument('--readiness',action='store_true',help='after UI health, request native registry rebuild and read display service')
     ap.add_argument('--springboard',action='store_true',help='only after native readiness and bundle-record gates, try original SpringBoard')
     args=ap.parse_args()
+    kernel=REPO/'work/ci-41543710742-kernel/artifact/kernel.development.sweet'
+    if args.kernel_manifest:
+        from duchamp_source_kernel import select
+        args.kernel_manifest=args.kernel_manifest.resolve()
+        kernel=Path(json.loads(args.kernel_manifest.read_text())['kernel'])
+        select(kernel,args.kernel_manifest)
     require(not args.readiness or args.ui_probes,'readiness requires the UI providers')
     require(not args.springboard or args.readiness,'SpringBoard requires native readiness')
     out=args.output.resolve();require(not out.exists(),'preserve existing output')
@@ -310,14 +318,15 @@ def main():
             native_jobs=native_jobs,diagnostic_overrides=overrides,
             deferred_springboard_job='/private/var/tmp/SpringBoard-job.plist' if args.springboard else None,
             note='Original programs/arguments/MachServices; no-restart/output/crash-policy overrides. MCM root/System explicit to prevent observed user relocation; native query uses a mobile launchd job. Original logd hardware/variant gates retained.')
+        inputs.update(kernel_sha256=sha(kernel),source_link_receipt_sha256=sha(args.kernel_manifest) if args.kernel_manifest else None)
         (native/'inputs.json').write_text(json.dumps(inputs,indent=2)+'\n')
         spec=importlib.util.spec_from_file_location('platform_ram_runner',REPO/'tools/qemu-service-ram.py')
         loader=importlib.util.module_from_spec(spec);spec.loader.exec_module(loader)
         print('platform-services: original launchd/cache/providers, QEMU writable RAM starting',flush=True)
-        vm=loader.run_vm(REPO/'work/ci-41543710742-kernel/artifact/kernel.development.sweet',
+        vm=loader.run_vm(kernel,
             REPO/'research/mt6897-boot/bsd-service-split-ci41543710742-qemu-authorized.adt',root,native/'run',args.seconds,
             ['PLATFORM SERVICES DONE status=0','PLATFORM SERVICES DONE status=1','PLATFORM CACHE FAIL',
-             'SWEET EARLY PANIC:','Library not loaded:','Symbol not found:'])
+             'SWEET EARLY PANIC:','Library not loaded:','Symbol not found:'],kernel_manifest=args.kernel_manifest)
         guest=native/'guest';guest.mkdir()
         final=native/'run/ramdisk-final.hfs'
         def extract(path,dest):

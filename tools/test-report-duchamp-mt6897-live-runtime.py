@@ -4,6 +4,7 @@
 import importlib.util
 from pathlib import Path
 import struct
+import tempfile
 import unittest
 
 
@@ -198,6 +199,69 @@ class RuntimeEvidenceTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "unsupported dma-ranges"):
             self.module.decode_dma_ranges(soc)
+
+    def test_unavailable_dma_mask_probe_stays_unknown(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "mask.txt").write_text("")
+            (root / "mask.stderr.txt").write_text(
+                "cat: /sys/device/dma_mask_bits: No such file or directory\n"
+            )
+            (root / "mask.exit.txt").write_text("1\n")
+            self.assertEqual(
+                self.module.parse_probe_capture(
+                    root, "mask", self.module.parse_dma_mask_bits
+                ),
+                {"status": "unavailable", "value": None},
+            )
+
+    def test_readable_dma_mask_probe_is_bounded(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for name, value in (
+                ("mask.txt", "64\n"),
+                ("mask.stderr.txt", ""),
+                ("mask.exit.txt", "0\n"),
+            ):
+                (root / name).write_text(value)
+            self.assertEqual(
+                self.module.parse_probe_capture(
+                    root, "mask", self.module.parse_dma_mask_bits
+                ),
+                {"status": "readable", "value": 64},
+            )
+            (root / "mask.txt").write_text("65\n")
+            with self.assertRaisesRegex(ValueError, "outside 1..64"):
+                self.module.parse_probe_capture(
+                    root, "mask", self.module.parse_dma_mask_bits
+                )
+
+    def test_hccap_absence_is_recorded_without_guessing(self):
+        sysfs = (
+            "total 0\n"
+            "-r--r--r-- 1 root root 4096 now clock_scaling\n"
+            "-r--r--r-- 1 root root 4096 now write_booster\n"
+        )
+        result = self.module.hccap_exposure(sysfs, "")
+        self.assertEqual(result["status"], "not-exposed-in-capture")
+        self.assertIsNone(result["value"])
+        self.assertEqual(
+            result["sysfs_capability_entries"],
+            ["clock_scaling", "write_booster"],
+        )
+        self.assertEqual(result["candidate_entries"], [])
+
+    def test_kernel_cmdline_value_rejects_ambiguity(self):
+        self.assertEqual(
+            self.module.kernel_cmdline_value(
+                "console=tty0 swiotlb=noforce root=/dev/ram", "swiotlb"
+            ),
+            "noforce",
+        )
+        with self.assertRaisesRegex(ValueError, "unambiguous"):
+            self.module.kernel_cmdline_value(
+                "swiotlb=noforce swiotlb=force", "swiotlb"
+            )
 
 
 if __name__ == "__main__":

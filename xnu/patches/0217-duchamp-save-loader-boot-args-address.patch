@@ -1,0 +1,29 @@
+diff --git a/osfmk/arm/arm_init.c b/osfmk/arm/arm_init.c
+--- a/osfmk/arm/arm_init.c
++++ b/osfmk/arm/arm_init.c
+@@ -158,6 +158,9 @@
+ 
+ boot_args const_boot_args __attribute__((section("__DATA, __const")));
+ boot_args      *BootArgs __attribute__((section("__DATA, __const")));
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++SECURITY_READ_ONLY_LATE(vm_offset_t) duchamp_loader_boot_args_pa;
++#endif
+ 
+ TUNABLE(uint32_t, arm_diag, "diag", 0);
+ #ifdef  APPLETYPHOON
+@@ -361,6 +364,15 @@
+ 	arm_setup_pre_sign();
+ 
+ 	arm_slide_rebase_and_sign_image();
++
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/* start.s passes x0 through the bootstrap linear mapping. */
++	const vm_offset_t args_va = (vm_offset_t)args;
++	if (args_va >= args->virtBase &&
++	    args_va - args->virtBase <= UINT64_MAX - args->physBase) {
++		duchamp_loader_boot_args_pa = args->physBase + (args_va - args->virtBase);
++	}
++#endif
+ 
+ 	/* If kernel integrity is supported, use a constant copy of the boot args. */
+ 	const_boot_args = *args;

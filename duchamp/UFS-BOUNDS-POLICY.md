@@ -79,7 +79,11 @@ This refines the earlier “direct DMA, potentially using SWIOTLB” candidate:
 under the captured policy and matching source, **the default SWIOTLB pool
 must not be assumed available**. It does not exclude every vendor/per-device
 pool or override. Effective DMA ops, fwspec/domain, HCCAP, coherent/streaming
-masks, secure ownership and the matched BL31 effects are still missing.
+masks, secure ownership and the matched BL31 effects were still missing at
+this audit stage. A later read-only live probe found a per-device pool pointer,
+64-bit masks, a 36-bit bus limit, generic `dma-direct` and no Linux IOMMU
+attachment; it did not observe a transfer through that pool or resolve secure
+ownership. See [MT6897-DMA-IOMMU-FIRMWARE-EVIDENCE.md](MT6897-DMA-IOMMU-FIRMWARE-EVIDENCE.md).
 Linux command-line semantics are not an XNU firmware contract.
 
 `test-duchamp-boot-policy.py` executes three unchanged parameter function

@@ -10,3 +10,8 @@ xnu/out-*/
 __pycache__/
 # Offline Duchamp builds may contain local kernels, payloads and screenshots.
 out/duchamp/
+# Local device images, generated build trees and analyzer output stay offline.
+/work/
+/work*.img
+/mt6897_ufs_gate.plist
+/duchamp/loader/out-test/

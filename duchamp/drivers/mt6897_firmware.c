@@ -13,8 +13,9 @@ int mb_firmware_ufs(struct mb_firmware *f,const uint64_t q[8],uint64_t out[4]) {
     uint64_t reply[4]={0,0,0,0};
     if(f->ops.conduit(f->ops.context,q,reply)) { f->state=2; return MB_IO; }
     for(unsigned i=0;i<4;i++) f->last_reply[i]=reply[i];
-    /* a0==0 alone cannot prove a service took effect: the reference firmware
-     * may compile MTCMOS handling out while returning zero. No guessing.
+    /* a0==0 alone cannot prove a service took effect.  The captured Duchamp
+     * BL31 routes known UFS selectors through a common zero-return exit even
+     * when an internal helper reports failure.  Require independent readback.
      */
     int verified=f->ops.verify_reply(f->ops.context,q,reply);
     if(verified!=1) { f->state=2; return verified<0?MB_IO:MB_UNVERIFIED; }

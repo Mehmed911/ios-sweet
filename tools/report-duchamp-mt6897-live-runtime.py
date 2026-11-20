@@ -37,6 +37,17 @@ REQUIRED_FILES = (
     "ufs-driver-module.txt",
     "ufs-module-build-id.note",
     "proc-modules.txt",
+    "cmdline.txt",
+    "ufs-debugfs-list.txt",
+    "ufs-capabilities-list.txt",
+    "ufs-capabilities-list.stderr.txt",
+    "ufs-capabilities-list.exit.txt",
+    "ufs-dma-mask-bits.txt",
+    "ufs-dma-mask-bits.stderr.txt",
+    "ufs-dma-mask-bits.exit.txt",
+    "ufs-coherent-dma-mask-bits.txt",
+    "ufs-coherent-dma-mask-bits.stderr.txt",
+    "ufs-coherent-dma-mask-bits.exit.txt",
 )
 
 # These values are populated by the bootloader/fuel-gauge at runtime.  They
@@ -76,6 +87,86 @@ def load_saved_module_parser(repo):
 
 def read_text(path):
     return path.read_text(encoding="utf-8", errors="strict").strip()
+
+
+def parse_probe_capture(evidence, stem, value_parser=None):
+    """Parse a saved read-only probe without turning absence into evidence."""
+    stdout = read_text(evidence / f"{stem}.txt")
+    stderr = read_text(evidence / f"{stem}.stderr.txt")
+    try:
+        exit_code = int(read_text(evidence / f"{stem}.exit.txt"))
+    except ValueError as error:
+        raise ValueError(f"{stem}: invalid probe exit status") from error
+    lowered = stderr.lower()
+    if exit_code == 0:
+        if stderr:
+            raise ValueError(f"{stem}: successful probe emitted stderr")
+        if not stdout:
+            return {"status": "empty", "value": None}
+        value = value_parser(stdout) if value_parser else stdout
+        return {"status": "readable", "value": value}
+    if stdout:
+        raise ValueError(f"{stem}: failed probe emitted stdout")
+    if "permission denied" in lowered:
+        return {"status": "permission-denied", "value": None}
+    if "no such file" in lowered or "can't open" in lowered:
+        return {"status": "unavailable", "value": None}
+    raise ValueError(f"{stem}: ambiguous probe failure")
+
+
+def parse_dma_mask_bits(text):
+    try:
+        bits = int(text, 0)
+    except ValueError as error:
+        raise ValueError("DMA mask width is not an integer") from error
+    if not 1 <= bits <= 64:
+        raise ValueError("DMA mask width is outside 1..64 bits")
+    return bits
+
+
+def listing_entries(text):
+    """Return names from a captured ``ls -la`` listing."""
+    names = []
+    for line in text.splitlines():
+        fields = line.split()
+        if len(fields) < 7 or not re.match(r"^[bcdlps-][rwx-]{9}$", fields[0]):
+            continue
+        name = line.split(" -> ", 1)[0].split()[-1]
+        if name not in (".", ".."):
+            names.append(name)
+    return sorted(set(names))
+
+
+def hccap_exposure(sysfs_listing, debugfs_listing):
+    sysfs_entries = listing_entries(sysfs_listing)
+    debugfs_entries = listing_entries(debugfs_listing)
+    candidates = sorted(
+        name
+        for name in set(sysfs_entries + debugfs_entries)
+        if any(token in name.lower() for token in ("hccap", "host_regs", "capabilit"))
+    )
+    return {
+        "status": (
+            "candidate-path-observed-no-value"
+            if candidates
+            else "not-exposed-in-capture"
+        ),
+        "value": None,
+        "sysfs_capability_entries": sysfs_entries,
+        "debugfs_entries": debugfs_entries,
+        "candidate_entries": candidates,
+    }
+
+
+def kernel_cmdline_value(text, key):
+    values = [
+        token.split("=", 1)[1]
+        for token in text.split()
+        if token.startswith(key + "=")
+    ]
+    if len(values) != 1 or not values[0]:
+        raise ValueError(f"kernel command line lacks one unambiguous {key}= value")
+    return values[0]
 
 
 def parse_interrupts(text):
@@ -376,6 +467,36 @@ def build_report(evidence, reference_dtb, repo, saved_module=None):
     if missing:
         raise ValueError(f"missing evidence files: {missing}")
 
+    capabilities_probe = parse_probe_capture(evidence, "ufs-capabilities-list")
+    if capabilities_probe["status"] != "readable":
+        raise ValueError("UFS capabilities directory listing was not captured")
+    streaming_mask = parse_probe_capture(
+        evidence, "ufs-dma-mask-bits", parse_dma_mask_bits
+    )
+    coherent_mask = parse_probe_capture(
+        evidence, "ufs-coherent-dma-mask-bits", parse_dma_mask_bits
+    )
+    hccap = hccap_exposure(
+        capabilities_probe["value"], read_text(evidence / "ufs-debugfs-list.txt")
+    )
+    swiotlb_policy = kernel_cmdline_value(
+        read_text(evidence / "cmdline.txt"), "swiotlb"
+    )
+    runtime_contract = {
+        "hccap": hccap,
+        "streaming_dma_mask_bits": streaming_mask,
+        "coherent_dma_mask_bits": coherent_mask,
+        "dma_ops": {"status": "not-captured", "value": None},
+        "iommu_fwspec": {"status": "not-captured", "value": None},
+        "iommu_domain": {"status": "not-captured", "value": None},
+        "swiotlb_pool": {
+            "status": "not-captured",
+            "value": None,
+            "cmdline_policy": swiotlb_policy,
+        },
+        "cache_ownership": {"status": "unverified", "value": None},
+    }
+
     parser = load_fdt_parser(repo)
     live_raw = (evidence / "live-fdt.bin").read_bytes()
     live = parser.Fdt(live_raw)
@@ -586,7 +707,7 @@ def build_report(evidence, reference_dtb, repo, saved_module=None):
         )
 
     return {
-        "report_version": 1,
+        "report_version": 2,
         "evidence": file_receipts(evidence),
         "fdt": {
             "live_sha256": sha256(live_raw),
@@ -627,6 +748,7 @@ def build_report(evidence, reference_dtb, repo, saved_module=None):
                 "total_delta": ufs_delta,
                 "android_runtime_delivery_observed": True,
                 "xnu_phone_delivery_observed": False,
+                "runtime_contract": runtime_contract,
             },
         },
         "firmware": {
@@ -685,6 +807,8 @@ def build_report(evidence, reference_dtb, repo, saved_module=None):
                 "XNU timer or interrupt delivery on the physical phone",
                 "XNU ownership of GIC or installed firmware ABIs",
                 "physical UFS DMA bypass, coherency, or firewall permissions",
+                "runtime HCCAP, effective DMA masks, DMA ops/fwspec/domain, "
+                "SWIOTLB pool state, or cache ownership",
                 "safe physical UFS access from XNU",
             ],
         },

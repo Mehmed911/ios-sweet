@@ -94,34 +94,105 @@ coherency, or that XNU owns or can safely use those resources.
 
 ## Fail-closed readiness assessment
 
-`tools/assess-duchamp-mt6897-phone-readiness.py` now combines the current
-live-runtime report, the 12-component offline gate, the saved UFS and firmware
-client audits, the contract model, the candidate manifest, and the actual
-64 MiB candidate image. It pins the FDT, UFS module hash and GNU build ID,
-direct 64 GiB identity window, interrupt identities, candidate size and image
+`tools/assess-duchamp-mt6897-phone-readiness.py` now combines the archived
+live-runtime report, a fresh allowlisted read-only shell report, the captured
+active `tee_a` binary inspection, its static UFS SiP-handler audit, the
+read-only DMA/IOMMU ownership audit, the 12-component offline gate, the saved
+UFS and firmware client audits, the contract model, the candidate manifest,
+and the actual 64 MiB candidate image.
+It pins the FDT, UFS module hash and GNU build ID, direct 64 GiB identity
+window, interrupt identities, captured BL31 binary, candidate size and image
 hash. It refuses an older runtime report that lacks the saved-module receipt
-or decoded DMA window.
+or decoded DMA window, and it requires the fail-closed UFS runtime-contract
+fields from report version 2.
 
-Seven mutation/guard tests pass. They reject a changed module build ID, changed
-DMA window, candidate-image mismatch, unsafe offline action, or an unreviewed
-promotion of firmware effects, resource ownership, DMA bypass, coherency, or
-XNU DMA readiness. The actual combined result is
-`research/mt6897-phone-readiness/maxspeed-20261031-v2/result.json`:
+Seventeen mutation/guard tests pass. They reject a changed module build ID,
+changed DMA window, candidate-image mismatch, captured-firmware mismatch,
+changed selector path, unclean probe removal, unsafe offline action, or an
+unreviewed promotion of BL31 effects, physical IOMMU bypass, resource
+ownership, HCCAP, SWIOTLB transfer, coherency, or XNU DMA readiness. The actual
+combined result is
+`research/mt6897-phone-readiness/maxspeed-20261101-v12/result.json`, SHA-256
+`7ff95f516c4d6df6240be956c58f98f91054d9731fddcc037a2d2a31abfa0ed9`:
 
 - evidence validation and the safe offline stage pass;
 - the diagnostic candidate is present and matches SHA-256
   `a83f0792ccd883c19a8225641b4e96090fb08673375e71fe93123e0dafddfaa8`;
+- the sysfs capability list exposes only `clock_scaling` and `write_booster`,
+  but the loaded MediaTek debug driver's bounded `/proc/ufs_debug` summary
+  reports effective host capabilities `0x55c7051f`. The pinned UFSHCI masks
+  decode this as 64-bit-addressing and MCQ support;
+- the separately approved read-only UFS-device probe measured 64-bit streaming
+  and coherent masks, a 36-bit `bus_dma_limit`, null DMA-ops pointers and no
+  Linux IOMMU fwspec/domain. Pinned GKI source therefore selects generic
+  `dma-direct` at observation;
+- the UFS device has a SWIOTLB pool pointer and `swiotlb=noforce` remains the
+  command-line policy, but no transfer was traced through the pool. Cache
+  ownership and physical firewall behavior remain unverified;
+- the current two-second read-only sample observed timer HWIRQ 27 advance by
+  5760 and the nine DT-pinned UFS HWIRQs advance by 105 in total;
+- the Android SCSI host reports `can_queue=63`, `nr_hw_queues=8`,
+  `sg_tablesize=128`, and `cmd_per_lun=31`, proving that this Android build is
+  using a multiqueue UFS host. The proc summary independently reports MCQ
+  supported/enabled, `nr_hw_queues=8`, `nutrs=64`, and device queue depth 64;
+- a 1200-line-bounded recursive UFS sysfs inventory contains no HCCAP- or
+  DMA-mask-named entry. The bounded kernel-log result contains only four
+  SELinux denials from a rejected `readlink` traversal; it is not a UFS
+  controller failure;
+- the bounded ATF log identifies installed BL31 as
+  `lts-v2.8.6(release):2fbca47`, built `07:19:18, Dec 18 2024`;
+- a separate read-only capture of the active `tee_a` is exactly 5 MiB,
+  SHA-256 `37d7d5acbe02289465af9702cbcafb1986394332a3462badda398556d32e587d`.
+  Its first `atf` entry is 953,976 bytes, SHA-256
+  `716222a632e4a0623a2e467e17f1d36f38a37f79a1c026447fe724e75e90e07e`,
+  and contains the same release, build and `common_2.6.1(6897-1.2)` strings;
+- the captured BL31 registers `MTK_SIP_KERNEL_UFS_CONTROL` for
+  `0xc2000276`. Exact instruction regions route REFCLK selector 8, MTCMOS
+  selector 512 and MCQ selector 1024 to non-empty handlers. Known selectors
+  share a common zero-return exit, so a zero SMC reply is explicitly not
+  promoted into proof of a physical effect;
+- the captured MTCMOS helpers write the secure-firmware power-unlock register
+  `0x1c001000`, then control registers `0x1c001e10` and `0x1c001e14`, polling
+  bits 30 and 31. These are static readback candidates, not authorization for
+  XNU to access firmware-owned MMIO;
+- exact public source equivalence, runtime UFS effects and secure ownership
+  remain unverified;
 - phone execution remains unauthorized;
 - full system boot and the physical UFS backend remain not ready.
 
-The assessment performs no ADB, fastboot, phone write, partition access, MMIO,
-or SMC. A zero exit status means the evidence is consistent, not that a phone
-trial is authorized.
+The pinned live report is
+`research/mt6897-live-evidence/14480520-210535/runtime-report-v7.json`, SHA-256
+`fb1fa60b1b6df4f50f7794520be959ba7997f9433cea0f23dc818df9b5681660`.
+The current allowlisted shell report is
+`research/mt6897-shell-runtime/live-20261101-v7/result.json`, SHA-256
+`35c3f29baab1411fb6ac99cbc7fcd3a42c9fb7ebf844f97a103678c6f02a0fc4`.
+The local binary reports are
+`research/mt6897-firmware-live/20261101-v1/inspection.json` and
+`research/mt6897-firmware-live/20261101-v1/ufs-sip-audit-v2.json`.
+
+The upstream TF-A
+[lts-v2.8.6 release](https://github.com/ARM-software/arm-trusted-firmware/releases/tag/lts-v2.8.6)
+points to commit `ff0bd5f`, not the observed `2fbca47`. Exact commit lookup in
+the upstream and public MediaTek mirror returned no match. The observed build
+must therefore remain an unmatched vendor fork until its exact source or
+installed binary is available; an upstream version label is not equivalence.
+
+The shell collector used only fixed read commands, including a two-second,
+256-KiB-bounded ATF log read. It performed no phone write, fastboot, partition
+access, MMIO, or SMC. A later, separate operation read the exact active
+`tee_a` block device into the local evidence directory after checking its
+target and 5 MiB size; it did not write the device. Both binary inspectors and
+the readiness assessment operate on local files only. A zero exit status means
+the evidence is consistent, not that a phone trial is authorized.
 
 ```sh
 python3 tools/assess-duchamp-mt6897-phone-readiness.py \
   research/mt6897-phone-readiness/replay-new \
-  --live-report research/mt6897-live-evidence/14480520-210535/runtime-report-v5.json \
+  --live-report research/mt6897-live-evidence/14480520-210535/runtime-report-v7.json \
+  --shell-runtime research/mt6897-shell-runtime/live-20261101-v7/result.json \
+  --firmware-binary-report research/mt6897-firmware-live/20261101-v1/inspection.json \
+  --firmware-sip-audit research/mt6897-firmware-live/20261101-v1/ufs-sip-audit-v2.json \
+  --dma-ownership-audit research/mt6897-dma-ownership/live-20261101-v2/result.json \
   --offline-gate research/mt6897-offline-gate/maxspeed-20261031-v18/result.json \
   --saved-audit research/mt6897-contract/audit-v3/result.json \
   --client-audit research/mt6897-routing/client-audit-v1/result.json \
@@ -136,7 +207,8 @@ This candidate can test the single boot CPU, GICv3, architected timer,
 scheduler, and framebuffer console on the phone only after a separate explicit
 hardware-test decision. It cannot close the storage boundary. Enabling physical
 UFS still requires a documented installed-firmware contract, secure resource
-ownership, runtime DMA ops/fwspec/domain, controller capabilities, descriptor
-and data address masks, and cache ownership. Secondary CPU power-up and Mali
-acceleration are also unverified. Until those facts are measured, the physical
-storage provider remains closed and this is not a phone-ready iOS build.
+ownership, physical firewall/translation behavior, actual bounce requirements
+and cache-maintenance ownership. The live masks, Linux DMA path and Linux IOMMU
+state are now measured. Secondary CPU power-up and Mali acceleration are also
+unverified. Until the remaining facts are measured, the physical storage
+provider remains closed and this is not a phone-ready iOS build.

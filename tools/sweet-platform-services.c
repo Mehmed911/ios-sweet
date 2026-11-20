@@ -249,6 +249,22 @@ int main(void) {
 #endif
     }
 #endif
+#if SWEET_IOSURFACE_PROBE
+    /* Opt-in diagnostic client, after original-service health checks. Its
+     * surfaces must never be attributed to BackBoard or SpringBoard. */
+    if(pass) {
+        char *args[]={"sweet-iosurface-contract",0};
+        int tested=command("iosurface-contract","/sbin/sweet-iosurface-contract",args,1)==0;
+        ipc_note("PLATFORM IOSURFACE DIAGNOSTIC passed=%d",tested);
+    }
+#endif
+#if SWEET_GRAPHICS_PROVIDER_PROBE
+    if(pass) {
+        char *args[]={"sweet-graphics-provider-contract",0};
+        int tested=command("graphics-provider-contract","/sbin/sweet-graphics-provider-contract",args,1)==0;
+        ipc_note("PLATFORM GRAPHICS PROVIDER DIAGNOSTIC passed=%d",tested);
+    }
+#endif
     sync();
     ipc_note("PLATFORM SERVICES DONE status=%d",pass?0:1);
     sync();

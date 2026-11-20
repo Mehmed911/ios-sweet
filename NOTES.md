@@ -1,3 +1,326 @@
+ACTIVE HANDOFF - original-service regression restored; IOAcceleratorES ABI V2 still BLOCKED_BY_UNKNOWN_ABI (2026-11-20)
+
+- Branch duchamp-bootstrap / HEAD d91562d plus preserved dirty tree; no commit/push. Before this task's NOTES update the Windows-Git binary diff exactly matched the saved baseline (SHA256 3fa0785ab5d4d5de5ae52294ceea300328fee74a9af4959ed491d3ed29c3f048). All25 frozen native/recovery hashes unchanged. No phone/ADB/Fastboot/reboot/slot/UFS/firmware operation. Physical BLOCKED_BY_MEMORY_EVIDENCE unchanged.
+- Disk restored WITHOUT DELETE/relocation: lossless NTFS compression on one pilot plus483 closed reproducible output copies, every pre/post SHA identical, native/recovery excluded. Batch free19.83->38.29GiB; after new large VM retained outputs35.54GiB. Compression per-file22,742,829,848 logical bytes ->5,252,366,336 reported stored bytes. Other host allocation changes not attributed solely to compression. C only usable attached volume; VHD untouched. Records in outputs/duchamp-abi-repair-20261120/{compression-results,disk-final-assessment}.json.
+- Fresh original20F66 run COMPLETE on exact source kernel4ae22e3d38d0be2372fc66703db6b5b957803c55b743ed4190c4725a0a17cedd /1127 source inputs:22/22services,24/24IOSurface,26/26IOKit,296/296installed hashes, guest probe exits0, completionstatus0, no observedpanic,213.897s. launchdPID1; originalBackBoard25/birth90,SpringBoard34/birth119 UID501. Current native VM /var/tmp/duchamp-abi-repaired-d9oo6amx/run, allRAM/root/extraction files retained. Prior SIGBUS/cancelled runs remain failures.
+- Fresh original matching IOAcceleratorES returnskr0/iterator0 thenservice0; no error-to-success conversion proven. Originalswap1 surfaces[0,0,0,0]/zero rects. No genuine SpringBoard frame. Diagnostic IOSurface task-bound method calls have expected errors; never equate them with GPU compatibility. Bounded observer evidence is not a claim about all later calls.
+- New static evidence rebind15code intervals/29anchors to actual20F66 cache.600byte selector2 reply+0x18 is dlsym name input (x0=-3), resolved actual_dlsym0x1a6c2cc88; text extent UNKNOWN. Count1 usesbase directly; count>=2 consumesu32offsets+0x58/+0x5c.64byte query lives at wrapper+0x270, NOT within600reply. Type2SharedCreateDeviceShmem selector5 one scalar/16structure output,Destroy selector6 one scalar/nooutput, producer ownership/mapping/syncUNKNOWN. No successful actualGPU reply captured.
+- New offline-only tools duchamp_ioaccel_abi.py, test-duchamp-ioaccel-abi.py (36/36 including1000deterministic random captures), verify-duchamp-ioaccel-static.py. No IOKit provider/noGPUcommands/no pointerdereference. Positive self-reported memory claims never establish ownership. New machine map research/graphics-abi-20F66/selector2-field-map.json is an analysis partition, NOT a Cstruct. Additional fresh native tests: discovery20,observer22,RAMbounds6,actuallognegative8. Initial logtest omitted requiredargument(exit2), preserved; corrected actual-log testpasses. Prior apps35/compositor25/windows22/mouse18/MachO17/FS11/service74 receipts preserved and hashes revalidated, not rerun for offline-only code.
+- Reports docs/DUCHAMP_IOACCELERATORES_ABI_V2.md, DUCHAMP_GRAPHICS_ABI_FIELD_MAP.md, DUCHAMP_QEMU_DISK_SPACE_RECOVERY.md. Pinned MITUniXNU iOS17/customwire and AppleAPSLIOFramebuffer source reviewed only; no unrelated selectors/Adreno/Mali code copied. NEXT: recover matching20F66 producer dispatch and mappedmemory allocation/unmap/owner/fence/completion contract; no service publication until real operations established. Keep native32+4MiB candidate frozen.
+
+ACTIVE HANDOFF - 20F66 IOAccelerator ABI prefix decoded; provider BLOCKED_BY_UNKNOWN_ABI (2026-11-20)
+
+- Branchduchamp-bootstrap/HEADd91562d, all prior changes preserved. No phone/flash/reboot/slot/physicalUFS/firmware/commit/push. Exact source-built kernel4ae22e3d38d0be2372fc66703db6b5b957803c55b743ed4190c4725a0a17cedd and1127 source inputs unchanged. Physical BLOCKED_BY_MEMORY_EVIDENCE unchanged. No IOAcceleratorES/Metal provider published; no authentic SpringBoard frame.
+- NEW actual20F66 binary evidence: cache includesAGXMetalA11 UUIDA1D04B73-670F-33D5-BE50-89366A4BEA14. IOAccelDeviceCreateWithAPIProperty opens type1; conditional APIlabel selector7/16inputbytes, mandatory selector2/600outputbytes, mandatory selector0/64outputbytes, optional selector5/24outputbytes. IOAccelSharedCreate opens type2 and query7/16outputbytes; queue opens type4, submit selector1 framing8+24*N (count at+4). These are STATIC callsite facts, NOT live successful GPU requests. Consumer of600byte reply uses mapped base/count/offsets; producer ownership, synchronization, entry semantics and command execution still UNKNOWN. No zero-descriptor/Cstruct guess implemented.
+- Original matching Apple-hosted20F66 iPhone10b kernelcache downloaded18,183,395B (f753edf0...), ZIPCRCverified; decompressed50,888,704B(e6fa7559...), xnu8796.122.4 ARM64_T8015. KEXTmetadata confirms IOGPUFamily65.40.15 and AGXG10P_B0 personality MetalPluginNameAGXMetalA11, parentAppleARMIODevice, gpu,t8015, matchcategoryIOAcceleratorES. This is NOT a QEMU/MTK provider. Pinnedipsw cannotextract nonMH_FILESET kext; target class symbols absent from5868 defined kernel symbols. Original image retained for future typed producer-ABI work, never executed/installed; CRC/SHA not signature attestation.
+- UniXNUrefgit clean/pinnedAdrenoMetalcc0a4e8... andAdreno740be70fb1... MIT,12source/license receipts. iOS17 OriginalAcceleratorABI not20F66proof. Own offline wire IDs notApple ABI. HostMetal backend needs actualhostMetal; macOS IOGPUMetalDeviceShim autozero stubs explicitly NOT reused. Existing CPU compositor remains independent Mach protocol.
+- Fresh completed SAMEkernel regressions:apps35,compositor25+graphics10,GUI22,mouse18(+host10),MachO17,nestedFS11/services74 allpass5commands exit0. NativeASan/UBSan14+14,discovery20,observer22,profile7,largeRAM6 pass. Existing negative ownership/rect/replay/null/dead/buffer cases retained. Only safe code change: verifier follows explicit build/config/guest-receipt paths and canonical config receipt binding;5labelled historical-log replay tests(default/explicit accepted,wrongkernel/nonpassive/missing rejected) pass. Replay is NOT new guest execution.
+- Fresh original22/IOSurface24/IOKit26 run FAILEDhostSIGBUS135 before diagnostic completion. C measured0.89GiB; WSLinstance startup transientfailure. Logs/partialtrace archived. Retryreusedsameinputroot, stopped ONLYconfirmedownQEMU/debugger/runner whenfree<768MiB, alsoINCOMPLETE. Do NOT report fresh22/24/26 success. Last accepted baseline remains2026-11-19. Current-run duplicatedrebuildpayloadremoved withrecordedhash,9reproduciblepayloadcopies ZIParchived+independentlyhashverifiedbefore removal; failed virtualRAMfilesremoved afterlogs retained. fstrim reported675GiB discard but NOT actualWindowsreclaimedspace; no WSLshutdown/restart issued. C about2.16GiB free after scopedcleanup; more headroom needed before large VM. No old user/source/recovery/working files deleted.
+- Newreports docs/DUCHAMP_IOACCELERATORES_ABI.md, docs/DUCHAMP_SOFTWARE_GRAPHICS_PROVIDER.md, docs/DUCHAMP_SPRINGBOARD_RENDER_PROGRESS.md. Evidence outputs/duchamp-ioacceleratores-abi-20261120, static-abi-summary.json, bounded-functions.json, resolved-static-calls.json, reference-source-receipts.json, apple-kernelcache-receipt.json, regression-commands.json, receipt-path-tests.json, host-storage-failure.json, retry-storage-cancelled.json, final-manifest.json. Next: qualify exact600byte mapped descriptor, sharedresource/24bytequeue-record ownership and completion protocol, plus real20F66 software runtime/backend; do not publish partial/fake accelerator to hide this boundary.
+
+ACTIVE HANDOFF - IOAcceleratorES boundary confirmed; honest IOSurface errors/source kernel VERIFIED (2026-11-19)
+
+- Outcome BLOCKED_BY_UNIMPLEMENTED_GRAPHICS_API; first authentic SpringBoard frame still false. Original BackBoardPID25/birth90 MTLRegisterDevices: dictionary IOProviderClass=IOAcceleratorES, matching kr0/iterator0/service0, before plugin/GPU userclient. This is valid empty matching, not an observed error-code conversion. Actual20F66 plugin stubs/properties resolved (MetalPluginName, MetalPluginClassName, bundleWithPath:, principalClass/classNamed:, initWithAcceleratorPort:); qualified compatible execution backend still missing. No dummy accelerator, Metal plugin, feature advertisement or fake success introduced.
+- Fixed real preexisting bug: xnu/patches/0218-duchamp-iosurface-unsupported.patch makes default IOSurface external selector return kIOReturnUnsupported, replacing accept-and-ignore success. Separate source-compiled SweetSurface.cpo fully relinked with all1127 verified inputs: outputs/duchamp-ioacceleratores-20261119/kernel/kernel.development.sweet SHA2564ae22e3d38d0be2372fc66703db6b5b957803c55b743ed4190c4725a0a17cedd. Source/build receipts preserved; no prebuilt-kernel binary patch. Prior97adb397 kernel/receipts unchanged.
+- New0BSD original-IOKit guest contract probe passed26/26/exit0 as PID38 UID501; matched real IOCoreSurfaceRoot registry4294967577 and opened actual connection0x1d0b. Implemented limits0, short buffer0xe00002db, unimplemented selector0xffffffff->0xe00002c7, null surface capability0xe00002bf, invalid mapping type0xe00002c2. Four passive kernel entry/return pairs independently confirm ownertask/results. Original IOSurface24/24/PID37 and original services22/22 pass;296 installed hashes verified. Same-process surface alias is not full sandbox/ownership qualification.
+- Guarded existing compositor IOKit transport against null/dead handles, null buffers with positive counts and oversized requests before IPC/copies. New native ASan/UBSan14+14, false-success log8, discovery20, observer22, sourceprofile7, largeRAM6 pass. Wrong initial observer filename/missing profile argument exits2 retained and corrected separately; host stdio/guest fflush prototype compile conflict fixed by dropping unnecessary host stdio include. No failed test relabelled.
+- Fresh exact-new-kernel regressions passed apps/multitouch35, compositor25+graphics10, GUI22, live virtualmouse18+host10, nestedFS11/services74, dynamic/staticMachO17. Default opt-in-disabled controller remains byte-identical451625b8.... Single original BackBoardSwap1 IDs[0,0,0,0], no original surface-create/present event. Diagnostic Surface2 and custom compositor frames are NOT authentic SpringBoard. Generic observer caps remain explicit limitations.
+- Reports docs/DUCHAMP_IOACCELERATORES_PROVIDER.md, docs/DUCHAMP_METAL_SOFTWARE_BACKEND.md, docs/DUCHAMP_SPRINGBOARD_FRAME_STATUS.md. Evidence outputs/duchamp-ioacceleratores-20261119 with correlated-verification.json, full trace, full source link receipt, exact commands/hashes and final-manifest.json.25 frozen native/recovery files unchanged. Physical BLOCKED_BY_MEMORY_EVIDENCE unchanged; no phone/ADB/Fastboot/flash/reboot/slot/physicalUFS/firmware/commit/push. All test VMs ended. Next: qualify genuine20F66 plugin/runtime plus an actual execution backend; do not relabel IOCoreSurfaceRoot/custom CPU compositor as IOAcceleratorES.
+
+ACTIVE HANDOFF - original 20F66 Metal discovery isolated; IOSurface24/24 VERIFIED (2026-11-19)
+
+- Completed QEMU/offline only. No phone/ADB/Fastboot/UFS/firmware/slot/flash/reboot/commit/push. Physical BLOCKED_BY_MEMORY_EVIDENCE unchanged; exact source kernel97adb397.../1127 link inputs and25 frozen native/recovery files preserved. Baseline diff/status/NOTES/controller/observer copies in outputs/duchamp-metal-iosurface-20261119/baseline.
+- Actual BackBoardPID25/birth90 first missing resource: MTLRegisterDevices calls IOMasterPort kr0, IOServiceMatching(IOAcceleratorES) nonnull, IOServiceGetMatchingServices kr0 BUT iterator0, then IOIteratorNext0. Fixed opcode-bound sites, real cached framework UUID and thread/process identity correlate sequences [526, 528, 529, 530, 531]. No provider is returned in this query; this is before plugin creation, GPU IOServiceOpen, feature validation or command submission. Those downstream contracts are NOT proven; no fake Metal/GPU class/device/reply added.
+- Accepted trial4: original launchdPID1/BackBoard25/SpringBoard34,22/22 original service checks,295 installed-file hash comparisons pass. New original-public-IOSurface clientPID37/birth128/UID501 passed24/24: BGRA64x32,row256,allocation16384,Surface2,realMachport0xb03,same-process alias/shared-byte/retained-alias/release checks,invalidID/nullport/over-width rejection. Kernel traces link creator task, scalarID, returnedport and lookupSID. Diagnostic pixels are NOT SpringBoard; cross-process transfer and full leak/isolation audit remain unverified.
+- Source branch uncommitted d91562d. Permanent additions: bounded cache/site preparation, passive Metal/IOKit return probes, classifier/20tests, original-IOSurface MachO client and opt-in post-health hook. Normal controller object remains byte-identical451625b8... with opt-in disabled. Idle return probes disable when unused; hot genericIOKit80/Metal40 caps explicitly recorded. Later absence at globally capped Metal sites does NOT prove no SpringBoard Metal call. CA/kernel-surface hooks remain enabled.
+- First prep rejected separate .symbols synthetic mapping (explicitly excluded from runtime return allowlist); trial1 did not launch. Trial2 original-service query timed out before SB under excess observer load; preserved as failure, fixed observer overhead without changing timeout/assertions. Trial3 original22 passed but IOSurface23/24 failed an unsupported zero-width rejection assumption. Source permits zero-width+explicitallocation; trial4 records that as an observation and tests actual maxdim16384 instead. No kernel gate or failed result was relabelled successful.
+- Fresh regressions allpass: apps35+host14,compositor25+graphics10,GUI22,mouse18+host10,FS11,services74,MachO17. Final targeted20 discovery/bounds,22 observer,7 source gates,6 largeRAM pass. Original SB surface creations0 and context commits0; BackBoardSwap1 surfaces[0,0,0,0]. No authentic frame or screenshot, graphics stays BLOCKED_BY_GRAPHICS_DEPENDENCY.
+- UniXNU requested aliases resolved to AdrenoMetal cc0a4e8e57d20f4a4698753c2530875f2b10c0ca and Adreno740 be70fb13ed19d5fdf139d27977da6f54078cf50a (both MIT).17 audited source/license receipts pinned. No Adreno registers/firmware/shaders/memory or sandbox alternatives copied to Mali. Current offline broker requires native4KiB context and host-Metal server needs real host Metal; neither is a drop-in for this16KiB/Linux guest.
+- Reports: docs/DUCHAMP_METAL_DISCOVERY.md,docs/DUCHAMP_IOSURFACE_COMPATIBILITY.md,docs/DUCHAMP_SPRINGBOARD_RENDER_BLOCKER.md. Fullreceipts/traces/commands/failedattempts/console-only rawfb under outputs/duchamp-metal-iosurface-20261119. NEXT: qualify cross-process IOSurface rights/crash cleanup and a real20F66 renderer/provider/shader/queue contract; independently resolve SB startup waits before publishing any accelerator. Do not fake publication, force PC/registers or attribute diagnostic surfaces to SB.
+
+ACTIVE HANDOFF - original 20F66 first-frame trace BLOCKED_BY_GRAPHICS_DEPENDENCY (2026-11-19)
+
+- Completed QEMU/offline only. No phone/ADB/Fastboot, physical UFS, firmware, slots, flash, reboot, commit or push. Physical BLOCKED_BY_MEMORY_EVIDENCE unchanged. All25 frozen native/recovery files and source kernel97adb397.../1127 link objects unchanged; baseline diff/status/NOTES preserved in outputs/duchamp-springboard-first-frame-20261119/baseline.
+- Fixed passive hardware-breakpoint observer derives10 layouts from actual linked DWARF; binds8 kernel sites/15 original cache sites, actual task/PID/birth, executable/cache UUIDs and source receipt. No guest register/memory rewrite, forced software renderer or custom GUI substitution. Added QEMU source-profile hook, conservative pixel prerequisites and negative tests; no kernel or Apple binary changes.
+- Accepted trial4: original BackBoardPID25/birth90 and SpringBoardPID34/birth119, original launchdPID1,22/22 native-job checks and294 installed-file hashes pass. 3 BackBoard CA context commits; ZERO observed SpringBoard context commits. Direct MTLCreateSystemDefaultDevice-return site captured40 samples, allnil. Actual bounded QuartzCore/stub decode establishes the function; legacy metal_device_result label is wrapper RET, not direct device result.
+- Swap1 contains[0,0,0,0], zero rects, mask0x80000007, method return0. Empty presentation completions=0; no original content surface or attributed frame. Raw final framebuffer13,538,304B SHAc77db9d4f048dd7f7578d517affbd7a31e31233ebe768ecdabfbeb42c8599809, retained as diagnostic console only; NO authentic screenshot. Missing bootstrap services and incomplete SpringBoard init remain additional unresolved dependencies, not assumed solved by Metal alone.
+- Observer/DWARF/pixel prerequisite22, source-profile denials7, largeRAMlayout6 pass. Fresh exact-kernel regressions: apps35+host14, compositor25+graphics10, GUI22, mouse18+host10, FS11+services74, real MachO17; command/exit/log hashes saved. Trials1/2 observer page-residency failures retained; trial3 partialtrace retained. Trial4 corrects kernel-thread/no-BSD-process observation without fabricating userspace ownership. Optional ipsw ObjC disassembler allocation failure replaced by bounded LLVM decode.
+- Reports docs/DUCHAMP_SPRINGBOARD_FIRST_FRAME.md and docs/DUCHAMP_IOS_GRAPHICS_RENDER_PATH.md. Receipts/raw traces/filtered events/console-onlyfb/manifest in outputs/duchamp-springboard-first-frame-20261119. NEXT: establish a real renderer/provider contract or verified original CPU-renderer configuration, independently resolve SpringBoard startup waits, then require a nonzero original surface + matching presentation/framebuffer chain. Do not force PC/registers, fake Metal success or treat custom shell/empty swap as SpringBoard proof.
+
+ACTIVE HANDOFF - intact 20F66 cache and original graphical-service STARTUP VERIFIED (2026-11-19)
+
+- Completed QEMU/offline only; no phone/ADB/Fastboot, physical UFS, firmware, slots, flash, reboot, commit or push. BLOCKED_BY_MEMORY_EVIDENCE remains unchanged. All25 frozen native/recovery-file hashes and exact source kernel97adb397.../1127 link objects revalidated. Baseline patch/status/NOTES preserved outside source at outputs/duchamp-ios20f66-integration-20261118/baseline.
+- Rehashed all43 intact runtime cache components,2722512896B;2710 actual MachO records; UUID E5420DB3-30D0-33AA-8B7E-05B5038BB46D. StudyLog and SpringBoard.framework exist. Recursive strong closures267/1005 nodes,2381/16150 edges (including standalone dyld)(including weak),no missingstrongpaths; allplainARM64/iOSmin<=16.5. Metadata is not full ABI proof; signatures/provenance limits recorded.
+- runtime-1 direct admission12/12 diagnostic checks passed with realcachebase0x19ccdc000,bytes2850996224,original launchdPID1,parentprobePID3; originalbackboarddPID8/SpringBoardPID9 acceptedexec thenSIGTRAP5,notnormalexit0,no timeout. Those failed startup observations remain historical, not relabelled working.
+- native-jobs-1 original provider/resource/jobs fixture PASSED18/18 general+4/4UIcriteria on exact source kernel97adb397...,no instruction/debugger patch. Original mobile backboarddPID25 and SpringBoardPID34 PPID1/UID501, six5shealthchecks each; logdPID7/rootMCM5/installd13/lsd17/runningboard22. FirstlogdPID3SIGTRAP preserved. Original BKS native display handler replied twice kr0,1125x2436; LS native rebuild/installedSpringBoardrecord verified. FullGUI/rendering remainsFALSE/unverified; launchdinitialized=1 and activeendpoint flags are not completeUIinitialization. Multipleprovider/context changes mean directSIGTRAPcause not uniquely isolated.
+- Isolated3GiB writable HFSmd0 QEMU-only profile; hostRAMsparse10GiB,guestwindow4GiB. No blockdevice. Existing smallread-onlymd0+writablemd1 and frozenphone32+4MiB layout unchanged. 294additionalnative-job files roundtripped/hashverified. Native root SHA f369d7a1d9c4df9df5efe70ce13251e02a342c3e8fecb230ea7f21f06997d265. Native root filesystemheader free343928832B; oldHFSCLI signedused-byte print wrapsabove2GiB,notcapacitycorruption.
+- New strict cacheclosuretool/tests13,source-profile denial4,large-layout6,job-verdict4,preflight21,heartbeat9,waitstatus7,dualpackaging12passed. Firstpackaginginvocation omittedrequiredpayload(exit2);correctedloggedinvocationpassed. Fresh regressions applications35+realdevicehost14,compositor25,graphics10,GUI22,mouse18+host10,FS11,services74,MachO17 allpassed. No archivedCIkernelresults counted; overlappingnestedchecks notsummed.
+- Docs: DUCHAMP_IOS_20F66_SHARED_CACHE.md,DUCHAMP_BACKBOARDD_RUNTIME_STATUS.md,DUCHAMP_SPRINGBOARD_RUNTIME_STATUS.md. Evidence outputs/duchamp-ios20f66-integration-20261118 includes finalmanifest, rawcache/macho metadata, signatures/entitlements, closures, directexec logs, native-primary compact logs, native-jobs-1 private images, all regressioncommands/logs.
+- Next: attribute originalSpringBoard/QuartzCore IOSurface->SwapEnd->framebufferpixels. ActualBKS1125x2436 differsQEMU1220x2712;renderingimpactunknown. 44observedmissingruntimeendpoints(mobilegestalt/iconservices/etc)mayincludeoptionalservices;no uniquefirst-framecauseproven. Childper-imageDYLDprinttraceswereunavailable;parentlivecacheandstaticmappingtablesareexplicitlyseparate. CurrentcustomVirtIOshellinputdoesnotproveBackBoardHID. No SpringBoardUI/Setup/Metal/Mali/physicalcompatibility claim.
+
+ACTIVE WORK - iOS20F66 intact-cache integration (2026-11-18)
+
+- Baseline preserved outside source at outputs/duchamp-ios20f66-integration-20261118/baseline. No phone/physical UFS/commit/push operations. Exact source kernel97adb397... unchanged. Native32+4MiB candidate/recovery unchanged.
+- All43 runtime cache component hashes verified,2710 Mach-O records inspected. Required strong closures contain266 nodes/2380 edges(backboardd),1004/16149(SpringBoard), all plainARM64/iOS minimum<=16.5 and all strong paths present. Metadata availability is not runtime ABI success. Separate3GiB writable QEMU-only RAM-root fixture under preparation; small read-only dual profile unchanged.
+
+ACTIVE HANDOFF - iOS graphical userland compatibility AUDITED; actual loader blockers verified (2026-11-18)
+
+- Scope was QEMU/offline only. No phone/ADB/Fastboot, reboot, flash, slot change, physical UFS, firmware operation, commit or push. Physical BLOCKED_BY_MEMORY_EVIDENCE is unchanged. All prior uncommitted work and the frozen native candidate/recovery files are preserved. Baseline diff/status/source copies: outputs/duchamp-ios-graphics-audit-20261118/baseline.
+- Exact kernel remains 97adb3971c14e1c8f1fd42b18623b183d32edf9d882dc99a2c216b5dc229d001 (19543912B,1127 source-link inputs). All10 inspected XNU source hashes match their actual link-input source receipts: kernel-interface-sources.json. No kernel, compositor, WM, GUI, input or application-manager implementation changed.
+- Actual original20F66 admission-2 diagnostic PASSED15/15: probePID4/PPID1,37dyldimages,cache_present=0; matched existing five surface/display/test-HID providers, not queried IOHIDSystem/IOAccelerator. Surface-limit ABI1,rowmask63,display1220x2712. Original backboarddPID9 and SpringBoardPID10 were accepted by exec with UID/GID501 requested via successful setgid/setuid, then original dyld reported missing StudyLog.framework and SpringBoard.framework respectively; both SIGABRT6, no timeout, no normal exit status, neither service initialized. UUIDs match original files. Native program independently recompiled/relinked byte-identically (native-reproduction/verification.json). No Apple binary patched/re-signed.
+- backboardd1182960B SHA686f26a6a7b749fd0ae30acca704022da8cb6f85b5c39a0e0e09e25ffd00d273:45strong+1weakdirectimports,42missingstrongguestpaths. SpringBoard112048B SHA7926a1ba0b115cf45102b2c3d8e4eb7bc9c84bcf70b573d2a798690d9148059c:4strongimports,SpringBoard.framework/Foundationmissing. Host2710-image20F66cacheinventory does not satisfy guest dependencies or prove cache mapping. Original jobs declare18/33Machservices, mobile credentials and policy; no fake endpoints registered. Direct exec admission is not full original-job bootstrap.
+- Linked SweetSurface CPU allocation/lookup/ports coexist with no-op values/notifications/accelerators/shared events/use-count paths. SweetFramebuffer implements CPU scanout/selectedmethods, not full graphics ABI. Current VirtIO multitouch feeds custom DT/GW shell/WM; original BackBoard digitizer delivery is missing for this profile. Historical large-root UI observations use different kernel/runtime conditions and are not current-kernel proof.
+- Implemented0BSD strict Mach-O preflight/closure tool (duchamp_macho_preflight.py), read-only HFS guest dependency/job audit (audit-duchamp-ios-graphics.py), native capability/direct-exec probe and runner. No production GUI replacement or private API fabrication. New tests:MachO21/21,heartbeat9/9,terminalwait7/7; final-targeted commands/logs recorded. Cache-only files and unknown required commands fail closed; unresolved runpaths remain unknown; weak imports do not masquerade as required dependencies.
+- Fresh regressions PASSED: applications35/35 +actualtouch14/14,compositor25/25,graphics10/10,GUI22/22,mouse18/18,MachO17/17,FS11/11,services74/74. Normalbrowser18/18 and nativepostflight15/15 passed. Kernel and native candidate unchanged. Outputs: regression-applications-2, regression-compositor, regression-gui, regression-mouse, regression-macho-2, browser-regression.
+- Failure history preserved: admission-1 expired180s without nativeprobe trace (UNKNOWN); longer-budget admission-2 produced real loader evidence. Firstappregression had18healthyheartbeats but oldvalidator demanded exactly2; criterion now requires first1/2 plus all extra samples contiguous/healthy and rejects gaps/replay/wrongPID/unhealthy. Freshapp-2passed. Initialmacho wrapper substituted wrongargument and failedexistingmkdir; correctedmacho-2passed. Rawwait high-byte exit=0 duringSIGABRT is not normalexit0: originalrawreport retained, verification-normalized.json records exit_status=null.
+- Docs completed: DUCHAMP_IOS_GRAPHICS_COMPATIBILITY.md, DUCHAMP_BACKBOARDD_DEPENDENCIES.md, DUCHAMP_SPRINGBOARD_DEPENDENCIES.md. Final audit manifest/postflight verifies receipts, new sources, original files and frozen25filehashes. No claim of authentic graphical-service startup.
+- Next justified implementation is a separate large QEMU runtime fixture with intact matching cache/resources and fresh cache mapping/UUID/slide evidence, then original mobile/session job policy and actual BackBoard/QuartzCore/HID responses. Do not modify frozen32+4MiB native image or infer physical safety.
+
+ACTIVE HANDOFF - Darwin application lifecycle + real VirtIO multitouch VERIFIED (2026-11-18)
+
+- Scope QEMU/offline only. No phone commands, flash/reboot/slots/UFS/firmware/commit/push. BLOCKED_BY_MEMORY_EVIDENCE unchanged. Original native candidate/recovery files preserved. Baseline diff/status/source copies at outputs/duchamp-app-multitouch-20261118/baseline.
+- Source-linked kernel-2 SHA256 97adb3971c14e1c8f1fd42b18623b183d32edf9d882dc99a2c216b5dc229d001,19543912B,1127 verified source inputs. Native final attempt-7 PASSED35/35, host14/14,twelve full framebuffer byte comparisons. QMP actual2-contact drag+resize, native input-service restart cancellation, stale PID/birth denials, actual launchd child exit0 and abort6, focus restore/restart tested. GUI-final22/22, mouse-final18/18, browser-mouse16/16, compositor25/25, graphics10/10, FS11/11, services74/74, MachO17/17 passed on exact new kernel.
+- Final normal browser-5 PASSED18/18 with native-postflight15/15, no test observer. Actual guest redPID32/birth76; bluePID34/81,37/88,40/95 acrossclose/relaunch/restart; allPPID1. Twelve browser crops byte-exact. Rootbyte-identical,varwritable,EROFS/ENOSPCverified. Finalmanifest records commands/logs/hashes; do notsum overlappingchecks.
+- Separate applications service fixed catalog2 ARM64MachO paths, auditedMachRPC, PID+birthownership. Asyncfork/exec launchctl acknowledgesPENDING/STOPPING;READYonlyafterrealWMowner. Fixes prior4secondtimeoutwhilelaunchdthrottled; inputno longerwaitsforspawn. BackgroundkeepsPID,hideswindow,cancelscaptures,restoresfocus. ExitdeadnamesremoveWindowsanddetachcontacts;staleupneverretargetsrestart.
+- Real QEMU10.2.1 multitouch device0xa003c00, tablet0xa003e00;slots/IDs0..10 inclusive,208Broot-onlyexclusivereadABI. ActualQMP/browser->device->XNU->nativeMachinput->WM/compositor. Rawend/cancelindistinguishable; genuinecancelverifiedthroughinputservicedeath. Bus hot-unplugunsupported. No physicaltouch/BackBoard/SpringBoardclaim;end-to-end2contacts,not11.
+- QEMU dropsreportsonqueueshortagewithoutSYN_DROPPED. FinalhostguardusesobservedQOMx-query-virtio-queue-status, validates64queueandRAMavailaddress, waitsboundedactualcapacity andcountsrawSLOT+TRACKING+XY+SYN(two downs9descriptors). Nopartialsend;failedcancelneverclaimsreleasedandblocksreconnect. Host15/15+old9/9,touchprofile11/11,pointerprofile10/10,observer13/13,defaultpackaging12/12passed; nativeASan/UBSan71touch,42capture,old53window,33pointer.
+- Failurehistorypreserved:attempt1preflight8-frame/defaultprofile;2observercontacttiming;3transientcapture;browser2syncspawnnativepostflight;attempt6/browser4write-onlyqueueaddressregisterread. Corrected queueguardviaactualsupportedQMPintrospection,notguessedMMIOaddresses. Incorrectpackagingpath/profilecommandfailuresretainedseparately;finaldefaultpayloadnegative12passed. No failedrunrelabeled.
+- Docs completed: docs/DUCHAMP_DARWIN_APP_LIFECYCLE.md and docs/DUCHAMP_QEMU_MULTITOUCH.md. Normal launcher tools/run-duchamp-live-input.py --applications --artifacts outputs/.../attempt-7 --kernel-manifest outputs/.../kernel-2/build-manifest.json --mkfs preservedformatter;prints localURL. Tests use WSLChromiumautomation,not humanphysicalinput. Final postflight PASSED: source-linked kernel and all1127 object hashes, current driver/header sources,25 frozen native/recovery/candidate hashes, previousmousekernel, actualqueuebudgets, strictpayload/UFSdenial, rootunchanged/writablevar, Python syntax and scoped whitespace checks. outputs/duchamp-app-multitouch-20261118/final-manifest.json records exact receipts/source/artifact hashes. All test QEMU/browser processes ended. No commits.
+
+ACTIVE HANDOFF - QEMU LIVE MOUSE VERIFIED through actual VirtIO/XNU and normal browser GUI (2026-11-18)
+
+- Current scope QEMU/offline only. No phone operations, no commit/push. Physical status stays BLOCKED_BY_MEMORY_EVIDENCE. Previous native candidate, source-built baseline, recovery images and all uncommitted work preserved; evidence snapshot outputs/duchamp-live-input-20261118/baseline.
+- New real virtio-tablet-device transport, fixed observed QEMU MMIO0xa003e00, modern queue64. Source XNU cdev /dev/duchamp-pointer0600 read-only opens exclusive; input process sends audited Mach reports to existing live shell/WM. Polling5ms, QEMU coherent memory only. No physical MT6897 DMA/cache claim. Native driver service reset/reopen generation2 tested; VirtIO-MMIO bus itself rejects hot-unplug, documented limitation.
+- New kernel compiled/relinked from verified source objects (1127 inputs), no prebuilt binary patch. outputs/duchamp-live-input-20261118/kernel-2/kernel.development.sweet SHA256 cf0b0f80e83580bfe0b00529f148b8ad5705ea565ee3c1e683494948d9752e0d. Original kernel e7b51ecb... unchanged. Build recipe tools/build-duchamp-qemu-pointer-kernel.py and manifest preserve exact commands/hashes.
+- Accepted attempt-1:18/18 real virtual-device input checks,7/7 full framebuffer crops,11/11 filesystems,74/74 services. Native ASan/UBSan pointer33 and window53 assertions. New-kernel GUI regression22/22, original compositor25/25, graphics10/10, native compositor48, services74, filesystems11 and Mach-O17/17 passed. Targeted host9/profile10/observer12/package12 pass; initial packaging command had nonexistent path and was corrected with separate receipt, not relabelled success.
+- Normal interactive launcher tools/run-duchamp-live-input.py uses six launchd jobs, no observer/self-test. Localhost viewer maps RAM read-only; browser pointer -> QMP -> VirtIO -> XNU -> input Mach service -> shell -> WM. Browser automated via isolated Linux Chromium/Playwright; Windows UI tool unavailable (kernel assets path error), no human mouse claim. Browser tests1 lost early clicks,2/3 timed out30s before ~56s guest readiness. Fixed readiness handshake/retry and explicit120s startup timeout; fixed motion coalescing to preserve button-edge positions. Browser-test-4 PASSED16/16 with10 exact pixel crops and28 browser-origin pointer events; actual browser launch/focus/drag/resize/outside-release/reconnect verified. Normal240-second session exited0/no panic observed. Deliberate network backpressure tests initial press coordinate retention. No GW pointer synthetic injection in browser run.
+- COMPLETED docs/DUCHAMP_QEMU_LIVE_INPUT.md and outputs/duchamp-live-input-20261118/final-manifest.json. Offline postflight27/27 checks passed,1127 object hashes verified,25 frozen-file hashes unchanged. Normal md0 byte-identical, md1 changed, EROFS/ENOSPC/devfs witness verified. Native/browser logs extracted in extracted-input and normal-session-evidence. Normal launcher tools/run-duchamp-live-input.py uses --artifacts accepted attempt-1 and --kernel-manifest kernel-2/build-manifest.json, prints local URL. Tests ended; no VM/browser session left running. Windows UI helper unavailable; browser automation used isolated WSL Chromium159.0.8154.6, not human input. No true device hotplug claim. No commit/push or phone operation.
+- test-duchamp-readonly-var.py now reports actual transformed pointer payload hash/size/ADT plus base payload hash separately; metadata-preflight confirmed exact bytes. Existing receipt preserved, actual-run-payloads.json identifies real attempt-1 guest/payload.bin57298732B SHA25631fcf39de95c82892e6fdcaadb34303dca57b60aad3362e927e72245db9a9fdc. Repack same seeds remains byte-identical; independent HFS generation timestamps may differ.
+
+ACTIVE HANDOFF - Darwin GUI shell/window manager verified in QEMU; no phone operation (2026-11-18)
+
+- Current request supersedes the earlier phone/root work: QEMU/offline only. No ADB/Fastboot access, reboot, flash, slot change, physical UFS, firmware modification, commit or push in this GUI task. Physical readiness remains BLOCKED_BY_MEMORY_EVIDENCE. Preserve all prior uncommitted work and native candidate.
+- Baseline branch duchamp-bootstrap, HEAD d91562d9c2bd3bc33d52550c101de1009bb41dc0. Before edits saved tracked diff/status and relevant source copies/hashes outside repo at outputs/duchamp-darwin-gui-20261118/baseline. Final docs: docs/DUCHAMP_DARWIN_GUI_SHELL.md. All changes remain uncommitted.
+- New 0BSD tools/duchamp-window-core.[ch], duchamp-gui-wire.h, duchamp-darwin-gui.c, duchamp-gui-control.h, test-duchamp-window-core.c, duchamp_gui_expectations.py, test-duchamp-darwin-gui.py. Existing compositor engine extended compatibly with optional160x96 canvas, capacity-aware viewport move/resize and owner-checked single-layer removal. GUI service reuses DC registration/dirty/Z wire plus VIEW. Original64x32 service remains tested.
+- Accepted source-built-XNU QEMU run outputs/duchamp-darwin-gui-20261118/attempt-4 passed22/22 GUI checks,7/7 full160x96 RAM framebuffer byte comparisons,11/11 md0RO/md1writable tests,74/74 original launchd/syslogd/notifyd checks. GUI compositorPID18, WM20->31 after real launchctl restart, shell24, red26, blue28, all PPID1. Red received8 genuinely delivered sequenced Mach input events, including down/up, drag and resize. Actual client termination/dead-name cleanup and persistent app reconnect verified. Native ASan/UBSan53 new assertions passed.
+- Legacy regression rerun outputs/duchamp-darwin-gui-20261118/legacy-regression-2 passed25/25 compositor,10/10 graphics,48 native assertions,11/11 filesystem,74/74 service. Original compositor self-test now holds restored phase8sec before input; initial rerun missed that transient phase. Ordinary daemon behavior unchanged. Separate macho-regression passed17/17 dynamicPID2/exit0,staticPID3/exit42. Memory16+19,observer12,packaging12,accepted-payload profile7 passed.25/25 preserved local native/bootshim/FDT/recovery-file hashes unchanged, not new physical evidence.
+- Exact kernel unchanged SHA256 e7b51ecb16fe9ad21a78455714b2bf26c1dee1fbc3a6a7f0cb3971a9cd569457. GUI Mach-O87152B SHA256 e0bbf130cd42a76f6137d7ad73be20ec69b621b8e57e2aa347d823f86f0675e3; independent recompile/relink bit-identical. build-manifest.json records all source/output hashes, compiler/linker21.1.8/QEMU10.2.1 and commands. GUI payload57296096B SHA2564880d43a759106c33aa5edf0c949ae0926472749fa7a60dfd2f56ba4ece0dee0, QEMU-only, never a phone replacement.
+- Actual screenshot attempt-4/guest/run/sequence-resize.png; sequence-*.raw and frame-sequence.json are independent observed pixels. Attempt1 window processes worked but console overpaint prevented frame capture; periodic re-presentation fixed it. Attempts2/3 captured7 frames but running verifier lacked opt-in GUI command list, so not accepted. --gui verifier fixed exact expected sequence; final4 all passed, no assertions/pixels relaxed. Initial packaging command missing payload exited2; corrected run passed12.
+- Scope: primitive Darwin test shell with two app windows/status/launcher/pointer feedback. Virtual pointer currently originates in explicit shell --selftest over audited Mach IPC, NOT host mouse/IOHID touch/BackBoard. Ordinary shell shows desktop; external pointer adapter + normal interactive launcher loop are NEXT work. No SpringBoard/iOS/Mali/physical-input compatibility claim. Explicit GW_DESTROY RPC exists but QEMU exercised process-death cleanup; destroy core tested natively. No physical evidence gate changed.
+
+ACTIVE HANDOFF - Magisk31.1 ROOT VERIFIED on Slot A; only init_boot_a changed; B unchanged (2026-11-18)
+
+- COMPLETED: actual Android sys.boot_completed1 on _a after flash, magisk31.1:MAGISK:R, successful su -c id -> uid0/root contextmagisk and exit0, SELinux stillEnforcing, identical kernel release. Official manager Superuser UI explicitly granted only Shell/com.android.shell; no policy-database manipulation. Root readback of14 A/B boot-image partitions proves ONLY init_boot_a changed to expected7666d290...; all13 other hashes (including B's7) unchanged. No data wipe, super/vbmeta/kernel/recovery/firmware image writes. verification.json, root-runtime-proof.log, boot-image-comparison.json and ROOT-REPORT.md in current run record actual results. Phone left running Android with Magisk home page, no further reboot needed.
+
+- User explicitly requested kernel audit and suitable root installation on Slot A without data wipe or Slot B changes. Actual Android ADB now works: sys.boot_completed1, slot _a, MT6897/duchamp SKU, ARM64, Android16/SDK36, RMX5030_16.0.5.700(EX01), kernel6.1.138-android14-11-g23d7c6efa1683-ab10003285-4k, SELinux Enforcing. CONFIG_MODULES/KALLSYMS/KALLSYMS_ALL/CFI_CLANG enabled. KernelSU LKM/APatch prerequisites partially present but their exact compatibility not established; selected Magisk to patch the separate init ramdisk while preserving the tested kernel/recovery.
+- Run outputs/duchamp-magisk-a-20261118-072626. Official stable Magisk v31.1 APK downloaded from topjohnwu release; SHA25689cefac0a318afa39fb3880c45c87b036c05bc1ebf02a7a715b7f8d7c26ac6e7 matches GitHub asset digest. Manager installed, patched original image on THIS phone using actual app GUI. Original init_boot_a8MiB SHA25613ee7f0438bf7d917e0a06116a6805e7eaaf90ab0faa4594a1f760b589471650; patched8MiB SHA2567666d29066728411459c5dd5cafcaf7c6a83071ae5ae8942642b15ec6c96b60b. Both v4, kernel_size0; headers unchanged except ramdisk size, CPIO test original0/patched1; config preserves verity/encryption, recovery/vendorboot false, sourceSHA1 matches. Patch log, images and validation JSON saved.
+- Rebooted to known OrangeFox on A and verified actual original init_boot_a hash against patch source; captured14 A/B boot-image hashes, no full backup. Fastboot ACTUAL productduchamp/current-slota/unlockedyes confirmed (Android ro.boot.flash.locked1 was inconsistent with actual unlocked state). Fastboot partition-size bare hex800000 =8MiB. Flashed exactly init_boot_a once: Sending/Writing OKAY, exit0; A unbootable=no; rebootOKAY. No B/super/vbmeta/kernel/recovery/firmware image writes or data format in this root task.
+- Root boot monitor45356 completed successfully. Magisk31.1 removed reactive prompts; Shell grant was configured through the official Superuser UI and then su succeeded. Never select inactive-slot install for this A-only task. USB stay-awake restored to original0, verified in temporary-settings-restored.json; manager notifications allowed. Android UI helper uses observed uiautomator bounds. Final manager screenshot saved; Zygisk/modules not enabled. No commit/push.
+
+ACTIVE HANDOFF - RealmeUI reached Android Setup on Slot A, confirmed by user; phone left running (2026-11-18)
+
+- Actual installation reached all ten super pieces, but V1 postflight correctly aborted on an apparent super readback mismatch. Root cause VERIFIED on actual OrangeFox shell: arithmetic 9126805504/4096 returns131072 (32-bit overflow), reading only512MiB instead of2,228,224 blocks/8.5GiB. Original mock used 64-bit dash and missed this host-shell difference. Do NOT treat V1's previous 13/13 local results as proving this recovery-shell behavior correct. OrangeFox CLI returned0 even though native installer aborted with1; actual recovery log was checked rather than trusting frontend exit0.
+- Independent physical head -c9126805504 super hash EXACTLY matches original expected 888e22c039ee36fc0f9ec07e0bacc52b99559e786a04d2d503ce70604522675c. No expected hash was changed. Corrected postflight uses awk division, executed through a real pipe for its UI FD, verified ALL8 written ranges, exited0 and successfully activated A. B's seven boot-image hashes unchanged (normalized SHA records, not CRLF-vs-LF string comparison). install-verification.json and corrected-postflight.log record this; V1 native run itself still historically aborted1, not silently recast as success.
+- Already-authorized system reboot through twrp reboot reached Android Setup: user explicitly answered 'ظهرت شاشة الإعداد'. This is user-observed UI evidence; ADB sys.boot_completed was NOT measured because Android ADB remained unavailable. boot-outcome.json records ANDROID_SETUP_REACHED_USER_CONFIRMED, and install-verification.json specifies this evidence source. Host-only monitor46586 was terminated intentionally after confirmation (143); phone left running Setup, no additional reboot, flash or format. Do not interrupt Setup merely to obtain ADB logs.
+- Permanent builder postflight fixed. Desktop V2 ZIP 7,387,905,597 bytes SHA256 765385c3099866b4bcd846271df4073a1563245440322821332b0b069412c3f6 changes only postflight, its manifest hash and README; firmware payloads identical to physically verified images. v2-package.json records exact scope. V2 archive-manifest check PASSED22/22 SHA256/size checks; all25 archive entries CRC-checked, exit0, v2-verification.json. The entire V2 installer has NOT been re-flashed/re-executed; corrected postflight ran on phone and passed. V1 remains historical with a Desktop warning README; use V2 for future installs. No commit/push.
+
+- User now requested installing the repaired ZIP through OrangeFox on Slot A, reviewing installation logs and then attempting Android boot. This authorizes the previously disclosed A boot-image families + shared super and A boot-control activation, not a data wipe, firmware/bootloader rewrite or B boot-image write. Do not ask for the same flash permission again.
+- Pre-install observations: duchamp, OrangeFox R12.0 on _a, unlocked, snapshot merge none, host/staged V1 SHA256 820bbdd138b1fbb30edb87aea348ffc462a18724b46e13c5ccb9475e34cb0e3a. Working bootctl HAL. /data was mounted/decrypted with ~479GiB free; staged ZIP in a new /data/rom-repair-install-20261117-225337 directory, no existing file overwrite or data wipe. Backup was stopped at the user's explicit request as recorded below.
+- Current run: outputs/duchamp-repaired-install-20261117-225337. User said no backup needed. Stopped ONLY in-progress read-only super cat PID5989; kept eight completed A/misc snapshots. Incomplete super and invalid first dd image (82 appended statistics bytes, rejected before writes) were explicitly marked non-restorable, then ONLY those two generated invalid/incomplete files deleted in final cleanup. invalid-temporary-copy-cleanup.json records sizes; valid snapshots, original ROM and user backups remain. No complete super rollback image exists from this run.
+- Supported twrp install invoked ONCE by perform_install.py; session52299 ended after the correctly detected V1 verification failure above. install-intent.json prevents automatic retry. No reflash was needed: corrected-postflight.log plus independent-super-readback.json verify the actual written images, and install-verification.json records successful corrected verification/A activation. Full original recovery log and installation-delta.log preserve the initial native error. Do not format data or flash B. No commit/push.
+
+ACTIVE HANDOFF - RealmeUI local installer repair VERIFIED; final ZIP on Desktop; NOT flashed (2026-11-18)
+
+- User asked to repair the ROM. Original Desktop ZIP remains unchanged, SHA256 e0c9c1cc0b1ec02a5c9ee28c03051fb3945aafe1f067f2eace1b25cf97d106eb. Repair work, exact source receipts and scripts are in outputs/duchamp-realmeui-repair-20261118. Final C:/Users/Mehmedamir/Desktop/RealmeUI_7.0_DUCHAMP_REPAIRED_A_ONLY.zip is 7,387,905,486 bytes, SHA256 820bbdd138b1fbb30edb87aea348ffc462a18724b46e13c5ccb9475e34cb0e3a; adjacent SHA256 and Arabic README saved. This is a locally repaired recovery installer, not verified Android boot. No flash without a separate reviewed decision.
+- Fixed missing archive paths and unchecked native installer returns. Added matching OS3.0.5.0.WNLCNXM stock primary vbmeta plus vendor_boot assembled from that exact platform/DTB, port vendor fstab and unchanged verified OrangeFox recovery CPIO. Gzip support confirmed read-only in running matching recovery kernel. Stock primary vbmeta flags remain0; custom vendor_boot leaf uses algorithm NONE, not an OEM signature. Full modified AVB-chain/physical bootloader acceptance remains unverified.
+- Candidate writes only A boot-image families plus SHARED super, so it is NOT a dual-OS installer. No preloader/LK/TEE/modem/B boot-image/FRP/userdata/metadata-partition writes, wipe or automatic reboot; bootctl does update active-slot control metadata after readback. Payload SHA256 preflight precedes writes; native writes asserted; full target readback hashes precede bootctl activation. Required installed firmware prefixes match read-only phone capture. Actual results: 13/13 installer cases, including FULL 7.39GB candidate (exit0, 666.874s, all eight target hashes matched); 28/28 independent package checks; product/system/vendor EROFS decode validations exit0 each. Full installer is actual ARM64 updater/OrangeFox ziptool in user-mode QEMU on generated loop blocks, mocked getprop/bootctl and buffered actual-byte prefix reader, NOT full Android emulation or physical boot.
+- Current phone is still OrangeFox recovery on A, unlocked; only read-only ADB configuration/tool queries in this repair turn. Existing Android bootability is NOT established, neither slot is a verified Android fallback. Reports: verification.json, REPAIR-REPORT.md, installer-tests/results.json, test-environment.json and full_candidate UI/native logs in repair output folder. All owned test loop devices detached and independently checked absent. Removed only 12 generated test/extracted-image files (15.29 GiB logical); C now ~130GiB free. Original ROM, source inputs, candidate, logs, user backups and all preexisting XNU work preserved. No commit/push.
+
+ACTIVE HANDOFF - Actual latest OrangeFox installer log captured: false success, missing ZIP payload (2026-11-18)
+
+- User requested current flashing log. ADB recovery transport20, fox_duchamp on A. Captured /tmp/recovery.log after user installed /usb_otg/RealmeUI_7.0_DUCHAMP.zip. Actual installer printed ColorOS16 /16.0.5.700 /Davv98 and20 missing-file errors covering15 unique paths: fw/preloader_duchamp.bin, fw/vbmeta.img, images/boot.img, images/init_boot.img, images/vendor_boot.img and ten images/super.img.* entries. This directly confirms the earlier static preflight defects.
+- Installer nevertheless printed script succeeded/result0, process ended with no errors, installer code0, flash_done, and took5 seconds. This is a FALSE SUCCESS for intended ROM installation: errors were not propagated. Do not describe it as a complete RealmeUI installation. compatibility.zip/file_contexts notices and later failed mounts are separate; missing payload is the confirmed installation defect. USB exFAT was mounted using exfat-fuse; warning was unclean prior unmount, not demonstrated archive corruption.
+- Read-only SHA256 of20 current boot-chain partitions (both LK, TEE, GZ, boot, init_boot, vendor_boot, DTBO and vbmeta families) exactly matches the pre-sideload backup snapshot. This proves current bytes match, NOT that no write attempts occurred. No whole-super before/after hash exists. No reboot, slot change, flash, wipe or automatic retry in this log review. Phone left in OrangeFox.
+- Evidence: outputs/duchamp-current-flash-log-20261118-215923/recovery.log SHA256 a734a12ecf3a9599360050c509cfb335646e92b5ad55c49c2d79e30ae1cd900f; installer-missing-files.txt includes exact line numbers; current-bootchain.sha256, bootchain-comparison.json and analysis.json. Path pointer outputs/current-flash-log-path.txt. Original archives/backups retained. Recovery image itself was just re-flashed and verified as described below; normal Android/RealmeUI boot still unverified. No commit/push.
+
+ACTIVE HANDOFF - OrangeFox re-flashed and actually booted on A after RealmeUI failure (2026-11-18)
+
+- User explicitly requested 'flash Orange'. Verified current product duchamp, unlocked and active A; rechecked original Dip184 R12.0 image64MiB SHA256 501ec32cb585c60c4db9245266c16469eb42b31f7b4fb37b8f8f6d1c7d45d9c9. Flashed ONLY vendor_boot_a; sending/writing OKAY, exit0. fastboot reboot recovery OKAY. No other partition flash, wipe, or B selection.
+- Actual ADB recovery returned fox_duchamp, device duchamp, slot _a, crash_counter0, recovery PID371 alive. Physical vendor_boot_a SHA256 readback matches image. Recovery log and verification.json under outputs/duchamp-orangefox-reflash-20261118. Phone left running OrangeFox. Normal Android boot and RealmeUI installation are NOT verified or repaired by this recovery reflash. Prior both-slots-unbootable flags were not rechecked from Fastboot because recovery was kept open.
+- Prior RealmeUI archive defects and pre-install21 valid backup images remain unchanged. No commit/push. Capture any next installer result/log before rebooting; do not infer installer success from host adb exit0.
+
+ACTIVE HANDOFF - Current RealmeUI failure: BOTH slots marked unbootable, Fastboot only observed (2026-11-18)
+
+- Latest user requested return to Slot A. Verified product duchamp and executed fastboot set_active a: OKAY, current-slot=a. Readback STILL reports slot-unbootable:a=yes and retries:a=0. Do not describe this selection as repairing bootability or resetting retries. No reboot, flash, partition-image write, or B selection during this instruction. Receipt: outputs/duchamp-realmeui-failure-20261118/set-active-a-user-request.log. Phone left in Fastboot.
+- User now reports installing ZIP from within OrangeFox after earlier sideload and asks why it did not run. Read-only Fastboot confirms duchamp, unlocked=yes, current-slot=a, slot-successful A/B=no, slot-unbootable A/B=yes, retries A/B=0. Version duchamp_45cb0fdfa_202602051447. Do not assume Android A currently boots or either slot is a known-good fallback. Flags are boot metadata, not proof of physically corrupted partitions. No reboot/slot change/flash/write in this diagnosis turn.
+- User's ROM ZIP is again on Desktop; SHA256 freshly matches e0c9c1cc0b1ec02a5c9ee28c03051fb3945aafe1f067f2eace1b25cf97d106eb. Existing extracted Desktop/RealmeUI_7.0_DUCHAMP/fw/ has no vendor_boot.img or vbmeta.img. The previously verified15 missing updater-script references remain applicable. These defects prevent complete installation via this ZIP; actual writes after user's recovery install remain unknown because final recovery log was never captured. Do not equate host sideload exit0 with install success or infer Chinese-region mismatch as proven cause.
+- Maintainer guide https://telegra.ph/Install-guide-05-24 linked from wectazz's RealmeUI release documents both Recovery and Fastboot methods. Thus Recovery itself is not established as unsupported; guide does not prove this local archive complete. It mentions clean-data/format steps; do not execute wipes merely to troubleshoot without specific authorization.
+- Evidence and diagnosis: outputs/duchamp-realmeui-failure-20261118/fastboot-readonly.log and diagnosis.json. Next useful observation is current recovery installer log/current boot-chain identity; any reboot/slot repair/reflash must be scoped to the user's next instruction. Current21 usable pre-install block snapshots remain under outputs/duchamp-realmeui-sideload-20261117/before-flash; preloader67-byte files are unusable. Historical Android14 baseline is not a valid substitute for user's updated firmware. No commit/push.
+
+ACTIVE HANDOFF - D USB formatted exFAT and original RealmeUI ZIP moved with readback verification (2026-11-18)
+
+- User requested repairing D and moving the ROM onto it. Read-only CHKDSK found no filesystem errors; limitation was FAT32 maximum single-file size, not filesystem corruption. USB D is approximately32GB (31,457,280,000-byte disk). Only two Windows indexing files (88 bytes total) existed; both backed up and hash-verified outside D.
+- User explicitly approved formatting D only to exFAT and moving the ROM. Guarded elevated script matched USB disk identity/serial/path/size and partition boundaries before format. First attempt stopped without formatting due PowerShell5.1 JSON array enumeration; corrected read-only guards tested on5.1, second attempt exited0 and produced exFAT label ROMS.
+- ROM CURRENT PATH: D:/RealmeUI_7.0_DUCHAMP.zip, 7,395,734,552 bytes. SHA256 e0c9c1cc0b1ec02a5c9ee28c03051fb3945aafe1f067f2eace1b25cf97d106eb. Copied to .partial while hashing locked source, flushed, read back and hashed all destination bytes; both hashes match. Renamed verified destination, then removed only the original C:/Users/Mehmedamir/Desktop/RealmeUI_7.0_DUCHAMP.zip. OriginalRemoved=true, no partial remains. File bytes were not repaired or modified; earlier package-installer defects still apply.
+- Final CHKDSK D exited0, reports no filesystem problems; D Healthy, exFAT, size31,450,988,544, free24,054,956,032. C free155,952,287,744 at final observation. No physical phone action, flash, slot change or reboot in this USB task. Earlier sideload outcome remains unverified pending recovery screen/log.
+- Exact scripts, drive-identity snapshot, pre-format88-byte backups, two format-attempt logs, transfer-result.json, final CHKDSK and verification.json are under outputs/duchamp-usb-rom-transfer-20261118. No automatic commit/push. Use D path for any future package inspection; old Desktop ROM path no longer exists.
+
+ACTIVE HANDOFF - RealmeUI original ZIP sideload attempted on user's renewed explicit instruction (2026-11-17)
+
+- After missing-file/dual-slot write findings were disclosed, user instructed 'just flash'. Preserved original ZIP without edits and executed actual adb sideload of C:/Users/Mehmedamir/Desktop/RealmeUI_7.0_DUCHAMP.zip. Entered sideload with documented OrangeFox `twrp sideload`; shell disconnected as expected. Host sideload command returned exit0 after about7.65s, reporting total transfer0.01x. THIS IS NOT INSTALLATION SUCCESS EVIDENCE. Phone remained in sideload and user reported installation still running. Waiting for actual recovery outcome; do not reboot or retry automatically.
+- Three-minute read-only watcher completed with timeout; state remained sideload. /tmp/recovery.log pull failed 'connect failed: closed', because normal recovery shell is unavailable during sideload. User was asked for the last screen line/status. Host exit0 and0.01x transfer DO NOT prove ROM installation succeeded. Await the screen result/normal recovery ADB, then pull the log and assess actual writes before any reboot, retry or rollback.
+- Saved 21 valid-sized current block images (~475MB total, including both boot, init_boot, vendor_boot, LK, TEE, GZ, DTBO, vbmeta families and misc) to outputs/duchamp-realmeui-sideload-20261117/before-flash/. Two extra preloader_raw_a/b files contain only67-byte cat errors (those paths absent); explicitly marked UNUSABLE in manifest. Do not flash these error strings. Actual current LK differs from old project archives; boot_a/b now identical updated Linux images, not prior XNU B fixture. Current vendor_boot_a is installed OrangeFox; B still previous stock vendor_boot at snapshot time. Do not restore historical Android14 files blindly.
+- Logs: adb-sideload.log, adb-sideload.exit-code.txt, enter-sideload.log, recovery-before-sideload.log, before-flash-manifest.json and sideload-attempt.json under outputs/duchamp-realmeui-sideload-20261117. Preflight findings below remain valid. No manual partition writes, wipe, package changes or reboot in this sideload attempt; package installer may itself have written firmware. Need recovery log to determine actual effects. No commit/push.
+
+ACTIVE HANDOFF - RealmeUI ZIP sideload preflight blocked by missing payload files (2026-11-17)
+
+- User explicitly requested adb sideload of C:/Users/Mehmedamir/Desktop/RealmeUI_7.0_DUCHAMP.zip. Device was already in OrangeFox sideload, product fox_duchamp. NO sideload was sent, no new phone reboot/slot action/partition write/wipe in this request.
+- Archive 7,395,734,552 bytes, SHA256 e0c9c1cc0b1ec02a5c9ee28c03051fb3945aafe1f067f2eace1b25cf97d106eb, 59 ZIP entries. Statically inspected original installer and scripts, did not execute package binaries or scripts. Installer references FIFTEEN nonexistent source paths: fw/preloader_duchamp.bin, fw/vbmeta.img, images/boot.img, images/init_boot.img, images/vendor_boot.img, and images/super.img.0 through .9. The existing image files use fw/; fw/vendor_boot.img and fw/vbmeta.img are absent entirely. Renaming paths alone cannot repair this package.
+- Recovery updater-script prints ColorOS16 /16.0.5.700 /Davv98 while Windows scripts print RealmeUI7/wectazz. Metadata describes donor HyperOS OS3.0.5.0.WNLCNXM and references absent payload.bin. These identities do not establish payload provenance. Updater has 59 distinct block targets including both LK/preloader/TEE/boot-chain slots and shared super; partial installation could destroy the current fallback and overwrite XNU B. Bundled Fastboot scripts also reference missing fw/vendor_boot.img and fw/vbmeta.img. Do not switch to these scripts or run the format script (it also erases frp/metadata/userdata).
+- Offline inventory, original installer, metadata and decision saved in outputs/duchamp-realmeui-sideload-20261117/preflight.json and zip-inventory.json. Need a complete maintainer-provided package and installation instructions before proceeding. Do not silently rebuild or substitute firmware, do not claim sideload succeeded. Source-built XNU, prior artifacts and user ZIP remain unchanged. No commit or push.
+
+ACTIVE HANDOFF - OrangeFox recovery installed and booted on physical Duchamp A (2026-11-17)
+
+- User explicitly requested finding/flashing OrangeFox in Fastboot, then confirmed a system update and instructed proceeding with the recovery image. Initial Fastboot identified duchamp, unlocked, active B. Selected A and attempted Android boot before flashing: returned automatically to Fastboot, as confirmed by user. Stock A recovery later exposed ADB. Historical recovery properties showed Android14, while OrangeFox subsequently detected installed OS3.0.5.0.WNLCNXM / SDK36. Do not mistake recovery build properties for installed-system identity.
+- Existing OrangeFox community image and ZIP now verified against upstream Dip184 Custom_Recovery_v1.1 GitHub release digests. Image 67,108,864 bytes, SHA256 501ec32cb585c60c4db9245266c16469eb42b31f7b4fb37b8f8f6d1c7d45d9c9; ZIP 0d9e94518e27d8bacbc36d1dc6269beccda7e05e4fe3999fab8df86d34cd6ac8. Vendor_boot v4 recovery, not a standalone kernel. Bundled flash-whole-image script specifies vendor_boot. Firmware-specific blobs are documented by maintainer; do not claim universal compatibility or verified decryption.
+- Actual command flashed vendor_boot_a only: send/write both OKAY, exit0, followed by fastboot reboot recovery OKAY. ADB returned fox_duchamp, slot _a, uid0; recovery log confirms OrangeFox R12.0 startup and GUI package loading; process recovery PID381 running, crash_counter0. Physical vendor_boot_a SHA256 readback exactly matches release. No other partition flashed, no format/wipe, no commit or push. B boot/vendor_boot/init_boot were not flashed. Android normal boot and userdata decryption were not verified after recovery installation. Leave phone in OrangeFox for user.
+- Bootloader Fastboot fetch is unsupported; attempted vendor_boot_a.before.img is ZERO BYTES, NOT a backup. Existing Android images are historical and predate the user's update: do not restore them blindly to OS3. A/B metadata is now active A. Exact read-only queries, flash logs, release identity, readback, recovery properties/log and flash-result.json are in outputs/duchamp-orangefox-install-14480607-231224 (PowerShell local calendar generated this directory name).
+- Prior source-built XNU, frozen candidate and Darwin compositor files preserved. Native XNU memory-evidence blocker remains unchanged; recovery success does not establish XNU/UFS or DMA support.
+
+ACTIVE HANDOFF - Darwin compositor stage 2, actual QEMU clients and lifecycle (2026-11-17)
+
+- Accepted final run: outputs/duchamp-darwin-compositor-20261117/attempt-4, 25/25 checks, exit 0. Same source-built XNU e7b51ecb16fe9ad21a78455714b2bf26c1dee1fbc3a6a7f0cb3971a9cd569457, unmodified. Native boot stays BLOCKED_BY_MEMORY_EVIDENCE; historical export stays EXPORT_INTERFACE_UNAVAILABLE. No phone/firmware/UFS operation, reboot, slot change, commit or push.
+- Implemented real launchd-managed custom Mach service org.duchamp.qemu.compositor with capability-backed IOSurface import and kernel-appended audit PID/PID-version ownership. Bounded 64x32 CPU compositor: Z-order, straight-alpha, private snapshots and dirty rectangles, two CPU/output buffers, focus/press capture and dead-name-triggered IOKit cleanup. No new Apple private class, proprietary compositor protocol, GPU or SpringBoard claim.
+- Self-test daemon PID12, clients14/16, owners audit versions35/40, client surfaces4/5, output surfaces2/3. All six framebuffer RAM crops byte-match independent oracle in order: blend, dirty8x8, raised Z, restore, overlay cleanup, all cleanup. 8192 bytes per frame at 320,1664. Press/release went to overlay despite focus change mid-press; SIGKILL after release ACK generated kernel death notification. Old surface lookup denied after close. Remaining red client got next pair and exited0; its surface was reclaimed too.
+- Ordinary daemon mode is separate from --selftest; no scripted transitions or client kill in normal mode. Second daemon PID28 survived early clients30/32 with zero events/ACKs, closed both mappings and rejected old-ID lookups. Both daemons were removed with launchctl bootout and confirmed gone. --selftest jobs are explicit copied-QEMU fixtures only.
+- Tests: compositor25/25; original graphics10/10, dual filesystem11/11, services74/74; separate real dynamic/static Mach-O17/17 (PID2 exit0, PID3 exit42); native core/audit parser48 assertions under ASan/UBSan; observer12/12; default packaging12/12 and accepted payload restrictions7/7. Guest117.177 host seconds, no observed panic, zero unknown glyphs. md0 byte-identical SHA a4dd47519657fc6cfedcaa29895d52bbb52c2c9b53b8e1e856652c23d0564de5, md1 writable, EROFS/raw-root denial/ENOSPC/var alias/console preserved. 25 frozen local native/recovery hashes unchanged.
+- Shared IOKit implementation extracted from stage1 into tools/duchamp-darwin-iokit.h; stage1 reran successfully. New engine/wire/service/runner/oracle/control files use duchamp-compositor-* and duchamp-darwin-compositor* names. Explicit compositor options added to existing QEMU/graphics/var/service runners; default five system jobs remain unchanged. Exact commands/logs/binary hashes and failed attempts retained outside repo.
+- Early attempt1 exposed VM-page-rounded surface allocations (16KiB vs logical8KiB); actual XNU layout source justified a bounded64KiB mapping cap plus unchanged logical bounds. Attempt2 passed initial22 checks. Attempt3 was superseded during harness extension and is not accepted evidence. Attempt4 built and tested consistent final sources, including explicit owner-checked FOCUS RPC and normal-mode early cleanup.
+- Report docs/DUCHAMP_DARWIN_COMPOSITOR.md includes API, ownership/lifetime, bounds, six frame hashes, source paths, exact reproduction and limitations. Next independent milestone: interactive open-source client, digitizer/pointer, resize and broader fault/lifetime stress. Keep native candidate frozen; QEMU surface ownership does not establish physical MT6897 memory/DMA ownership.
+
+ACTIVE HANDOFF - firmware evidence frozen; real Darwin IOKit graphics/input in QEMU (2026-11-17)
+
+- Native status stays BLOCKED_BY_MEMORY_EVIDENCE and historical Blackbox export stays EXPORT_INTERFACE_UNAVAILABLE. No supported new historical exporter was established. Official Xiaomi Services & feedback instructions describe active issue capture, not Blackbox generation selection or authenticated final BL31 state. No new Blackbox parser or simulated authorization model was added. No phone operation, flash, reboot, slot action, physical UFS/modem access, firmware change, commit or push.
+- Exact source-built kernel e7b51ecb16fe9ad21a78455714b2bf26c1dee1fbc3a6a7f0cb3971a9cd569457, native 32+4 MiB candidate, bootshim, FDT and memory validators preserved. 25 local input hashes (including nine saved recovery/boot-chain images) still match. These are preservation checks, not a new recovery-UI or physical-device validation.
+- Reused graphics and HID providers already compiled into this kernel. New 0BSD dynamic tools/duchamp-darwin-graphics.c runs under original launchd as PID 10, PPID 1, with 37 dyld images. Matched AppleCLCD, IOCoreSurfaceRoot, SweetHIDButtons and SweetHIDTouch; nonexistent provider rejected. Real shared HID queue delivered Menu down/up, ordered sender/timestamps and two Mach notifications.
+- Real surface 2, SwapEnd/SwapBegin ID 1, rectangle 160,1600,64,32. QEMU framebuffer RAM crop exactly matches all 8192 expected BGRA bytes, SHA-256 1af2135a15afd0e0b13b696ce529cf84a0e17341fdfee3b6416a30317a683521. Screenshot is a diagnostic gradient, not iOS UI or physical GPU/input evidence. No BackBoard/SpringBoard execution in this phase.
+- Correct probe ABI uses supported matching_service_bin ID2880, open2862, map2863, method2865, notify2818; mach_msg2 kernel-object flag; LP64 OOL descriptor type@11/size@12. Legacy string matching explicitly returns unsupported. Existing HID entitlement check rejected unentitled v10. Successful v11 has only the required HID entitlement in its own verified ad-hoc test signature; no kernel check was weakened.
+- Successful accepted run outputs/duchamp-darwin-next-stage-20261117/graphics-v11: graphics integration 10/10, dual-RAMDisk 11/11, original services 74/74, zero unknown console glyphs, no observed panic, 71.424 host seconds. Read-only root unchanged, writable md1/var alias, EROFS, raw-root denial, ENOSPC/recovery and console all pass. Native parser ASan/UBSan 10/10, observer 8/8, packaging 12/12, exact HID/storage profile rejection 7/7. Separate source-kernel Mach-O regression 17/17: dynamic PID2 exit0 and static PID3 exit42, real Mach IPC. Default packaging/services behavior preserved.
+- New tools: duchamp-iokit-wire.h, duchamp-darwin-graphics.c, qemu_frame_witness.py and three targeted tests plus test-duchamp-darwin-graphics.py. Opt-in integration only in qemu-sweet.py, qemu_ramroot_var.py, test-duchamp-readonly-var.py, sweet-launchctl-control.c and verify-sweet-syslogd.py. Artifact manifests record exact commands/log hashes and frozen inputs; prior failures v1-v10 retained, v11 alone accepted. Preexisting tracked diff and edited-file copies saved outside repo before changes.
+- Reports: docs/DUCHAMP_FIRMWARE_EVIDENCE_BLOCKER.md, docs/DUCHAMP_GRAPHICS_BRINGUP_PLAN.md, docs/DUCHAMP_DARWIN_NEXT_STAGE.md. Next independent milestone: open-source input-driven UI loop, digitizer/contact/cancellation and cleanup tests. Native work requires new final-boot ownership/DMA evidence; do not resume repeated history searches or move the frozen candidate without it.
+
+ACTIVE HANDOFF - LK Blackbox historical export investigation (2026-11-17)
+
+- Historical result EXPORT_INTERFACE_UNAVAILABLE within the reviewed/currently permitted interfaces; physical readiness remains BLOCKED_BY_MEMORY_EVIDENCE. No historical B record was recovered and no new phone command was executed. No reboot, slot action, physical UFS access, storage write, firmware change, commit or push. Exact 32+4 MiB candidate/kernel/bootshim and earlier 50-test baseline are preserved.
+- Actual pinned LK writer is file+0x51a24, normal caller 0x10050 before secure handoff. Resolves storage label blackbox, uses block read/write dispatch 0x65758/0x657c8. Archived Fastboot device list names that label, 165,670,912 bytes. No physical partition was read this phase. Matching full LK C source is unavailable; another SoC's decompilation is not authority.
+- Correction: dump_count=4 in the A banner is an old CURSOR, not four-slot capacity. Pinned instructions 0x51d08..0x51d34 implement five cyclic positions: 5 -> 1, else old+1; record start (cursor-1)*stride+first_offset. Generation banner prints before 32-bit increment. Captured 794/cursor4 implies intended stored generation795/position5, not an actually recovered record795. Header writes precede PL/LK bytes, so fresh metadata does not establish complete payload or atomic write. Survival of a particular old B record is unknown.
+- Official MiCode 3c4ccd07 source was fetched and Git-blob verified. log_store.c is byte-identical to the old saved community source. Its proc reader copies the current mapped DRAM log, with no history selector. Separate proc write changes boot/log state and was not used. Reviewed AEE current exception/reboot-reason exports and actual Fastboot current-log handling do not establish historical Blackbox export. Private OEM tooling remains unknown. No invented command, raw-memory scan or raw storage operation.
+- Added tools/audit-duchamp-lk-blackbox.py: 28/28 static instruction assertions pass. Hardened existing current-log observation parser/tests: 16/16 pass, covering Blackbox printed metadata corruption/geometry/generation plus existing acquisition/slot/allocation checks. It is NOT a historical binary record parser. Freshness/origin/history recovery and all hardware authorization remain false, even for internally consistent older text. Phase 3 historical parser deferred because no supported export is established. Prior 13/13 original-decoder tests unchanged, not rerun.
+- New reports docs/DUCHAMP_LK_BLACKBOX_HISTORY.md and docs/DUCHAMP_SLOT_B_HISTORICAL_EVIDENCE.md; prior memory/trace reports corrected. Exact source references, commands, logs, hashes and before-change copies are in outputs/duchamp-lk-blackbox-history-20261117. Next external requirement: supported read-only OEM historical export with generation/slot/image/origin/completeness contract. Even such LK history cannot establish final BL31 effects, XNU entry or DMA isolation. Do not advance dependent hardware work.
+
+ACTIVE HANDOFF - Actual LK allocator channel and LZ4 guard boundaries (2026-11-17)
+
+- Decision remains BLOCKED_BY_MEMORY_EVIDENCE at d91562d, duchamp-bootstrap. Exact native 32+4 MiB Image/envelope, source-built kernel, saved FDT and all 12 previous baseline entries remain byte-identical. Existing 50-test sources/manifest were checked, not rerun. No guest/kernel/bootshim/candidate/access-gate changes, commit or push. Copies of the previous two reports and NOTES are outside the repo in outputs/duchamp-actual-lk-memory-20261117/before-document-update.
+- New REAL read-only ADB evidence: connected duchamp/mt6897, Android Global V816.0.17.0.UNLMIXM, slot A; existing Magisk root works. No root installation. Saved 257,652-byte /proc/pl_lk raw buffer SHA-256 5731b1ad6f2cf36194cff78e0dcfeaa7ed50f3f3ff4332313174554b0d61643b. Android boot-ID digest was unchanged during capture. Raw log line 4664 reports mb_avb [0x334a00000,0x33d600000), 140 MiB; line 4990 reports free after decompress_kernel. This is A, never B/XNU authority. Mapping, loaded-data pointer and release success returns are absent. Ordinary shell was denied; its error output is preserved. Root receipt's initial broad substring heuristic marked the real log false because it contains legitimate "not found" text; extraction validates raw hash/structure instead, without rewriting the original receipt.
+- Actual A log also shows modem start, PGD-clean/protection call messages and later LK frees. It prints OEM blackbox boot index 0x31a = 794, cursor4, 8 MiB stride and PL/LK logstore copy. The later source audit above corrects the initial four-slot interpretation to five positions. This is a concrete retention lead, NOT proof a B record survives or contains post-BL31 policy/XNU entry. No blackbox partition was read/written. No invented vendor command, guessed physical address or firmware patch.
+- Reviewed pinned MiCode log_store.c already saved in outputs/duchamp-diagnostic-channels-20261111: pl_lk_log_show lines 213-233 copies mapped DRAM, no UFS operation; no historical selector. Separate proc write handler calls boot-phase/log-state changes, not retrieval, and was not used. Repeating current A reads cannot recover overwritten B bytes. Installed binary equivalence is not inferred from a build property alone.
+- Exact LK allocator request is size 0x8c00000, alignment 0x1000, lower bound 0, limit UINT64_MAX, no fixed start, map0. Core coalesces free entries, keeps last eligible list entry and aligns down within it; no unproved global highest-address or DMA-security assumption. AVB pool release/unmap may fail and does not clear all globals or establish DMA drain. Actual B pool/input PA, allocator lifetime and final modem/peripheral exclusion remain missing.
+- Added unchanged-LK-decoder guard test sources duchamp/tests/lk_lz4_bounds.{S,c,ld} and tools/test-duchamp-lk-lz4-bounds.py. Final isolated ARM64 QEMU regression passes 13/13, compiler/QEMU exits 0. Seven logical outputs match Image; exact capacity succeeds; insufficient/zero/truncated cases return errors. Deliberate lying-capacity fixture traps original file+0x5931c str x21,[x6], an 8-byte store beginning logical_end-4 and crossing four bytes. Normal greater-capacity case verifies exactly four zero tail bytes. This is optimized match-copy tail within advertised capacity, not returned semantic output. It does not establish physical allocation safety. Copied firmware bytes are verified unchanged.
+- New tools/inspect-duchamp-lk-allocation-log.py extracts actual observation lines, acquisition/slot consistency, pool bounds/order and producer index. It always leaves firmware origin unauthenticated, complete B handoff false and physical access false. Nine real-capture-derived consistency tests pass; it is not connected to authorization. Exact commands, binary/log hashes, disassemblies and test receipts are in outputs/duchamp-actual-lk-memory-20261117, notably lz4-guards-final/verification.json and observation-checks-final.json.
+- Updated docs/DUCHAMP_SLOT_B_MEMORY_UNBLOCK.md and docs/DUCHAMP_RUNTIME_ALLOCATION_TRACE_PLAN.md. No same-B input/mapping addresses, post-BL31 lifetime, effective master/domain/drain/cache contract or XNU-entry correlation exists. Preserve unknowns and stop dependent hardware work. This turn read existing Android metadata and memory-backed proc logs only; no reboot, slot switch, flash, physical UFS MMIO/DMA, partition write or firmware change.
+
+ACTIVE HANDOFF - Slot B decompression and runtime trace unblock (2026-11-17)
+
+- Decision remains BLOCKED_BY_MEMORY_EVIDENCE at d91562d. Candidate 32+4 MiB, source-built kernel and existing 50-test source/manifest hashes are preserved. No guest, bootshim, payload, image, authorization gate or recovery changes. No phone access, reboot, slot action, physical UFS, commit or push.
+- New source evidence closes normal input provenance: normal dispatcher 0x10d3c -> load 0x52abc -> loaded-partition consumer 0x52f40 -> setter 0xd680 -> getter 0xcd50. This refines the earlier report's unresolved setter path. Full-partition fallback at 0x9fbfc allocates through 0xa0398/0x9fe48; source requests a dynamic 140 MiB mb_avb pool and vm_avb mapping at 0xa4504. Actual normal-B pool/input PA, mapping and cursor are still unavailable. AVB pool release follows decompression at 0xfdb8.
+- Closed LZ4 block/memmove call graph has no heap calls, decoder frame 48 bytes, wrapper frame 192 bytes and outer boot_linux_fdt frame 160 bytes. These 400 identified bytes are not the whole LK stack peak. New isolated ARM64 QEMU replay executed unchanged saved decoder/memmove, matched all seven blocks to the 57,417,168-byte Image and found FOUR changed bytes past the logical Image end, [0x436c1dd0,0x436c1dd4) at the historical output PA. This is within the supplied 8 MiB block capacity. Account conservatively for the 56 MiB capacity envelope through 0x43800000, not just logical file length. It fits historical mb_kernel but does not establish runtime ownership.
+- Replay final exit 0; 28 binary instruction assertions exit 0. ELF copied firmware payload matched all 990,320 bytes. Initial harness attempts (wrong host linker, MMU-off alignment fault, strict logical-end canary failure) are retained and explained. Existing 50 tests and full-XNU boots were not repeated; only the newly analyzed decoder pair was replayed. Artifacts, exact commands, logs and manifest are in outputs/duchamp-memory-unblock-20261117.
+- Newly targeted search found no mb_avb/normal-decompress event in existing Fastboot PL/LK or lkmsg/lpmsg raw archives. The previous Android A observer saved hashes/markers but discarded raw pl_lk bytes, so those cannot be searched retroactively. No same-boot final BL31 isolation record exists in reviewed captures. Need supported normal-B allocation/mapping telemetry, complete stack/lifetimes and final master/domain/drain/protection evidence with actual XNU entry correlation. Keep dependent hardware work stopped.
+- Deliverables: docs/DUCHAMP_SLOT_B_MEMORY_UNBLOCK.md and docs/DUCHAMP_RUNTIME_ALLOCATION_TRACE_PLAN.md. Blockers are classified by source, existing-runtime trace, supported firmware instrumentation, hardware validation or unsupported current path. No independently safe relocation exists. Next external action is obtaining supported raw normal-boot allocation records and final isolation telemetry, not another simulated grant.
+
+ACTIVE HANDOFF - LK memory ownership audit (2026-11-17)
+
+- Decision BLOCKED_BY_MEMORY_EVIDENCE at d91562d on duchamp-bootstrap. Preserved the exact native 32+4 MiB reference, source-built kernel, Image, unsigned envelope and embedded HFS+ hashes. Full tracked diff was saved outside the repo as outputs/duchamp-memory-ownership-20261117/baseline.patch. Existing untracked work remains in place. No commit or push.
+- New evidence: retained LK Fastboot allocation log explicitly reserves mb_kernel [0x40000000,0x47c80000), which contains the 57,417,168-byte reference Image. Audited LK queries that reservation, passes output extent to the decompressor, then attempts to release BL33/kernel/DTB before exporting mblock_info. Release completion and subsequent ownership are unproved. The retained log is Fastboot, not a correlated XNU boot.
+- Added a bounded decoder for the archived LK v2 mblock layout. Saved FDT has 29 active free-pool entries and 52 reservations, with holes through slot 57 and stale free slots after the count. All 52 active reservations match fixed FDT nodes including mapping flags. Historical free pools cover both low Image and high 512 MiB XNU window. Dynamic Linux DPMAIF alloc-ranges are potential policy conflicts, not proof LK overwrote the candidate with modem buffers. Earlier memory reports must be read with this refinement.
+- Added host-only lifetime/overlap analysis and pinned LK/FDT/log audit. Final tests pass 16 interval + 19 lifetime + 15 parser cases, 50/50 total. Real archive cross-check matched 52/52 reservations and 11 LK instruction assertions. Syntax and whitespace checks passed. No kernel/bootshim/payload/configuration changes, so QEMU was not rerun. Receipts, exact commands, exit codes, hashes and all intervals are in outputs/duchamp-memory-ownership-20261117/verification.json and corroborated/memory-ownership-audit.json.
+- Remaining: actual normal-boot compressed-input/scratch addresses and peak, reservation lifetimes after LK release/final BL31 callbacks, same-boot ownership of the full XNU window, firmware/modem writer exclusion and effective DMA/IOMMU/fabric permissions. Alternative high bases clear historical fixed geometry but current native preflight rejects relocation. No physical ownership established by moving or compressing the image.
+- Reports: docs/DUCHAMP_LK_MEMORY_ALLOCATION_AUDIT.md, docs/DUCHAMP_SLOT_B_MEMORY_EVIDENCE.md, docs/DUCHAMP_SAFE_PLACEMENT_DECISION.md. Next external requirement is supported final allocator/isolation telemetry or the matching LK/BL31 source and an approved instrumentation path, correlated with actual XNU entry. No phone transport, reboot, slot change, flash, MMIO, DMA or modem modification was performed.
+
+ACTIVE HANDOFF - QEMU disk cleanup (2026-11-17)
+
+- User authorized cleanup of old tests and unrelated temporary files. Removed 177 ended QEMU runtime outputs under /home/mehmedamir/.cache/duchamp-qemu-tests, accounting for 140.4277458190918 GiB of allocated blocks. These include guest RAM snapshots and final runtime volume dumps. Archived logs, scripts, image seeds, source-built kernel, native candidates and build toolchains were retained.
+- Cleaned apt package archives, ran fstrim, stopped idle Ubuntu and completed built-in Windows DiskPart compaction with exit 0. Ubuntu restarted successfully and isolated Clang 24 is available. The source-built kernel digest and nine archived A/B boot-chain images were reverified. Existing desktop Setup and the latest compact/GPT root dependencies exist.
+- C free space rose from about 15 GiB to about 157 GiB during cleanup. The Ubuntu VHDX file shrank from about 350 GiB to about 221 GiB. See outputs/duchamp-disk-cleanup-20261117/cleanup-result.json and the exact deletion manifest.
+- Windows temporary-file removal was rejected by automatic approval review with only a generic policy reason. The first generated compaction script was blocked by Windows protection. The supported DiskPart tool completed the actual VHD compaction directly after Ubuntu stopped. No Windows temporary deletion is claimed.
+- Project work remains uncommitted. The memory-placement decision remains BLOCKED_BY_MEMORY_EVIDENCE as documented below.
+
+ACTIVE HANDOFF - Duchamp MT6897 safe memory placement (2026-11-17)
+
+- Decision BLOCKED_BY_MEMORY_EVIDENCE on duchamp-bootstrap at d91562d. Offline unsigned lab envelopes for md0+md1 32+8 MiB and 32+4 MiB are 14,905,344 and 14,888,960 bytes. Raw Images are 61,611,472 and 57,417,168 bytes. Both passed preflight and LZ4 round trip.
+- Same source-built kernel e7b51ecb16fe9ad21a78455714b2bf26c1dee1fbc3a6a7f0cb3971a9cd569457 passed independent 4 MiB and 8 MiB QEMU tests (11/11 integration and 74/74 services each), five 4 MiB failure profiles, 17/17 Mach-O checks and both bootshim twins. Native and ARM64 bounds passed 16 cases each, the map checker passed 15 tests, and four injected reservations were denied by the bootshim guard.
+- The historical FDT has 52 fixed reservations and four dynamic requests. Both Images intersect the possible DPMAIF and MKP allocations. The expanded bytes beyond the archived B Image lie in both DPMAIF candidate ranges. The saved 512 MiB high XNU window clears declared reservations. Neither stage has proven same-boot ownership or DMA exclusion, and no new native LK decompression limit or AVB outcome was established.
+- Reports are docs/DUCHAMP_MT6897_MEMORY_MAP.md, docs/DUCHAMP_MODEM_MEMORY_ANALYSIS.md, docs/DUCHAMP_BOOT_IMAGE_COMPATIBILITY.md and docs/DUCHAMP_SAFE_PAYLOAD_LAYOUT.md. See outputs/duchamp-mt6897-safe-placement-20261117/offline-evidence.json for reproducible command records and the map. Keep work local and stop before physical tests.
+
+ACTIVE HANDOFF - Native preparation for the source-built Duchamp kernel (2026-11-17)
+
+- Decision BLOCKED. Source-built kernel e7b51ecb16fe9ad21a78455714b2bf26c1dee1fbc3a6a7f0cb3971a9cd569457 passed a fresh offline QEMU replay. Dual 32+32 MiB 11/11, launchd/services 74/74, Darwin Mach-O 17/17, and five error profiles passed. The 32+8 MiB profile also passed 11/11 and 74/74 with ENOSPC and cleanup.
+- Compared the exact previously booted Slot B image with the new Mach-O and physical ADT. Both native payloads materialize against the archived FDT. Both injected md1 reservation collisions were rejected. The compact QEMU bootshim twin reached XNU and verified return-slot contents.
+- Existing packer rejects the 86,777,296-byte 32+32 MiB raw Image. Compact 32+8 MiB payload hashes to 4f4ea161e1657999f653d856c65ec927b9e64fa2e0a50512405ecd5f92deb07e. Its unsigned 14,905,344-byte Android v4 lab envelope rebuilt byte-identically and fits before the archived stock boundary.
+- The saved high window clears all reservations. The expanded low Image crosses possible modem DMA allocation ranges. Establish actual handoff occupancy and DMA exclusion, the supported policy for the unsigned candidate and current recovery reachability before a later review. Nine archived A/B files rehashed against prior live receipts. No phone or physical UFS operation, commit or push.
+- See docs/DUCHAMP_NEW_XNU_HARDWARE_READINESS.md and outputs/duchamp-xnu-hardware-readiness-20261117/build-manifest.json.
+
+ACTIVE HANDOFF - Source-built XNU and dual RAMDisk in QEMU (2026-11-17)
+
+- Built isolated UniXNU-patched Clang 24.0.0git in Ubuntu WSL. The builtin and real-header checks passed. Compiled IOKitBSDInit.cpp and memdev.c, then 1126/1126 source objects with no archived kernel objects in the link.
+- Fixed C++ typed-pointer checks, Clang 24 NFS buffer and SHA assembly compatibility, SWEET CPU selection and the original loader boot-argument reservation. Linux ld64 compiled/link receipts include the kernel destructor-lowering option for bootstrap.cpp.
+- Final 19,541,944-byte kernel SHA-256 e7b51ecb16fe9ad21a78455714b2bf26c1dee1fbc3a6a7f0cb3971a9cd569457. ARM64 LC_UNIXTHREAD entry 0xfffffe00074aa488 and md0/md1 registration 0xfffffe0007506b60. Zero unresolved symbols.
+- Exact kernel passed QEMU dual-RAMDisk 11/11, original launchd/syslogd/notifyd 74/74, Darwin Mach-O 17/17 and error-path cases 5/5. Original launchd ran as PID 1. md0 remained byte-identical and returned EROFS. md1 mounted at /private/var, returned ENOSPC at the limit and recovered capacity. Dynamic PID 2 exited 0 and static PID 3 exited 42.
+- See docs/DUCHAMP_PATCHED_CLANG_BUILD.md, docs/DUCHAMP_NEW_XNU_QEMU_BOOT.md and outputs/duchamp-patched-clang-20261117/verification.json. Result is QEMU-only. Physical UFS remains disabled. Changes are local and uncommitted.
+
+ACTIVE HANDOFF - Linux Firehose and XNU reference relink (2026-11-17)
+
+- Built libfirehose_kernel.a on WSL from Apple libdispatch-1415.140.2 matched to xnu-8796.141.3. The 34,392-byte plain ARM64 archive reproduced SHA-256 9452c8d39826db46ff2e40c0ad6ed128f95ec78557378a607d0a1e52eb7f9d7f. Built the real LLVM 15.0.7 kernel profiling archive after verifying the historical caller ABI. LLVM 21.1.8 has an incompatible profile buffer argument list.
+- Added a diagnostic ARM64 Darwin stack probe with real page reads. Its 48 instruction bytes match the reference helper. Ten ARM64 QEMU user-mode cases passed, including preserved SP and expected guard faults. The helper is outside the default kernel build.
+- Linux ld64-951.9 relinked the archived XNU object set using these source-built dependencies, exit 0. The explicit SDK 15.5 reference passed layout inspection, entry 0xfffffe0007480488, SHA-256 2c3ab344f9f325d172719eb14785b2080263b6670d7492b989d8f8b14035d594. It lacks dual RAMDisk registration and was rejected for packaging. Host payload regression passed 12/12.
+- Fresh staged memdev.c compiles without stand-ins. IOKitBSDInit.cpp fails with stock Clang lacking the XNU typed allocation builtins. Next verify the real UniXNU patched compiler against both files and build the complete SWEET source snapshot. The prepared Xcode fallback inventory reverified 858 inputs. No modified-kernel payload or full guest boot, no phone operations, commit or push.
+- See docs/DUCHAMP_LIBFIREHOSE_BUILD.md, docs/DUCHAMP_LINUX_XNU_LINK_STATUS.md, docs/DUCHAMP_FULL_KERNEL_QEMU_RESULT.md and outputs/duchamp-linux-firehose-20261117/verification.json.
+
+ACTIVE HANDOFF - Duchamp full XNU source link diagnosis (2026-11-17)
+
+- Captured complete link-probe argv and compared CI 41543710742 ARM64 layout, thread-state entry, symbols and Apple ld 955.13. WSL LLD 21.1.8 ignores kernel-static, image-base and segment-order flags. The tested Linux ld64-951.9 port honored those settings on a minimal Mach-O. The archive diagnostic is blocked by missing libfirehose_kernel. The complete fresh toolchain/object build is unavailable locally.
+- Added the kernel layout validator to normal dual-RAMDisk packaging and the macOS workflow. Prepared and hashed the current source with the exact local IIG ZIP. Local dxb staging at 663906528d1cd5ea8fde7de6f16de73db9511549 succeeded. The portable source workspace is under outputs/duchamp-full-xnu-source-build-20261117/source-ready.
+- Format checks 11/11, dual-payload 12/12, single-RAMDisk 2/2, prior preflight 10/10, bounds 16/16 on native sanitizers and ARM64 QEMU. Reference kernel replays passed Mach-O 17/17 and services 74/74. Boot-image regression 13/13 matched the saved 64 MiB image.
+- No new linked kernel or modified-kernel QEMU boot. Run the prepared source on Xcode 16.4 with SDK 15.5 and the pinned dxb/KDK environment, then test the exact output hash. See docs/DUCHAMP_XNU_LINKER_ANALYSIS.md and docs/DUCHAMP_FULL_XNU_SOURCE_BUILD.md. No physical device, UFS, commit or push.
+
+ACTIVE HANDOFF - Darwin read-only root plus writable /private/var (2026-11-16)
+
+- QEMU-only dual-HFS profile reuses the BSD memory-device and HFS+ code. md0 is the readonly 32 MiB root. md1 is a fresh writable 32 MiB HFS+ volume mounted at /private/var by a checked PID 1 preflight. /var resolves to it and devfs exposes the console. A pinned private kernel overlay registers md1, with no production staging or phone packaging.
+- The final full XNU guest passed 10/10 integration and 74/74 original service checks in 71.486 s. Same-boot md1 witness records EROFS=30, ENOSPC=28 after 32,702,464 bytes and recovered capacity. It then created logs while the root dump remained byte-identical. Original launchd PID 1 ran notifyd PID 8 and syslogd PID 5. The two clients exited 0 and six ASL records were verified.
+- All four full-XNU bad cases stopped before launchd. Fresh baseline boots passed 17/17 Mach-O and 74/74 services. 7/7 new payload, 10/10 historical packaging, 9/9 native evidence, staging, archive digests and same-seed restart checks passed.
+- See docs/DUCHAMP_READONLY_ROOT_WRITABLE_VAR.md and outputs/duchamp-readonly-var-20261116/verification.json. The baseline Git patch, test manifest and untracked source archive are outside the repo. No hardware access, UFS, commit or push.
+
+ACTIVE HANDOFF - Read-only 32 MiB HFS+ Darwin userspace in QEMU (2026-11-16)
+
+- The first full-XNU boot mounted HFS+ but failed devfs/console because the base lacks /dev. The offline builder now pre-creates /dev in the copied readonly fixture and verifies the files placed in it. The existing kernel and bootshim stayed unchanged.
+- The 0BSD dynamic C probe executed via the 20F66 restore dyld/libSystem as PID 2 with 37 images, verified readonly HFS+ statfs and directory/file/EOF, private mmap, errno and a real Mach loopback, then execed the 0BSD static LC_UNIXTHREAD child (PID 3, verified exit 42). The static PID 1 harness reaped the C child with exit 0. Full guest checks 17/17 in 93.376 s, same RAM disk bytes pre/post boot, identical repeat packaging.
+- Original launchd/notifyd/syslogd service regression on the separate writable fixture passed 74/74 in 71.438 s. Native evidence checks 9/9, preserved packaging 10/10, legacy builder 39 files re-extracted, and UFS handoff 98/98 per native ASan/UBSan and ARM64 QEMU. Archived phone image still matches SHA-256 545112503a5e9052db709572cc840758619f2b7e27c9aa58c0af2a3924a8f6a8.
+- Read docs/DUCHAMP_DARWIN_USERLAND_STATUS.md and docs/DUCHAMP_HFS_RAMROOT_EXECUTION.md. Receipts are in outputs/duchamp-darwin-ramroot-20261116. Next integration is the original service lifecycle with readonly boot root plus volatile writable /private/var, then existing large-cache and IOKit/compositor tests. Physical UFS remains BLOCKED_BY_FIRMWARE. No phone access, commit or push.
+
+ACTIVE HANDOFF - MT6897 firmware interface audit and verified RAM-root package (2026-11-16)
+
+- The saved DTB and Android archive confirm the MediaTek SCMI tinysys endpoint. Its sole declared DT protocol is vendor 0x80. UFS references separate clock and reset providers. The saved UFS SiP dispatch and PSCI support establish no Slot B UFS ownership, DMA drain, cache contract or proven physical effects for XNU.
+- HakiOS MT6768 relies on LK-ready eMMC PIO. HakiOS Qualcomm UFS relies on UFSDxe and a cooperating loader. Xiaomi Linux documents the platform dependencies. Physical UFS remains BLOCKED_BY_FIRMWARE. Cold initialization stays offline, while the 32 MiB services HFS+ root can boot with rd=md0.
+- The services packager now checks the embedded HFS+ bytes against the QEMU proof and requires the ADT RAMDisk to address exactly that segment. 74 guest, 10 payload and 13 package checks passed. The local 64 MiB image equals the archived candidate byte for byte. 67 cold-init and 98 handoff cases passed in each environment. The current UFS gate denied access without callouts.
+- See docs/DUCHAMP_FIRMWARE_UFS_OPTIONS.md, docs/DUCHAMP_UFS_RESOURCE_CONTROL_MATRIX.md and outputs/duchamp-firmware-ufs-options-20261116. No phone access or changes. Work left uncommitted.
+
+ACTIVE HANDOFF - Android A recovery reconciled, hardware trace still blocked (2026-11-16)
+
+- Read-only ADB confirmed completed Android A on Duchamp/MT6897 Global V816.0.17.0.UNLMIXM with Magisk 30.7. All six A boot-chain hashes and sizes match the archived working baseline. Live init_boot_a is exactly magisk_patched-30700-duchamp-correct.img. All three installed B service images match the previously booted triplet.
+- Offline Magisk v30.7 unpack/restore/repack reproduces the stock-labeled init_boot_a file byte for byte from either same-origin historical patch. It has matching stock CPIO contents but fails the live signed init-boot descriptor. The saved Xiaomi Global OTA init boot matches that signed descriptor and the recorded Magisk original SHA-1. Live vendor_boot_a and its type-2 recovery fragment match the archive. No recovery-mode boot was attempted.
+- Live tee_a and tee_b have different container sizes but the exact same stored audited atf component. Android A ATF, PL/LK, bootprof and pstore read-only captures did not supply an authenticated final BL31 and XNU pair from B. Kernel CoreSight is disabled and a supported external secure/entry trace is unverified. No new authorization model or physical candidate was prepared.
+- BLOCKED_BY_FIRMWARE. Cold init remains offline until resource ownership, DMA isolation and cache authority are verified. Existing 67 cold-init, 98 handoff and 12 passive cases each pass in ASan/UBSan and ARM64 QEMU, and 11/11 full-XNU QEMU cases pass with nine empty denial traces. See docs/DUCHAMP_ANDROID_A_RECOVERY_VERIFICATION.md and outputs/duchamp-hardware-unblock-20261116. No device writes or boot changes. Work left uncommitted.
+
 ACTIVE HANDOFF - Final BL31/XNU capture correlation and one-boot procedure prepared (2026-11-16)
 
 - Reverified LK/BL31 shutdown and reset instructions, including the first-entry BL31 group-5 callbacks and subsequent helper. Archived Android ATF, Fastboot PL/LK, and pstore exports provide no authenticated same-boot Slot B XNU handoff. Generic TF-A instrumentation and CoreSight supply no evidence of supported trace on this handset.
@@ -607,7 +930,6 @@ ACTIVE HANDOFF — Duchamp touchscreen wire protocol and peripheral DT dependenc
 - Native ASan/UBSan and ARM64 QEMU each passed 131 FocalTech checks with a synthetic SPI peer, covering chip-ID reads and CRC errors, standard/extended reports, ten contact slots, malformed input and unchanged outputs on failures. The inspector passed 22 tests and the actual saved DTB passed 17 follow-up assertions. Existing QEMU UFS profile checks passed 24/24 and UFS ownership checks 9/9. The physical UFS gate still denies the current evidence. No phone, flash, device MMIO, CI build or partition access.
 - Replay, pinned module metadata, local disassembly, hardware-with-peripherals-v2.json and ft3683g-test-v2/result.json are under work/duchamp-peripherals-20261108-v1. Keep extracted modules and the DTB outside Git. Next touch boundary: provide the actual MT6897 SPI2 clock/pin/GPIO/power path for a ten-byte ID read. The pinned MediaTek SPI driver selects DMA for aligned transfers above its 32-byte FIFO, so the 100-byte report path still needs verified DMA ownership or a demonstrated PIO chip-select sequence. The decoder is not connected to XNU's HID path yet.
 
-
 ACTIVE HANDOFF — QEMU split-root Setup reached Quick Start (2026-11-08):
 
 - Reproduced dmd PID 25 SIGABRT at guest 41.407209 seconds. The read-only GDB trace caught NSInvalidArgumentException with `CoreData: Cannot load NSManagedObjectModel.  nil is an illegal URL parameter`. The caller at native dmd image base + 0x573a0 is DMDPolicyPersistence, which looks up DMDEffectivePolicies.momd before passing the resulting URL to initWithContentsOfURL:. Installed 11 original 20F66 DeviceManagement.framework resource files, including that model and DMDConfigurationDatabaseModel.momd, into a fresh qufs0 clone. Verified HFS byte readback and kept the executable unchanged. An isolated forced-start probe stopped after a separate store-URL exception without a recorded abort. The normal on-demand replay below is the end-to-end result.
@@ -615,7 +937,6 @@ ACTIVE HANDOFF — QEMU split-root Setup reached Quick Start (2026-11-08):
 - The extended replay ran native dmd PID 62 on demand in user/501. It created the configuration and policy databases on RAM and exited normally with status 0. Setup PID 63 received a successful BackBoard display reply. Fourteen virtual digitizer samples reproduced Hello, English, and Algeria. The final RAM image contains AppleLocale=en_DZ and AppleLanguages=[en-DZ].
 - Native Setup rendered Quick Start after selection. Captured the 1220x2712 frame from guest RAM. BackBoard SwapSetLayer used layer 0 / IOSurface 5, SwapEnd 1137 presented surface 5, and the hash of all 3308640 active pixels matched the software scanout output recorded for that swap. The run stopped after 484.713 host seconds without kernel panic. All 24 virtual UFS profile tests passed. No phone access or partition changes.
 - Evidence and replay inputs are under `work/setup-qufs-dmd-20261108-v1`. The Quick Start image is `extended/live-swap-1137.png` with `extended/live-swap-1137.json`, and the final data RAM and exact raw frame are in the private Ubuntu run directory recorded in `staging-path.txt`. The run stopped on Quick Start before Set Up Manually.
-
 
 ACTIVE HANDOFF — QEMU split-root Setup selected English and Algeria (2026-11-08):
 
@@ -1339,6 +1660,100 @@ That contract does not supply a phone entry caller or authorize an XNU jump.
 Preserve all other pre-existing user changes.
 End of active handoff.
 
+QEMU-only LK RAM bootshim integration — verified offline (2026-11-06):
+Commits 818d553 and da1a463 on duchamp-bootstrap add the previously untracked
+diagnostic bootshim source and connect the versioned MT6897 LK RAM provider to
+the resident guard -> plan -> materialize path behind the mandatory
+LK_RAM_TRANSPORT=1/QEMU_ONLY=1 build gate. The image is fixed-linked at QEMU
+virt's 0x40200000 so callback tables contain correct runtime addresses. Its
+first assembly instructions also require runtime _head=0x40200000 and
+x0=0x48000000 before clearing BSS or touching other memory. JUMP/READY/RETURN
+combinations are rejected and the QEMU-only ELF contains no
+duchamp_enter_xnu branch helper. The resident XNU context now binds the
+payload's declared physical window exactly to the backing output window before
+any materialization write.
+
+The complete 50,269,904-byte SWEETXNU payload was packed into a 50,269,968-byte
+DUCHLKR1 capsule and streamed in 768 bounded reads. The actual freestanding
+AArch64 Image ran under QEMU/GICv3 and returned a valid checksummed completion
+report: 11 segments, entry 0x1c1480488, boot_args 0x1c456c000, and a clear
+exception record. The full loader guard checked 52 fixed and 4 dynamic FDT
+reservations without copy or jump. The 50,393,088-byte Image SHA256 is
+161709c60ba0b785488021f557dac1df47ba201f701104e42be47a34e00daa1f.
+The offline 64 MiB LZ4 legacy boot-v4 layout wrapper SHA256 is
+3af5ebb5fb75b76567f3631bb172c729f9a7a5037e594c778e45cd5a6e625f22;
+it deliberately preserves a mismatching stock AVB descriptor and is explicitly
+named qemu-only-layout-not-for-phone.img. Layout JSON SHA256 is
+26f4ef44192aeb7f85ad4ae5949d9c65f5000274af12fe7a832543f49042c658.
+
+Native resident tests PASSed 806 checks, the provider suite PASSed 41 transport
+checks plus 9 real-XNU checks, and both AArch64 QEMU suites PASSed. The current
+150,968,880-byte payload was also tested as a negative case and was correctly
+rejected because its complete image overlaps QEMU's DTB reservation at
+0x48000000. Evidence is under work/validation-lk-ram-bootshim-v7; the negative
+result is work/validation-lk-ram-oversize-reject-v2-reject.log. No phone, ADB,
+Fastboot, partition, physical MMIO, SMC, DMA, IOMMU or UFS operation occurred.
+Next: keep the hardware path closed until the stock LK image-load/FDT/reserved
+RAM contract is documented independently; do not reuse this fixed QEMU image
+on the phone.
+End of QEMU-only LK RAM bootshim integration.
+
+MT6897/LK inherited-RAM transport provider — verified offline (2026-11-05):
+Commit 97c060e on duchamp-bootstrap adds a fail-closed provider that consumes
+an immutable capsule already loaded in RAM by LK and feeds the resident loader
+through bounded sequential chunks. It binds source and loader generations,
+checks exact capsule/header/size/flag fields, verifies a mutation receipt both
+before and after transfer, requires capsule/staging/result/scratch ranges to be
+disjoint, and terminally closes the transport on every error. The capsule
+packer refuses overwrite. Direct calls into LK USB/MTU3 remain intentionally
+unimplemented: the saved 16 MiB lk_a sample SHA256 is
+f85373d3b4cdf3c959e38bbbfe198a2857e03a5266c6f2a40c319549a5ba957a,
+but its strings and raw offsets do not establish a callable post-handoff ABI.
+The published HakiOS MT6768 chainboot path likewise receives FDT in x0 and
+uses payload bytes preloaded with the kernel image; its Qualcomm live USB path
+uses a different UEFI/U-Boot protocol and is not reused.
+Native ASan/UBSan provider tests PASSed 40 checks and the packer PASSed 4.
+The real 150,968,880-byte payload was packed into a 150,968,944-byte capsule
+(SHA256 e60228019f80da25d0b1e6e38b066ba2d6691328efbda1142ae581ae1e46fa45),
+read in 2,304 chunks, materialized as 11 segments and reached prepared entry
+0x1c1480488. The freestanding AArch64 object has no undefined imports
+(SHA256 a909d35567611619662b8f8ccd2c68e40c369564d9933d07bb1397222df1e4b5),
+and the complete provider ran as AArch64 on QEMU/GICv3 with all 12 visual rows
+PASS (Image SHA256 782ef23d397813213832b2e0cb522630a4c0f1b8c9fa702c26144ccbcae93b75).
+The original resident suite also regressed cleanly: 28 protocol, 2,341 real
+materialization and 12 QEMU visual checks PASSed. Artifacts are under
+work/validation-mt6897-lk-transport-v2 and
+work/validation-resident-regression-v2. No phone, ADB, Fastboot, partition,
+MMIO, SMC, DMA, IOMMU or UFS operation occurred. Next: integrate the capsule
+provider into a bootshim build behind an explicit QEMU-only switch, then prove
+the complete LK-image layout offline before considering any hardware trial.
+End of MT6897/LK inherited-RAM transport provider.
+
+Resident RAM-loader protocol core — verified offline (2026-11-05):
+Commit 3edfdec on duchamp-bootstrap adds a transport-independent one-shot
+EMPTY -> RECEIVING -> READY -> RUNNING -> RETURNED/FAILED state machine and a
+bridge to the existing guard -> plan -> materialize path. Sequential bounded
+transfer, mutation receipt, disjoint buffers, state-capacity revalidation,
+single execution and a bounded result channel are enforced; terminal states
+require a fresh loader instance. The bridge adds the live FDT and staging
+physical ranges to the occupied set and never branches to XNU itself.
+Native ASan/UBSan protocol tests PASSed 28 checks. The real 50,269,904-byte
+Apple-launchd candidate payload PASSed 805 materialization checks with 11
+segments and entry 0x1c1480488. The freestanding AArch64 object has no undefined
+imports, and the actual QEMU Image PASSed all 12 visual receipt rows. A fresh
+bootshim built from the hardened guard reached the XNU stage-0 marker in QEMU
+with 95,500 white pixels; the immutable candidate verifier also PASSed 17/17.
+The review additionally fixed overflow-safe FDT structure/string/reservation
+bounds and an uninitialized-token edge case, covered by four malformed-FDT
+tests. Final suite artifacts are under work/resident-loader-test-v6; the
+current-guard XNU-entry replay is under work/resident-guard-bootshim-v1.
+This milestone has no USB/Fastboot transport and performed no phone, ADB,
+partition, physical MMIO, SMC, DMA, IOMMU or UFS operation. The next safe step
+is a documented MT6897/LK transport provider that remains separate from the
+protocol core; physical storage remains fail-closed.
+Preserve all user edits.
+End of resident RAM-loader protocol core.
+
 MT6897 PA-to-DMA/bounce route contract/XNU replay — verified (2026-11-04):
 Commits 06c27a97a996cb6fbe2eb8a3540d28c33f99222c and
 2d65b02ffda3c442bcdf6c52a4c34490ee5b222c on duchamp-bootstrap add and
@@ -1525,6 +1940,63 @@ blockers above are unresolved. Passing this milestone is not phone-test or
 full-system-boot authorization. See duchamp/MT6897-UFS-FAIL-CLOSED.md and
 work/offline-gate-ufs-20261103-v7/result.json. Preserve all user edits.
 End of MT6897 UFS activation lease-gate milestone.
+
+Latest XNU timer + Apple-service combined QEMU milestone (2026-11-01):
+Local/WSL/QEMU only; no phone, USB, ADB, fastboot, physical MMIO or partition
+access. Kernel fa23d6319ab2af1b669146bd4a17d66f6726703bee0ced8d1e607e1bc0db81d9
+is the pinned artifact from successful CI 41236137474 at acb75a16cc445d86f6d60fd5345058c6a13146b7.
+The first combined replay retained its failure evidence: the legacy ADT failed
+the bounded GICR scan. A second replay proved qemu-profile-v4 has the correct
+GIC/timer resources but predates the mandatory QEMU-only
+duchamp,gic-mmio-auth-v1 capability; XNU refused MMIO with DGIC_UNVERIFIED (-8)
+before any timer IRQ. The authorized ADT is pinned at
+f4a27f597bce0b633733e5d479b4b43c3dfad53eaf8d5a67f52d91a9b8ac33cf;
+the existing polarity test proves removing exactly that property fails closed.
+system-timer-ramroot-acb75a-v4 PASS: all72 original Apple-service checks and
+all8 wrapper checks in86.788 host seconds on the default QEMU clock,17 sampled
+frames,zero undecodable glyphs and no observed panic. The real XNU virtual
+timer-IRQ framebuffer witness is512/512 cyan pixels; the128MiB HFS+ RAM root,
+PID1,launchd,notifyd,cfprefsd,four client instances,restart/recovery and saved
+typed preferences all passed. Verification SHA256 is
+bcc7c16d28934a8e8e7722121afebce82befe44f4ca65277e65bfe9b4beeb865;
+payload SHA256 is be1be56936b7b1d8fe650969d2be41396836f4a50958cd156ec37692da4468f7.
+Local commit951a869 contains only the two system-harness changes. The system
+harness now accepts a deliberate ADT override only with an exact
+explicit SHA256, records reference/selected provenance and rejects both a wrong
+pin and an unpinned override before creating output. Witness verifier tests
+PASS6/6; Python/PowerShell parsers and diff checks pass; no QEMU process remains.
+The parallel saved-DTB offline gate also PASSed all12 components in17.361s:
+21 boot-profile tests,138 native+138 ARM64 GIC checks plus4 actual QEMU GICR
+checks,47+47 PSCI,15+15 timer-frequency,176 power,199 DMA,provider/PMIC/
+firmware/IOMMU suites,146 UFS topckgen and79+79 bounded UFS polling checks.
+Its result SHA256 is 363a22313a98c04b1be85be7b57788590a9228552f94cf6722a6a85fba169e82.
+This proves the combined QEMU path, not phone readiness. Physical timer/IRQ
+delivery, firmware/GIC ownership, the installed firmware contract, secondary
+CPU power and the real UFS DMA/IOMMU route remain unverified; physical UFS and
+Mali stay disabled. Preserve all existing user edits.
+End of latest combined QEMU timer/service milestone.
+
+MT6897 UFS DMA/IOMMU live contract — verified milestone (2026-11-01):
+Approved read-only v2 module SHA96cd9bf422f8924c1c11b33c92d042ec0ea7fb864e756712fe45e5261be27518
+loaded on duchamp/mt6897 kernel6.1.57-ab11782407, produced two byte-identical
+reports, unloaded with rmmod=0, removed its staged file/sysfs attribute and left
+taint unchanged12805. Exact live masks are streaming64/coherent64, while
+bus_dma_limit=0x0000000fffffffff imposes36-bit addressability. get_dma_ops and
+dev->dma_ops are NULL; pinned GKI selects generic dma-direct. No Linux IOMMU
+private object/group/fwspec/domain was attached. Device SWIOTLB pool pointer is
+present; no transfer through it was observed. Device is non-coherent and has a
+DMA range map. This does not prove physical identity/firewall bypass, cache
+ownership, firmware effects or safe XNU UFS. v1 is unsafe: struct module0x400
+versus live0x440 caused pre-init mod_sysfs_setup panic; Android recovered and
+the artifact is marked UNSAFE-DO-NOT-LOAD. Ownership audit v2 SHA71236c08...
+PASS; readiness v12 SHA7ff95f51... validates the new evidence but remains
+blocked/physical UFS disabled. Probe/audit/source/readiness suites PASS47 total
+(8+4+4+14+17). Final read-only ADB check: Android booted, probe module/attribute/
+staged file absent, vendor UFS module live. No partition, boot image, MMIO, SMC,
+DMA mapping, IOMMU attachment or storage command was performed by the probe.
+See duchamp/diagnostics/dma-iommu-probe/PHONE-TEST-2026-11-01.md and
+duchamp/MT6897-DMA-IOMMU-FIRMWARE-EVIDENCE.md. Preserve existing user edits.
+End of MT6897 UFS DMA/IOMMU live contract milestone.
 
 Latest-kernel Duchamp phone bootstrap candidate — local milestone (2026-10-31):
 Baseline e81afba, duchamp-bootstrap. No phone/USB/ADB/fastboot/partition access.
@@ -2989,6 +3461,1267 @@ Phone, UFS, and boot partitions were not accessed. Next work can add IPC and
 file-service tests in QEMU; a dynamic userland and MT6897 storage remain
 separate unfinished work. This milestone is a diagnostic userspace, not iOS.
 
+Grouped pre-BSD checkpoint (2026-10-28, offline/QEMU only): commit
+`da2da9b` executes the commpage, security/code-signing, trust/startup-lockdown,
+kernel-lockdown, and final platform groups, then stops at stage 154 immediately
+before `bsd_init()`. GitHub Actions run `40614756535` succeeded. Payload-source
+reconstruction passed. QEMU displayed every grouped stage 145 through 154,
+including entry and return markers for each completed group and `DUCHAMP PRE
+BSD INIT`; no panic, abort, assertion, fault, guest error, or invalid-value
+report was found. The framebuffer decoder reported nine unknown glyphs, but
+all required markers decoded exactly. No phone image was created or flashed.
+
+SHA-256: kernel
+`027749bee9f33323faefed98d182c46d7aa3c25fba812b3584c62f3c6cc15125`;
+payload
+`460fba13999b83f0d2dedd709b652a8e6cd0374e285ff75b481e382142ddbcc8`.
+
+Post-initialize_screen / pre-vm_commpage checkpoint (2026-10-28,
+offline/QEMU only): commit `f5b1463` releases the stage-141 stop, marks entry
+and return from `initialize_screen(NULL, kPEAcquireScreen)`, and stops at
+stage 144 immediately before `vm_commpage_init()`. GitHub Actions run
+`40613078727` succeeded. The rebuilt payload matched its kernel source. QEMU
+displayed stages 142 (`initialize_screen` entering), 143 (returned), and 144
+(pre VM commpage), with no panic, abort, assertion, fault, guest error, or
+invalid-value report. The framebuffer snapshot contains all three markers;
+the text decoder reported nine unknown glyphs but this did not hide or alter
+the required markers. No phone image was created or flashed.
+
+SHA-256: kernel
+`bf3f20f3f3b9e740fbae61dda3472e3fbff7941d4f57ebf9cd207cc0c935ccf0`;
+payload
+`cd1c29ee4a02dcd9160070482611db91166826dab66678d9dec9d13fa32829e3`.
+
+Post-spllo / pre-initialize_screen checkpoint (2026-10-28, offline/QEMU
+only): commit `b6f0b6b` validates the enabled virtual timer and permits only
+spurious, virtual-timer, or IPI pending INTIDs before enabling interrupts.
+GitHub Actions run `40610510362` succeeded at
+`b6f0b6bc2254d7d9dc71329c05cd179056a978ee`. The rebuilt payload matched its
+kernel source. Direct QEMU displayed stages 138 (interrupt state validated),
+139 (`spllo()` returned), 140 (interrupts enabled verified), and 141
+(immediately before `initialize_screen()`). No panic, abort, assertion, fault,
+guest error, or invalid-value report was found. QEMU logged normal handled IRQ
+entry/return activity after interrupts were enabled. Embedded-payload byte
+comparison passed, and the captured-phone-FDT 8 GiB bootshim test passed
+(`white_pixels=357776`). No phone image was created or flashed.
+
+SHA-256: artifact ZIP
+`6a20627a716cd0b06e2a1293f0bb8ee8c08d117a1aa14b0ab495f9d22ce886d8`;
+kernel
+`f9e1baa55e0f87d9b593d85d93f344a9c0cec4c9cedaad0443f43170adbcc6b4`;
+ADT `12a3b24830bc96163188bbadf8f709afc2d5a48449f491f859900eb00fb4e55e`;
+payload
+`d6b5da48a23cf6e3df4809b60f552d9e912c79cd03100eb2788a685a4797b8af`;
+bootshim Image
+`60e523359dbcba2a23f7dd0233d8c98ce6526247eca9746c31e7451e59a5ce21`.
+
+Pre-spllo early-boot checkpoint (2026-10-28, offline/QEMU only): commit
+`2368b05` releases the stage-134 stop, adds grouped stages around
+`kernel_startup_initialize_upto(STARTUP_SUB_EARLY_BOOT)`, and stops at stage
+137 immediately before `spllo()` enables interrupts. Source inspection found
+EARLY_BOOT registrations for the SWEET PRNG, process and ulock tables, pthread
+and AMFI providers, kmem crypto state, VM reclamation/pageout support,
+personas, telemetry, iotrace, PGZ, optional KCOV, and watchdog scratch
+subscription. In the tested ADT `/options` is absent, the watchdog node lacks
+`awl-scratch-supported`, and iotrace is disabled by default, so this path adds
+no direct hardware MMIO. GitHub Actions run `40608017331` succeeded. Direct
+QEMU displayed stage 135 entering the callbacks, stage 136 after all callbacks
+returned, and stage 137 before `spllo()`; no panic, exception, abort,
+assertion, fault, guest error, or invalid-value report was found. Payload
+reconstruction, embedded-payload byte comparison, and the captured-phone-FDT
+8 GiB bootshim test passed (`white_pixels=355676`). Interrupts were not
+enabled, and no phone image was created or flashed.
+
+SHA-256: artifact ZIP
+`940c166389b08dbecb46870934c2f2c4e0fede265da5b74dceeb2a521a54ee90`;
+kernel `cb99cb7a297c1837ae4046b181bfbda6d21a711ee72075f03cbe181ae479e1d1`;
+ADT `f05f2e7ff1a6b2bbb7ab23554fbc6d5c5c64f1930ba1d07fe82e794064132c65`;
+payload `3e9c7b30fb3a9f7ce469a8699e3f91aca0e4ec72277dccdadcdf57ef02ce480f`;
+bootshim Image
+`ec535f80df9a608fd8c8f471c4e8afd98409656923c0c974c6559be6d830aa44`.
+
+PE-init-I/O-Kit return checkpoint (2026-10-28, offline/QEMU only): commit
+`ac1e605` releases the stage-132 stop inside ARM `PE_init_iokit()` and moves
+the diagnostic barrier into `kernel_bootstrap_thread()` immediately after
+`PE_init_iokit()` returns. Stages 133 and 134 prove control returned to the
+main bootstrap thread and stop before the interrupt-state assertion and before
+`kernel_startup_initialize_upto(STARTUP_SUB_EARLY_BOOT)`. GitHub Actions run
+`40606665314` succeeded. Direct QEMU displayed both stages with no panic,
+exception, abort, assertion, fault, guest error, or invalid-value report.
+Payload reconstruction, embedded-payload byte comparison, and the
+captured-phone-FDT 8 GiB bootshim test passed (`white_pixels=353976`). No phone
+image was created or flashed.
+
+SHA-256: artifact ZIP
+`313c453663924e792f492b3689f5761be2201d3c5c01bd13d0649f4a5ef68793`;
+kernel `6fb6e899b72a03b2e1ad96d2beb7811dab877e08ab5d0822c40512cec06b359f`;
+ADT `6ff7c79cbc86940a9b1b74774ce58b3d905fc882bbf0ed2102b8b83518b7ad0a`;
+payload `69c4b7a352b63c40d78d45a727dbc47f406a5fbc3296c7984b1d97424a9ec3d5`;
+bootshim Image
+`cb001eb003f8f791c39a398ff610b7ebad1159391edbd12fd7ff4869ad439d33`.
+
+Post-ConfigureIOKit checkpoint (2026-10-28, offline/QEMU only): commit
+`0f327e5` releases the stage-129 stop and brackets `ConfigureIOKit()` with
+stages 130--132. Parsing the exact QEMU ADT used for this test proved its root
+children are `chosen`, `defaults`, `cpus`, `arm-io`, `sweet-fbcon`, and
+`buttons`; `/options` is absent. Consequently `createNVRAM()` returns before
+allocating or starting `IODTNVRAM`. General driver matching remains later in
+`PE_lockdown_iokit()` and was not reached. GitHub Actions run `40605065946`
+succeeded. Direct QEMU displayed `ConfigureIOKit entering`,
+`ConfigureIOKit returned`, and `DUCHAMP POST CONFIGURE IOKIT`; no panic,
+exception, abort, assertion, fault, guest error, or invalid-value report was
+found. Payload reconstruction, embedded-payload byte comparison, and the
+captured-phone-FDT 8 GiB bootshim test passed (`white_pixels=352880`). No phone
+image was created or flashed.
+
+SHA-256: artifact ZIP
+`67a45b48ae04854c4cd8c105d0838d0707fafe5a311411a1faf03dd1cd96c6bb`;
+kernel `a5502895037037f460d033523c04a31079e5e4e6fb910372be9fde67833ea454`;
+ADT `9f1a120587d91d12cfcff92c4b6ec80c52bebcbfbd46b670bcde6445f6e7c76c`;
+payload `e882f9ec98a1f30f63367a1d253c9d5f25b86ac36ab22f05c39e3257b5dc7f8f`;
+bootshim Image
+`50b33b54d5dc43329ec2383d1c4129299a9f0bdc5f1106ef5e3410f0aff0d128`.
+
+Pre-ConfigureIOKit checkpoint (2026-10-28, offline/QEMU only): commit
+`4b8f48b` releases the stage-123 stop and adds grouped markers inside the ARM
+`PE_init_iokit()` path. Source inspection established that `PE_init_iokit()`
+prepares console/progress state, imports selected Device Tree data, calls
+`InitIOKit()` to initialize the IOKit runtime and attach the root nub, and then
+calls `ConfigureIOKit()`. The latter can invoke `IODTNVRAM::start()` when an
+`/options` node exists; general driver matching starts later through
+`PE_lockdown_iokit()`/`StartIOKitMatching()`. The new stage-129 barrier is
+therefore immediately before `ConfigureIOKit()`, before the first possible
+driver `start()` in this path. GitHub Actions run `40603689394` succeeded.
+Direct QEMU displayed stages 124 through 129, including `InitIOKit returned`,
+with no panic, exception, abort, assertion, fault, guest error, or invalid-value
+report. Payload reconstruction, embedded-payload byte comparison, and the
+captured-phone-FDT 8 GiB bootshim test passed (`white_pixels=351312`). No phone
+image was created or flashed.
+
+SHA-256: artifact ZIP
+`0cdad46936d331da5ed5b8d464eb4cc6af71098d66b9c4533a7d996e9e725edd`;
+kernel `b5b2b7d470ce693d8a5dd29c0dcbcaa3364c70d7385c39477f5fd8dd106905ce`;
+ADT `7a1a44abaf129a10647bfbf4828df9341b78960a3670a5331161d37725014cdf`;
+payload `55d5dcdd1ee36934def2a4a7d79cf477c8f7f2eae16735e20ca1b89a3d9a560b`;
+bootshim Image
+`a9634d06eea1e02cf9051b70edb6d041f63b3bc9a5094b2330cefb2c79098b7d`.
+
+Address-permutation checkpoint (2026-10-28, offline/QEMU only): commits
+`8bb26be` and `8c337e7` release the stage-119 stop, execute the five
+`early_random()` calls, validate that all five resulting values are non-zero
+and that the three address permutations are odd, and stop at stage 123 before
+`PE_init_iokit()`. The first CI artifact exposed that the old stage-119 WFE
+barrier was still present; that result was rejected, the barrier was removed,
+and GitHub Actions run `40601741780` then succeeded. The corrected kernel
+contains the stage-120--123 strings. Direct QEMU displayed all four markers
+through `DUCHAMP PRE PE INIT IOKIT`; no panic, exception, abort, assertion,
+fault, guest error, or invalid-value report was found. Payload reconstruction,
+embedded-payload byte comparison, and the captured-phone-FDT 8 GiB bootshim
+test passed (`white_pixels=351016`). No phone image was created or flashed.
+
+SHA-256: artifact ZIP
+`88abc1708e77957f872f63a3500af5417672caea32432bf3ef13766166d82e3c`;
+kernel `d0fb78b25606e1591d3e1163df81d77950e7fc0e871240fd208b7b1b756e7998`;
+ADT `0a94807d462d61d7b083ef16559552995220ce049b04dcd469eb1189206fb3a2`;
+payload `3705b05fc0da473dcc272dedb5f900964a29d3a09d1333a052c77d66d148f70e`;
+bootshim Image
+`fca4e906d6f27b096c4ec0bd71183fa35cfad4d3245967c867b59d0edc7d1546`.
+
+SYSCTL-startup checkpoint (2026-10-28, offline/QEMU only): commit `9fb4f93`
+releases the stage-114 stop, adds grouped markers around the internal SYSCTL
+callback dispatch, and stops at stage 119 immediately after
+`kernel_startup_initialize_upto(STARTUP_SUB_SYSCTL)` returns but before the
+first `early_random()` used for `vm_kernel_addrperm`. Source inspection found
+that this transition registers SYSCTL OIDs and reads selected Device Tree
+properties; it performs no new hardware MMIO initialization. GitHub Actions
+run `40598692557` succeeded. Direct QEMU displayed every stage from 115
+through 119; no panic, exception, abort, assertion, or fault was found.
+Payload reconstruction and the captured-phone-FDT 8 GiB bootshim test passed
+(`white_pixels=336880`). No phone image was created or flashed.
+
+SHA-256: artifact ZIP
+`e61a16c6b6ebc3bd8e3337e5d64c46d7d7055fbe37f799357f6978ebb8c8422d`;
+kernel `7b699acaf8d436ae76ab4eed63e84e4dcbff372501dbbe98ca84aa6d4f22d0d4`;
+ADT `579393e952723a794aee92d61ca463fc23e842770760f7f1307180cc230cf426`;
+payload `3f92c8a6198fa465a6405498ce3d06a9d725460c6aa080625dc0d5716594b325`;
+bootshim Image
+`ea63332b0003d1db074b500168a089bf15fe644a4096e4bc1408f70fb19375b0`.
+
+Pre-SYSCTL debug-services checkpoint (2026-10-28, offline/QEMU only): commit
+`98e918a` releases the stage-107 stop and records the configured early-service
+path before `STARTUP_SUB_SYSCTL`. The SWEET configuration and runtime markers
+both prove `ALTERNATE_DEBUGGER=1`, `HYPERVISOR=0`, and
+`CONFIG_TELEMETRY=1`. With no alternate-debugger or bootprofile boot arguments,
+`alternate_debugger_init()` and `bootprofile_init()` both returned without
+allocating their optional permanent buffers or starting a profile timer.
+GitHub Actions run `40597098982` succeeded. Direct QEMU displayed stages 108,
+109, 112, 113, and the stage-114 stop immediately before
+`kernel_startup_initialize_upto(STARTUP_SUB_SYSCTL)`; stages 110 and 111 were
+correctly absent. No panic, exception, abort, assertion, or fault was found.
+Payload reconstruction and the captured-phone-FDT 8 GiB bootshim test passed
+(`white_pixels=314632`). No phone image was created or flashed.
+
+SHA-256: artifact ZIP
+`d947e4c60cad90cb8eacc74a789246265ac20f266266bdde63e0567c05d89ff4`;
+kernel `acde01e29c96f081d101f497187d37ff8396fcffeddda108b031f4b01fcf06e7`;
+ADT `c1227824ab40df09b9b41d7a57016d7aafe67aa93e3d1956e47c88b75d0b7547`;
+payload `9923070a2c733995cf6a1316724f53883a228164872dc57b0e625121082812a9`;
+bootshim Image
+`636ab91b8994df2dd93ec7d1ed54c24d69d85e15b9ef3a739ca4e9c8e678e8eb`.
+
+KDP-initialization checkpoint (2026-10-28, offline/QEMU only): commit
+`686ef3b` releases the stage-104 stop, marks entry to and return from
+`kdp_init()`, and stops at stage 107 immediately before the next caller-side
+service, `alternate_debugger_init()`. Source inspection confirmed that this
+path prepares the debugger version string, debug log, KDP timer, packet size,
+and crashdump core; with the current boot arguments its optional serial-KDP
+path returns without initializing new hardware. GitHub Actions run
+`40595234153` succeeded. Direct QEMU displayed stages 105, 106, and 107; no
+panic, exception, abort, assertion, or fault was found. Payload reconstruction
+and the captured-phone-FDT 8 GiB bootshim test passed
+(`white_pixels=291132`). No phone image was created or flashed.
+
+SHA-256: artifact ZIP
+`6843aafa41f34c63fbbfc75ec72d0e2a7137c05d91a043c5f951b8e35102b340`;
+kernel `6068db99f831ba99c759d2f0fa17c877b77b40eb7bf219ccb62fc6670d4b6e17`;
+ADT `fc6afa165cccb2af590239b8c4c619dca5487e85866f4f87e983a7b636c0bfd3`;
+payload `5cb938825c649fb431ede0841eface6ad22bb2363072af990ba5b034e6e386be`;
+bootshim Image
+`039bea2404662801b3f315b0a95734594a51ab9868e1e8897bd103440b924431`.
+
+Physical-carveout checkpoint (2026-10-28, offline/QEMU only): commit
+`3229d68` releases the stage-101 stop, verifies at runtime that
+`phys_carveout_mb` remains zero, runs `phys_carveout_init()`, and stops at
+stage 104 immediately before `kdp_init()`. The zero-value guard would panic
+instead of allocating a permanent physical carveout if the boot argument were
+unexpectedly enabled. GitHub Actions run `40592448879` succeeded. Direct QEMU
+displayed stages 102, 103, and 104; no panic, exception, abort, assertion, or
+fault was found. Payload reconstruction and the captured-phone-FDT 8 GiB
+bootshim test passed (`white_pixels=278124`). No phone image was created or
+flashed.
+
+SHA-256: artifact ZIP
+`f015e5ada8a1fc538c855a9a14d00cbfac7ffcc2aafd94ba8cdb60789b83a5dc`;
+kernel `d306ab8ca6b0fce929d3f3656924261b513d4f20ee858c8761b6cb4e01c45f30`;
+ADT `818f50b642baf6a031859eab7abb98ff2ea0cdadaf8621982a2ceca3b034c625`;
+payload `174033736e8059e59655d5fc4f551014d347ab71628f689ce36e910a5e835f3e`;
+bootshim Image
+`7938712934ddefbe9caf2f30ffbc3cbe2516370a0a2e12998b816e8b5e3efb21`.
+
+Device-IPC-service checkpoint (2026-10-28, offline/QEMU only): commit
+`733ca55` releases the stage-98 stop, runs `device_service_create()`, and stops
+at stage 101 immediately before `phys_carveout_init()`. Source inspection
+confirmed that the function allocates the main device IPC kobject port and
+registers it as `HOST_IO_MAIN_PORT`; it does not initialize hardware drivers.
+The same commit fixes three-digit stage rendering and wraps the diagnostic
+color stripe inside the framebuffer width. GitHub Actions run `40590378357`
+succeeded. Direct QEMU displayed stages 99, 100, and 101 correctly. No panic,
+exception, abort, assertion, or fault was found. Payload reconstruction and
+the captured-phone-FDT 8 GiB bootshim test passed
+(`white_pixels=265792`). No phone image was created or flashed.
+
+SHA-256: artifact ZIP
+`c4b4651e7bbb42275eaf9512a9e1778edfd05724ce9dcc1d2bceaaadf6c37870`;
+kernel `cf5fa0cec0b69d813df1a4bf11175c73838d847b49639468b92de286173f46c0`;
+ADT `291a5aa5c187a1ed86cff8f15c2f3f47b5a6b54c16756b989e42ba08bd791697`;
+payload `5bd1bf14c0edb03d6f48c11c12396e1129e6aec315556301aaba4fe8f85f9490`;
+bootshim Image
+`61afc86d080fc69d779321a6be5f98b02c14dfe63372d914af276cf6cd294ddd`.
+
+Clock-service checkpoint (2026-10-28, offline/QEMU only): commit `20a7c5a`
+releases the stage-95 stop, runs `clock_service_create()`, and stops at stage
+98 immediately before `device_service_create()`. GitHub Actions run
+`40588597145` succeeded. Direct QEMU displayed stages 96 through 98, proving
+the clock service returned while the device service remained unexecuted. No
+panic, exception, abort, assertion, or fault was found. Payload reconstruction
+and the captured-phone-FDT 8 GiB bootshim test passed
+(`white_pixels=252724`). No phone image was created or flashed.
+
+SHA-256: artifact ZIP
+`c5849dc3a83cf097cac6147993d32fb0b555aab0ff8cdba3071bd6745dc7c98e`;
+kernel `6c828f905b80310d323d0b3f62bb8a2c36b692e10338dc2df4b20c39d179a4d5`;
+ADT `ebe10db3ed70d504a5903a5c89ec41ec27c0229acf86299d9e7e92383c00a9ad`;
+payload `a871a87a905c00c2e29471156b40d70d79de953559d319d8fcc73397c10bbef6`;
+bootshim Image
+`f18248ae48adef3c3500182e3151682ac70aefd168d386d1e719d07e7e7a567c`.
+
+Thread-binding and mapping checkpoint (2026-10-28, offline/QEMU only): commit
+`a6758ef` releases the stage-90 stop, runs `thread_bind(processor)` and
+`mapping_adjust()`, and stops at stage 95 immediately before
+`clock_service_create()`. GitHub Actions run `40586685767` succeeded. Direct
+QEMU displayed stages 91 through 95, proving both requested operations
+returned. No panic, exception, abort, assertion, or fault was found. Payload
+reconstruction and the captured-phone-FDT 8 GiB bootshim test passed
+(`white_pixels=240028`). No phone image was created or flashed.
+
+SHA-256: artifact ZIP
+`d5f441dd4b93b8c213800bba030820ed0d35b2de4481948dc6c3ecbc4c6e890f`;
+kernel `6b1bda6c2ea30e95f0e69932a7d29049af2ad297f8af3b69c5a317fcbd3563a5`;
+ADT `8c4baffa428a7610c0da592497d574af3dcd9a05834016395b06f9d2e1f0d2a7`;
+payload `cdf7b3decc03e3bd41e917935b278e4eff85758811e8e44840138857e141db39`;
+bootshim Image
+`b8c802ec8156efe0ee9b08dbb05b90feb2751e89e2692658a7ecaf96fd71ec9e`.
+
+Early-thread-services checkpoint (2026-10-28, offline/QEMU only): commit
+`e5e0712` releases the stage-85 stop, runs `thread_daemon_init()` and the
+`STARTUP_SUB_THREAD_CALL` startup phase, and stops at stage 90 before
+`thread_bind()`, `mapping_adjust()`, and `clock_service_create()`. GitHub
+Actions run `40584664263` succeeded. Direct QEMU displayed stages 86 through
+90, proving both requested initialization steps returned. No panic, exception,
+abort, assertion, or fault was found. Payload reconstruction and the
+captured-phone-FDT 8 GiB bootshim test passed (`white_pixels=219008`). No
+phone image was created or flashed.
+
+SHA-256: artifact ZIP
+`ff5b48daea6ef075599c89a194aaaea69612277d5bb1f3d317d77da1746b13f1`;
+kernel `ff95c58b75f326744b0b2ec9cf6e227abe518c0a0b3b62277227ba4ea712b770`;
+ADT `b07a54e7443ae147c1f600900ec0e6822cfb13ef2193215b9da7a412563ce1a4`;
+payload `f7867d1886d26c04fd0365ce4d05e55cf6804c0e00231234de079be54d7ca884`;
+bootshim Image
+`9d93c3dc0d3a806e61fdd8e966dc3aeab99e5fb25255d20a4e7f612b73c4fe7b`.
+
+Scheduler-startup checkpoint (2026-10-28, offline/QEMU only): commit
+`3b2e2a7` releases the stage-78 stop, instruments the internal scheduler
+startup transitions, and stops at stage 85 after `sched_startup()` returns but
+before `thread_daemon_init()`. GitHub Actions run `40583142353` succeeded.
+Direct QEMU displayed stages 79 through 85, proving creation of the scheduler
+initialization thread, a successful `thread_block()` context switch and
+return, creation of the powered-cores update thread, and return from
+`sched_startup()`. No panic, exception, abort, assertion, or fault was found.
+Payload reconstruction and the captured-phone-FDT 8 GiB bootshim test passed
+(`white_pixels=196128`). No phone image was created or flashed.
+
+SHA-256: artifact ZIP
+`c2468a11768cf8abcde584086f5b88a190369bdf473e50762babe3cff20405dc`;
+kernel `4c7bd28ad9dc93360222f0a808da9ac5afde9bbce8e79a8331ee920850afb45a`;
+ADT `51d84604099f02e17478dbbfd2269d98650dacba3c85b3c88a135a22dc8db48d`;
+payload `659bba1f36629a238e2f8e1ed07dd7a6860b8ab59b3ee636d828a919eeecb3db`;
+bootshim Image
+`f92528cf4d3d3f835b13e8e9c2ec2beee07f3199aca16ed68cd6b7c899feecaa`.
+
+Bootstrap-thread pre-scheduler checkpoint (2026-10-27, offline/QEMU only):
+commit `e28da41` releases the stage-74 stop, allows `load_context()` to switch
+to the first bootstrap thread, records entry into that thread, and stops at
+stage 78 immediately before `sched_startup()`. GitHub Actions run
+`40581233793` succeeded. Direct QEMU displayed stages 75 through 78, proving
+that the context switch completed and `idle_thread_create()` returned. No
+panic, exception, abort, assertion, or fault was found. Payload reconstruction
+and the captured-phone-FDT 8 GiB bootshim test passed
+(`white_pixels=164648`). No phone image was created or flashed.
+
+SHA-256: artifact ZIP
+`30eca85d10c0698977bf5066c655169f5450ec2c8c2cae2af40d36281d8af827`;
+kernel `70ece5a043a5949573f5cc7e424abad80b995cd1d55c5d1a4b58b94ad5e9a56c`;
+ADT `9512bae994e02d05725d9c6c9d296859c60980fbf612e2c390b60ff896a4e43f`;
+payload `7e8a70087027edc777994c30ba029b542476e9710aa4572072f81b2c17845551`;
+bootshim Image
+`ac3575fa3d0853187a800b82a4a324f4a455dd6ada263df433b02398983c6034`.
+
+Grouped kernel-bootstrap checkpoint (2026-10-27, offline/QEMU only): commit
+`e89b099` releases the stage-63 stop, marks the major early
+`kernel_bootstrap()` boundaries, creates the first bootstrap thread, and stops
+at stage 74 immediately before `load_context(thread)`. GitHub Actions run
+`40578492454` succeeded. Direct QEMU displayed every stage from 64 through 74,
+including successful returns from `vm_mem_bootstrap()`, OSLOG startup,
+`console_init()`, `sched_init()`, Mach IPC startup, `machine_init()`, and
+`thread_init()`, followed by successful bootstrap-thread creation. No panic,
+exception, abort, assertion, or fault was found. Payload reconstruction and
+the captured-phone-FDT 8 GiB bootshim test passed
+(`white_pixels=148704`). No phone image was created or flashed.
+
+SHA-256: artifact ZIP
+`bbd71334faf2487720bf56acea593c9eca0be90293db8524a3c56d8af53e485b`;
+kernel `85028af6d9c383bf6441cbe363983a7fae5f59211260fc4bc58ae20baa27533f`;
+ADT `65cbe286a37885df34cd383fb5e70b0a00822509454c0a3f125993ef04c0e495`;
+payload `0497a65806ff85200627a4337856790f40da75c4895caa5e60984f2fdf4532e2`;
+bootshim Image
+`cce3cf98ccd80ba1de72f65c1a02e5a4d610318179bfc11876d3006a51522f07`.
+
+Grouped machine-startup checkpoint (2026-10-27, offline/QEMU only): commits
+`f3693e9` and `939ea81` retain stage 59 as a non-blocking marker, enter
+`machine_startup()`, mark completion of boot-argument handling and
+`machine_conf()`, and stop at stage 63 immediately before
+`kernel_bootstrap()`. GitHub Actions run `40576319487` succeeded. Direct QEMU
+displayed stages 60, 61, 62, and
+`SWEET EARLY 63: DUCHAMP PRE KERNEL BOOTSTRAP`; no panic, exception, abort,
+assertion, or fault was found. Payload reconstruction and the captured-phone-
+FDT 8 GiB bootshim test passed (`white_pixels=104172`). No phone image was
+created or flashed. The earlier run `40574392928` correctly exposed that the
+stage-59 stop had not yet been released and was superseded by this result.
+
+SHA-256: artifact ZIP
+`b2abf966b60301f50d91346d557f88f50301bd67acdf610cd25582e724d06bab`;
+kernel `804653c6e86bef56c55c187770b3def9bd496f162004fc496d6a0479f8534f6a`;
+ADT `fb87fcf49ad810697b37de61dcc9b7f8f92c5e33bb06726c3e7b7b348067dd60`;
+payload `dfc59bc2cfef7f86c5ce79ab379347c66b81dd69225d76ca7a7ada901c929abc`;
+bootshim Image
+`1c2a6e93656545e6e7611a29b6be50759cb15d9447611a4ef761b316cc4441e7`.
+
+Pre-machine-startup checkpoint (2026-10-27, offline/QEMU only): commit
+`d217d1f444165f7f340557d28c577410ab7dbd45` removes the stage-58 stop,
+assigns `gDramBase` and `gDramSize`, initializes and masks
+`__stack_chk_guard`, and stops at stage 59 immediately before
+`machine_startup(args)`. GitHub Actions run `40570509213` succeeded. Direct
+QEMU displayed `SWEET EARLY 59: DUCHAMP PRE MACHINE STARTUP`; no panic,
+exception, abort, assertion, or fault was found. Payload source reconstruction
+passed. The captured-phone-FDT 8 GiB bootshim test passed with
+`white_pixels=85824`. No phone image was created or flashed.
+
+SHA-256: artifact ZIP
+`619498ccf55bf411bec2bf99141bb70f411385f218925b8768c0cf6ac9739228`;
+kernel `0af722062cebd249c636455f902881be10e4454322eae756b61714ab550b40bd`;
+ADT `7f89eb2fda16bd7cb089c21f08e02f85113f0901ff950d75826c15e7ec4e5fe0`;
+payload `cf992c6de4ec416d61b077c8887c4bedf168af462d5e37fa9627d1800b3fee68`;
+bootshim Image
+`091d5cdcec2a39f37003fb10012fb36a64a2b889dfaa0e0dca93ac56e0e416d4`.
+
+DRAM-size-read checkpoint (2026-10-27, offline/QEMU only): commit
+`c1d32951be93e81e41f9d6ccff881017b59b142e` lets the
+`SecureDTGetProperty()` call read `dram-size`, records the complete 64-bit
+value, and places the stage-58 stop before assigning either `gDramBase` or
+`gDramSize`. The original panic path is unchanged. Both new patches passed
+strict forward and reverse `git apply --check`; GitHub Actions run
+`40567636656` succeeded. Direct QEMU displayed
+`SWEET EARLY 58: DUCHAMP DRAM_SIZE=0x0000000020000000`, matching the
+generated Duchamp-window ADT size (512 MiB); no panic, exception, or abort was
+found. The payload source rebuild passed. The captured-phone-FDT, 8 GiB
+bootshim path passed its embedded-payload byte comparison and XNU-entry test
+(`white_pixels=87644`). Artifact ZIP SHA256 is
+`0c0c265cd6a7e6d1f5a407a0fd5997af0ccde6730ae075a03d46b5fbb90bd0a5`;
+kernel SHA256 is
+`e90f2244a5d66b76b62a787a9351fb833f787061d006af6910033c39127c64a8`;
+QEMU ADT SHA256 is
+`b56ca536eae5854b22f36ae5a412e032269fac456a83e90af764f8fdf08b2ce4`;
+payload SHA256 is
+`f918432885393cd2cf1aa7e16c5fdf71103b57e0418c8209f10590b11d51ba16`;
+and bootshim Image SHA256 is
+`638f6d60a46037ad1173e6c3e3f2f74d686cc1957e66bdcd5cae721ef3f75bd5`.
+No phone image was prepared or flashed for this checkpoint.
+
+DRAM-base-read checkpoint (2026-10-27, offline/QEMU only): commit
+`e8fb66c58047d95c60a9584d386377fcdde89782` lets the first
+`SecureDTGetProperty()` read `dram-base`, records the complete 64-bit value,
+and places the stage-57 stop before the `dram-size` lookup. The original panic
+path is unchanged. Both new patches passed strict forward and reverse
+`git apply --check`. Initial Actions run `40561695414` was cancelled without
+receiving a macOS runner; replacement run `40564121509` succeeded. Direct QEMU
+displayed `SWEET EARLY 57: DUCHAMP DRAM_BASE=0x00000001c0000000`, exactly
+matching the generated QEMU ADT value `0x1c0000000`; no panic, exception, or
+abort was found. The payload source rebuild passed. The captured-phone-FDT,
+8 GiB bootshim path passed its embedded-payload byte comparison and XNU-entry
+test (`white_pixels=87604`). Artifact ZIP SHA256 is
+`660ff441c4e4645ca15945bfdf74b4b04e426940eb54103f912198fdd24197bb`;
+kernel SHA256 is
+`f224e874d82fcbc0b0a2acf4f55fd0a74379b32f4b0d0a0d00b0f5a4f9d578cd`;
+QEMU ADT SHA256 is
+`c226929148431d060bb1b9a6f4fbd2927dc22fcf58685f88e4eb759350019346`;
+payload SHA256 is
+`c882f6946784275f4f714a51b910d927a5cda35d0f5eb4f331cccd72290e8b33`;
+and bootshim Image SHA256 is
+`073bc49142a6767470753d34c57fb19ba6d6105396fc4c218c4bb81a3e0a7182`.
+No phone image was prepared or flashed for this checkpoint.
+
+Chosen-lookup checkpoint (2026-10-27, offline/QEMU only): commit
+`a46c89824be76eea72fd6128299d01d6b8fa07a2` lets
+`SecureDTLookupEntry(NULL, "/chosen", &chosen)` execute on the boot-CPU path
+and places the stage-56 stop only after a successful lookup, before the first
+following `SecureDTGetProperty()` for `dram-base`. The original panic path is
+unchanged. Both new patches passed strict forward and reverse
+`git apply --check`; GitHub Actions run `40558077806` succeeded. Direct QEMU
+displayed `SWEET EARLY 56: DUCHAMP CHOSEN FOUND`; no panic, exception, or
+abort was found. The payload source rebuild passed. The captured-phone-FDT,
+8 GiB bootshim path passed its embedded-payload byte comparison and XNU-entry
+test (`white_pixels=85036`). Artifact ZIP SHA256 is
+`b6f675d8c69d37ce473907e553ad4d7dbe6b8284f8ded5d5c43185255d878d33`;
+kernel SHA256 is
+`4f66829d35276feca329303faaef91641db94e281f4763f7f906e4fcf245f78b`;
+QEMU ADT SHA256 is
+`9bff98a8d540e8fea55b57c844ebc8f45ccbcdb99168a3ef08dc116c95c2d3fd`;
+payload SHA256 is
+`47e8c458de12b2523dce187ed7e7206eb2d3dff5a251c4ef8a5db5a61b6859c7`;
+and bootshim Image SHA256 is
+`568b519a2e01a9f362a85b47b5fb01202a2d5f338eb2fd833c7b7c160fc6671d`.
+No phone image was prepared or flashed for this checkpoint.
+
+Hibernation-block checkpoint (2026-10-27, offline/QEMU only): commit
+`a1c317bd06a2abf89d904a14a4555380c16ac851` moves the stage-55 stop
+after the complete `#if HIBERNATION` block and before the following
+`SecureDTLookupEntry(NULL, "/chosen", ...)`. The final DEVELOPMENT kernel
+contains `_arm_init` but no `pal_hib_init` symbol, so HIBERNATION is disabled
+for this build and the checkpoint proves the disabled block was crossed; it
+does not claim that `pal_hib_init()` executed. Both new patches passed strict
+forward and reverse `git apply --check`; GitHub Actions run `40553554664`
+succeeded. Direct QEMU displayed
+`SWEET EARLY 55: DUCHAMP HIB BLOCK PASSED`; no panic, exception, or abort was
+found. The payload source rebuild passed. The captured-phone-FDT, 8 GiB
+bootshim path passed its embedded-payload byte comparison and XNU-entry test
+(`white_pixels=85340`). Artifact ZIP SHA256 is
+`d3903d3b9ef01a77bb8bc1f2badf679d60cf0a2eadf6023249893c54b72152d9`;
+kernel SHA256 is
+`564c288a56e962ba3d288b3ec0de8cd7870e1d36614cf6f7d9f31dbc26d0387f`;
+QEMU ADT SHA256 is
+`7944d61fcf3ed76f819c5e979aba13b60341b260a50e380d8bdd8322193f33fb`;
+payload SHA256 is
+`a7209a1921c2220d0fac918d217d213724e2338d52a2ebc657cb64d940852101`;
+and bootshim Image SHA256 is
+`effc944f2d2e1b54e7c99bd9bf9a2612a5dfc3a586101e2d9224cdf842e793a4`.
+No phone image was prepared or flashed for this checkpoint.
+
+FIQ-context-return checkpoint (2026-10-27, offline/QEMU only): commit
+`a073deca711e124c5caa4c2e8cfdc94c156a376f` lets
+`fiq_context_init(TRUE)` execute on the boot-CPU path and places the stage-54
+stop immediately after its return, before the `pal_hib_init()` block and all
+following initialization. The secondary `arm_init_cpu()` path remains
+unchanged. Both new patches passed strict forward and reverse
+`git apply --check`; GitHub Actions run `40549741154` succeeded. Direct QEMU
+displayed `SWEET EARLY 54: DUCHAMP FIQ CONTEXT RETURNED`; no panic,
+exception, or abort was found. The payload source rebuild passed. The
+captured-phone-FDT, 8 GiB bootshim path passed its embedded-payload byte
+comparison and XNU-entry test (`white_pixels=85908`). Artifact ZIP SHA256 is
+`eb9fe80aeebfa68580d01212721faae821a0031c9884f6b9336102b48871d8dd`;
+kernel SHA256 is
+`9b005f3e1c1bdc286a6b4cc640f297536fca732811dec174bd77df8a9cae22cc`;
+QEMU ADT SHA256 is
+`2b8a390fd67ec097ff0eec56ffc99f51c7a48ed1b95366738536b427baa9e7b5`;
+payload SHA256 is
+`d92eaea5f26b34b729989e0966190fd0e026ca1338e70321c3e9d02a12e51dd1`;
+and bootshim Image SHA256 is
+`c94631c8f998dfcfca2730db9a5a6c55456a6e08ebe966d1a288b56b7b6aa736`.
+No phone image was prepared or flashed for this checkpoint.
+
+PE-init-CPU-return checkpoint (2026-10-27, offline/QEMU only): commit
+`47951d31a2686ed57451d995472afcd5c7791598` lets `PE_init_cpu()` return
+to the boot processor's `arm_init()` and places the stage-53 stop immediately
+after that return, before `fiq_context_init(TRUE)`. The secondary
+`arm_init_cpu()` path was deliberately left unchanged for this boot-CPU
+checkpoint. Both new patches passed strict forward and reverse
+`git apply --check`; GitHub Actions run `40480706346` succeeded. Direct QEMU
+displayed `SWEET EARLY 53: DUCHAMP PE_INIT_CPU RETURNED`; no panic, exception,
+or abort was found. The payload source rebuild passed. The captured-phone-FDT,
+8 GiB bootshim path passed its embedded-payload byte comparison and XNU-entry
+test (`white_pixels=85788`). Artifact ZIP SHA256 is
+`e76b9b5e43e17b5ebf5c4c83d8233b9a221a4543fec7f946905f49d4ac07154a`;
+kernel SHA256 is
+`433f566d91559a44d980e33d7a57394370ebf1237535eb96daef0350abf3d40e`;
+QEMU ADT SHA256 is
+`092878a5a1a2627c9421a004b6845602f2832567a9e5bb8e830f5c6bc96ee29c`;
+payload SHA256 is
+`bc859158de3b40b85b8eea60a62e0f925d3605efea7ab8ee383e42822ab04043`;
+and bootshim Image SHA256 is
+`705fd01be666a9a166c5cd5ebd5ce20bc3683b93b278e531a5f7c38aca94f7f7`.
+No phone image was prepared or flashed for this checkpoint.
+
+GIC-return checkpoint (2026-10-27, offline/QEMU only): commit
+`e9e4fb17d7ca3baf7c7fadcfdf7ed5341daadc4a` lets `pe_init_fiq()` return and
+places the stage-52 stop in its direct caller, `PE_init_cpu()`, before that
+function returns to `arm_init()`. In this XNU ordering, `cpu_timebase_init(TRUE)`
+already runs before `PE_init_cpu()`; this checkpoint is therefore specifically
+before `fiq_context_init(TRUE)` and later interrupt work, not before the timer.
+Both new patches passed strict forward and reverse `git apply --check`; GitHub
+Actions run `40471074615` succeeded. Direct QEMU displayed
+`SWEET EARLY 52: DUCHAMP GIC RETURNED`; no panic, exception, or abort was
+found. The payload source rebuild passed. The captured-phone-FDT, 8 GiB
+bootshim path passed its embedded-payload byte comparison and XNU-entry test
+(`white_pixels=83440`). Artifact ZIP SHA256 is
+`6d9afca690eb3fde99850e50c234a9afc56a78bda386e917a57711722fee2586`;
+kernel SHA256 is
+`96590808362923970ea8cf2b65c9501a120d9cc9551008f727bd9c04d4a12726`;
+QEMU ADT SHA256 is
+`9fc326a31b0eae4fb40b763e6ea8169d9068bc3fc1b847f120b15bdaaf394fb2`;
+payload SHA256 is
+`b36a73faa844a8fac482d52f7e35ec172d9fb709c0ea7040ec44bab184751d9f`;
+and bootshim Image SHA256 is
+`bed4190a92c85861a1c046bc01fc6045a63985cc71f6ca8101822a72925cfc2b`.
+No phone image was prepared or flashed for this checkpoint.
+
+ICC-IGRPEN1-ISB checkpoint (2026-10-27, offline/QEMU only): commit
+`73d7ae46e84846742ec19b29c353434c006007bd` executes the `ISB`
+immediately after the successful `ICC_IGRPEN1_EL1 = 1` write and stops
+before returning from `pe_init_fiq()`. The timeout path still stops before
+the write. Both new patches passed strict forward and reverse
+`git apply --check`; GitHub Actions run `40468936088` succeeded. Direct QEMU
+displayed `SWEET EARLY 51: DUCHAMP ICC_IGRPEN1_ISB_DONE`; no panic,
+exception, or abort was found. The payload source rebuild passed. The 8 GiB
+bootshim path passed its embedded-payload byte comparison and XNU-entry test
+(`white_pixels=85724`). Artifact ZIP SHA256 is
+`0f8aa93c85d6f50200b99601ad17a7e2d5e53e38e5ba2c577db8fe61500a2ccd`;
+kernel SHA256 is
+`901e10ff55d1bd52dd61f4b09474e0d99a3510d589a50505fe26f90ebd354b9c`;
+QEMU ADT SHA256 is
+`f76798d5c605b0db468b1d5a5c3215df5ea14a0d78c84e9b8f2955b883cd261f`;
+payload SHA256 is
+`82c5e4e6fb8ad70953284407bd45a1132844a23d4776f8dfec8fecd1ebddca3a`;
+and bootshim Image SHA256 is
+`d1ede2a291b42e323b45ace88bba1b27d02a102cb794977570b0cfbda8e4dd02`.
+No phone image was prepared or flashed for this checkpoint.
+
+ICC-IGRPEN1-write checkpoint (2026-10-27, offline/QEMU only): commit
+`99bf548c78599748ac69b3caa1c704ce84090725` writes
+`ICC_IGRPEN1_EL1 = 1` exactly once after the bounded RWP loop succeeds and
+stops before the following `ISB`. A timeout path stops without performing
+the write. Both new patches passed strict forward and reverse
+`git apply --check`; GitHub Actions run `40436986741` succeeded. Direct QEMU
+displayed `SWEET EARLY 50: DUCHAMP ICC_IGRPEN1_WRITE=1`; no panic,
+exception, or abort was found. The payload source rebuild passed. The 8 GiB
+bootshim path passed its embedded-payload byte comparison and XNU-entry test
+(`white_pixels=85528`). Artifact ZIP SHA256 is
+`0b08ff4c56ac6f4a9300d4e0e4fcf986ada6f3565b1ceaa72a9212ce650dbb79`;
+kernel SHA256 is
+`4fdf3d2a0f85f9cd4888fc382742423fb3b6675e11da1805ceafabe6dbdc83d2`;
+QEMU ADT SHA256 is
+`03b6964b12baff8006de0e89f15758ffc577e4611abe3053d3f2a80b4b6f73af`;
+payload SHA256 is
+`a254a15f8807ff0a48c784c5a82c2fdb293d01f667936563840d16c350dfec07`;
+and bootshim Image SHA256 is
+`28fe42a41bb6073cabb1a452e25e2e2f8f25e27ae0711e508c5e3354277d0bb6`.
+No phone image was prepared or flashed for this checkpoint.
+
+GICD-RWP-bounded checkpoint (2026-10-27, offline/QEMU only): commit
+`a73fcbf248a4291662199ebdfa2c3c4a72b972c6` replaces the Duchamp
+unbounded `GICD_CTLR_RWP` wait with a diagnostic loop capped at 100000
+iterations and stops after the loop but before `ICC_IGRPEN1_EL1`. Both new
+patches passed strict forward and reverse `git apply --check`; GitHub Actions
+run `40433794756` succeeded. Direct QEMU displayed
+`SWEET EARLY 49: DUCHAMP RWP=0 TO=0 N=00000000`; the first read observed
+RWP clear, so the loop completed with zero spins and no timeout. No panic,
+exception, or abort was found. The payload source rebuild passed. The 8 GiB
+bootshim path passed its embedded-payload byte comparison and XNU-entry test
+(`white_pixels=86164`). Artifact ZIP SHA256 is
+`8bbc892f97d9cf0e7f1459eccafa9e264e292d08253d53f513069d6b26450e36`;
+kernel SHA256 is
+`dca3359e9561b23839cbb7fa753ddaca73c9a6e181a6747cb99a7096ffe7adc8`;
+QEMU ADT SHA256 is
+`6992acd7eee8473d22ce86d3cf0651986e2f5d45d9162a83c2654b15cd86822f`;
+payload SHA256 is
+`2ea848f0af76cd9489e22d670161df2af774101dfea328c986f1dbb717694b1b`;
+and bootshim Image SHA256 is
+`d5eb600b2d2d8e2ade2285f6595c38c6d25e396170fedfeb751522834405c933`.
+No phone image was prepared or flashed for this checkpoint.
+
+GICD-CTLR-readback checkpoint (2026-10-27, offline/QEMU only): commit
+`73e8912196bc72e82ef87bb8586192ee023f6751` reads `GICD_CTLR` exactly
+once after the stage-47 write, records both the complete value and its `RWP`
+bit, and stops before the polling loop and before `ICC_IGRPEN1_EL1`. Both
+new patches passed strict forward and reverse `git apply --check`; GitHub
+Actions run `40432649441` succeeded. Direct QEMU displayed
+`SWEET EARLY 48: DUCHAMP GICD_AFTER=0x00000053 RWP=0`; no panic,
+exception, or abort was found. The payload source rebuild passed. The 8 GiB
+bootshim path passed its embedded-payload byte comparison and XNU-entry test
+(`white_pixels=86948`). Artifact ZIP SHA256 is
+`e5b45a1142b50e765dedc4313883da6c9f627f5a7a170e60e649e2e27fa44985`;
+kernel SHA256 is
+`180ff0d39c2da09039bcd52b6c52f769deb3f5a17d92e4e671a90c4663065893`;
+QEMU ADT SHA256 is
+`ad4aed75dbf570269e01aab4884bd34f7467828095136305b769605d44c589f0`;
+payload SHA256 is
+`6621ed714e6a00b0cde328103d7efa88567a958108ecd3813925cba62f3e69e3`;
+and bootshim Image SHA256 is
+`d584d009a1b2325d3ff99a89cbfc51cb00fde87c618fce569201bb3edc5bfcfb`.
+No phone image was prepared or flashed for this checkpoint.
+
+GICD-CTLR-write checkpoint (2026-10-27, offline/QEMU only): commit
+`704b3b96247e8f737f685bf703853cde0c52d468` writes the prepared value
+`0x00000053` to `GICD_CTLR` exactly once and stops immediately before the
+first `GICD_CTLR_RWP` read and before `ICC_IGRPEN1_EL1`. Both new patches
+passed strict forward and reverse `git apply --check`; GitHub Actions run
+`40431550650` succeeded. Direct QEMU displayed
+`SWEET EARLY 47: DUCHAMP GICD_WRITE=0x00000053`; no panic, exception, or
+abort was found. The payload source rebuild passed. The 8 GiB bootshim path
+passed its embedded-payload byte comparison and XNU-entry test
+(`white_pixels=86136`). Artifact ZIP SHA256 is
+`c8a879456e477239dd0b0edb250dd3f8ce5b1a64159e2e6b1509ba77efb460ef`;
+kernel SHA256 is
+`331bcff603c931656c1dd0704b2fc5a81d680a64c69cf688f229a98a466193cf`;
+QEMU ADT SHA256 is
+`0dd316a4321989e52fdb849d5987bffb2a053c4a758f39c66aba679b48823dd0`;
+payload SHA256 is
+`22611f37ee1cbd6793ec13c8be00700205720674af4e8201a196c049c0ac1e3d`;
+and bootshim Image SHA256 is
+`037c06c7d47c017d833f287c885dea3dd37eaa835c50abdbe7a09a3efc41a5c2`.
+No phone image was prepared or flashed for this checkpoint.
+
+GICD-CTLR-local-enable checkpoint (2026-10-27, offline/QEMU only): commit
+`f9cd916b0828382aa3e2971810b4a4febff23bb1` combines `ARE_NS`,
+`ENABLEGRP1A`, and `ENABLEGRP1` into the local `gicd_ctlr` value and stops
+before the first `GICD_CTLR` write and before `ICC_IGRPEN1_EL1`. Both new
+patches passed strict forward and reverse `git apply --check`; GitHub Actions
+run `40430203151` succeeded. Direct QEMU displayed
+`SWEET EARLY 46: DUCHAMP GICD_LOCAL=0x00000053`, consistent with the
+stage-45 value `0x00000050` plus the requested enable bits. No panic,
+exception, or abort was found. The payload source rebuild passed. The 8 GiB
+bootshim path passed its embedded-payload byte comparison and XNU-entry test
+(`white_pixels=86148`). Artifact ZIP SHA256 is
+`60647572baf33d39fab759bf0839aeb697749931e3a3a6755a2b3766eaef6b9a`;
+kernel SHA256 is
+`9fc2ffb0715e05a42bed6a2f377c9e5515327cf6e6669cb72139ed796f0b4015`;
+QEMU ADT SHA256 is
+`57870dad78408d77d85fc461f23cea59d3ee666169e9eeab2271c33d29bbd083`;
+payload SHA256 is
+`97862788703840062e5407f839bc5e745cee8cd6e78582d7d20591bf053709ce`;
+and bootshim Image SHA256 is
+`4e3936f7c49cb84cb34868612d407ff6017e585b562cdc2c7d4386c4c68a0f7e`.
+No phone image was prepared or flashed for this checkpoint.
+
+GICD-CTLR-read checkpoint (2026-10-27, offline/QEMU only): commit
+`bad619f7830285b7c5b6acfa5e3e9c04bad8b30b` reads `GICD_CTLR` exactly
+once and stops before combining `ARE_NS`, `ENABLEGRP1A`, or `ENABLEGRP1`
+into the local value, before any `GICD_CTLR` write, and before
+`ICC_IGRPEN1_EL1`. Both new patches passed strict forward and reverse
+`git apply --check`; GitHub Actions run `40428601305` succeeded. Direct
+QEMU displayed `SWEET EARLY 45: DUCHAMP GICD_CTLR=0x00000050`; no panic,
+exception, or abort was found. The payload source rebuild passed. The 8 GiB
+bootshim path passed its embedded-payload byte comparison and XNU-entry test
+(`white_pixels=86012`). Artifact ZIP SHA256 is
+`e9448e94a93b0ee5dd775fd532430ebe107cdf7918be857d67b0cb8c1769a4ee`;
+kernel SHA256 is
+`69f7cfe78cf68ecc1866d9716c44dcc2a61f1e938d047a771db071b4c54d7731`;
+QEMU ADT SHA256 is
+`74410f5d7000fb178819e1fa786e398862f4b0b6c6209d6f31980a3cb9b18aeb`;
+payload SHA256 is
+`33d346ebae72a1877d35db91f0151d0bd5e65a990410545088659fd2f786ad50`;
+and bootshim Image SHA256 is
+`cef739cb0a970823770fa3c5d569fae5de8833b362fe42a7ad37559ea760b27d`.
+No phone image was prepared or flashed for this checkpoint.
+
+ICC-CTLR-write checkpoint (2026-10-27, offline/QEMU only): commit
+`e4040e7f971df2dbbf7b8d7e1b555ae27ac6f797` writes the locally prepared
+value to `ICC_CTLR_EL1` exactly once and stops before the first
+`GICD_CTLR` read and before `ICC_IGRPEN1_EL1`. Both new patches passed
+strict forward and reverse `git apply --check`; GitHub Actions run
+`40426910967` succeeded. Direct QEMU displayed
+`SWEET EARLY 44: DUCHAMP ICC_CTLR_WRITE=0x0000000000008c00`; no panic,
+exception, or abort was found. The automatic framebuffer decoder reported
+three unknown trailing glyphs, but the saved framebuffer and `fb.txt`
+confirm the complete stage-44 marker. The payload source rebuild passed.
+The 8 GiB bootshim path passed its embedded-payload byte comparison and
+XNU-entry test (`white_pixels=87892`). Artifact ZIP SHA256 is
+`a72ebfff2d0c7744f7ef7d170e0562b3e0fa914f69bd953c7d12fb6413eae27a`;
+kernel SHA256 is
+`557a407c200bbf88fb9ce79d318f401e1e97a4e09d4e42beeeb7a22168ffeb27`;
+QEMU ADT SHA256 is
+`4680822e6fbb5a40f4071d5282532c07067bf12b3ddf1ecdad90c40f096bc75f`;
+payload SHA256 is
+`2c37953d2ca987ad669e1c54edc5a78c03c8bd28a06c199a156d32f37301a096`;
+and bootshim Image SHA256 is
+`f61dca94d05fd940daf9eb191b9722ae5d6f4e1e5ed91a843a9e65729a0e9d06`.
+No phone image was prepared or flashed for this checkpoint.
+
+ICC-CTLR-local-EOIMODE checkpoint (2026-10-27, offline/QEMU only): commit
+`b8654f28c49816b5288f1b4d2d6559f207d6b05e` clears
+`ICC_CTLR_EOIMODE` in the local `icc_ctlr` copy and stops before the first
+`ICC_CTLR_EL1` write, before any later GICD access, and before
+`ICC_IGRPEN1_EL1`. Both new patches passed strict forward and reverse
+`git apply --check`; GitHub Actions run `40425590830` succeeded after Actions
+was re-enabled with user approval. Direct QEMU displayed
+`SWEET EARLY 43: DUCHAMP ICC_CTLR_EOI=0x0000000000008c00`; the value matches
+the stage-42 read because QEMU already reported EOIMODE clear. No panic,
+exception, or abort was found. The automatic framebuffer decoder reported
+three unknown trailing glyphs, but the saved framebuffer and `fb.txt` confirm
+the complete stage-43 marker. The payload source rebuild passed. The 8 GiB
+bootshim path passed its embedded-payload byte comparison and XNU-entry test
+(`white_pixels=87600`). Artifact ZIP SHA256 is
+`df7681d297df991b5e21b02d8137a2a7a07a96373766638aead57784923c7a65`;
+kernel SHA256 is
+`fca3ed7298e45866fb483f11eb1d208738c5e182a8dafc3e008c1f05ad481caf`;
+QEMU ADT SHA256 is
+`52fe743dccdf6d6bb593afb3e0fc376cb20be71f7c66774a065274dd6d816630`;
+payload SHA256 is
+`4c7b950bf5151a9b2d24bcd683fa5afc4eedd8985c6c698834e68cf46fffa253`;
+and bootshim Image SHA256 is
+`16d1196e3967487ce80921b9243e9fe7c5c27006643a533ed6bc65ab43981295`.
+No phone image was prepared or flashed for this checkpoint.
+
+ICC-CTLR-read checkpoint (2026-10-27, offline/QEMU only): commit
+`742b0151eb2db4891a77940cfd8b81e1744b6f2e` moves the controlled stop past
+one read of `ICC_CTLR_EL1`, but before changing `EOIMODE`, writing
+`ICC_CTLR_EL1`, touching the GICD enable path, or writing `ICC_IGRPEN1_EL1`.
+Both new patches passed strict forward and reverse `git apply --check`;
+GitHub Actions run `40423496961` succeeded. Direct QEMU displayed
+`SWEET EARLY 42: DUCHAMP ICC_CTLR_EL1=0x0000000000008c00`; no panic,
+exception, or abort was found. The automatic framebuffer decoder reported
+three unknown trailing glyphs, but the saved framebuffer and `fb.txt` both
+confirm the complete stage-42 marker and value. The payload source rebuild
+passed. The 8 GiB bootshim path passed its embedded-payload byte comparison
+and XNU-entry test (`white_pixels=87516`). Artifact ZIP SHA256 is
+`bd41b214456fc1a35eb641d483af8421e5491c874dabf367ab00c15f2cbd57f2`;
+kernel SHA256 is
+`977a18507bc7148e8fb62cfba11f054acaf0bb3c7ff3e9528c444a0aebac36f6`;
+QEMU ADT SHA256 is
+`42e6c984f8026f08ee0e71717b2e32511fbac7ed949eee5c6638100cc0afb751`;
+payload SHA256 is
+`cbc06e3cd8d04727025834c60260537078bcab4ee2274e8757ef30d6775e53b5`;
+and bootshim Image SHA256 is
+`64a45a72fca9cc94693126ab97ec7f9f4a990fcaa929a6d6c95c15fe6d9ef7f0`.
+No phone image was prepared or flashed for this checkpoint.
+
+ICC-PMR-write checkpoint (2026-10-27, offline/QEMU only): commit
+`edf887a57df4416646f3b0e08238ea7ab2c357bd` moves the controlled stop past
+one `ICC_PMR_EL1=0xFF` write, but before reading `ICC_CTLR_EL1` and before
+writing `ICC_IGRPEN1_EL1`. Both new patches passed strict
+`git apply --check`; GitHub Actions run `40422206995` succeeded, and the
+built kernel contains `DUCHAMP ICC_PMR WRITE READY`. Direct QEMU displayed
+`SWEET EARLY 41: DUCHAMP ICC_PMR WRITE READY`; no panic, exception, or abort
+was found. The automatic framebuffer decoder reported three unknown glyphs,
+but the saved framebuffer and `fb.txt` both confirm the complete stage-41
+marker. The payload source rebuild passed. The 8 GiB bootshim path passed its
+embedded-payload byte comparison and XNU-entry test (`white_pixels=85584`).
+Artifact ZIP SHA256 is
+`4b99be1019bae861d675b2449d8a7bc350534d48a5c284c122aca1dbae9b5998`;
+kernel SHA256 is
+`fd14831dc90bbf03e32657414e351f1b4fdbc0cfb2d3d6dc92c9daafb6c380a5`;
+QEMU ADT SHA256 is
+`2c789baca30ef1699f6450ba6fad82279a2a25cfc153e234ad859a4a65b78357`;
+payload SHA256 is
+`8037d5fbd351ec27ce29640217ea1ae1842bf7a2d2ed23c8cc61f9fc3421f044`;
+and bootshim Image SHA256 is
+`8f7899428b87cd0fdfbf698e46affe5355b72eec513a545381980a2ee9ccf0f5`.
+No phone image was prepared or flashed for this checkpoint.
+
+ICC-BPR1-write checkpoint (2026-10-27, offline/QEMU only): commit
+`b5e46132a66f293d4baedd6edfb2950098d6e9af` moves the controlled stop past
+one `ICC_BPR1_EL1=0` write, but before `ICC_PMR_EL1`, `ICC_IGRPEN1_EL1`, or
+any intervening CPU-interface configuration. Both new patches passed strict
+`git apply --check`; GitHub Actions run `40420604838` succeeded, and the built
+kernel contains `DUCHAMP ICC_BPR1 WRITE READY` without the stage-39 label.
+Direct QEMU displayed `SWEET EARLY 40: DUCHAMP ICC_BPR1 WRITE READY`; no
+panic, exception, or abort was found. The 8 GiB bootshim path passed its
+embedded-payload byte comparison and XNU-entry test (`white_pixels=85744`).
+Artifact ZIP SHA256 is
+`49edd9819820bc551a2f02ffd7965a0f78f370150b7bcb11ccb177458070c991`;
+kernel SHA256 is
+`0c105a5c1fbdb64beb02784f26c13b445a839690129148cc7f30ef27552fb8d4`;
+QEMU ADT SHA256 is
+`7b4b6a1bc0f234d95c61caf4d06a98c95907b451023fc65fab035f882247c2cd`;
+payload SHA256 is
+`b4e8f05caab42b96155e78efe616570d486ddb2c92592d04a2541dfadcc5c119`;
+and bootshim Image SHA256 is
+`49ff624331f8ceef986b962885fcabe2582fdff391294e76797c3fcaf100878f`.
+No phone image was prepared or flashed for this checkpoint.
+
+ICC-SRE-ISB checkpoint (2026-10-27, offline/QEMU only): commit
+`908fc8143905ce9684bf9aebab0d3692521fc602` moves the controlled stop past
+the architectural `ISB` following the `ICC_SRE_EL1=0x7` write, but before the
+first `ICC_BPR1_EL1` write or any later GIC CPU-interface access. Both new
+patches passed strict `git apply --check`; GitHub Actions run `40419290568`
+succeeded, and the built kernel contains the dynamic `DUCHAMP ICC_SRE_ISB`
+diagnostic without the stage-38 label. Direct QEMU displayed
+`SWEET EARLY 39: DUCHAMP ICC_SRE_ISB=0x0000000000000007`; no panic,
+exception, or abort was found. The 8 GiB bootshim path passed its
+embedded-payload byte comparison and XNU-entry test (`white_pixels=87584`).
+Artifact ZIP SHA256 is
+`ec08c3c0f2e8eebd8a8ed45bafd87fe59761c139112c7dba258e49f6809a7121`;
+kernel SHA256 is
+`4abac0df3eed3d2b02eed95f40f0a4e13a06c7bf0af93035f3b3f7538bd38695`;
+QEMU ADT SHA256 is
+`9a63e36992d234cca7e28b2cfb878d50b6dc0c2eca55859f6dafdff8ed9566ea`;
+payload SHA256 is
+`e292f31720724fc224119415599c9d8186a33eed1e9595b9f38bfad502805c19`;
+and bootshim Image SHA256 is
+`4ca9a8bba8fa776b80bbac65249fc9751a61023ad4bd3a1e9c787d689ed7af32`.
+No phone image was prepared or flashed for this checkpoint.
+
+ICC-SRE-write checkpoint (2026-10-27, offline/QEMU only): commit
+`878db3d6ddd2eb08bc835f168b46fac0c59d13b5` moves the controlled stop past
+one `ICC_SRE_EL1` write of the local value `0x7`, but before the following
+architectural `ISB` and before any `ICC_BPR1_EL1` or later CPU-interface
+access. The diagnostic stop deliberately uses `DSB` without `ISB` so the
+checkpoint preserves that boundary exactly. Both new patches passed strict
+`git apply --check`; GitHub Actions run `40418011903` succeeded, and the built
+kernel contains the dynamic `DUCHAMP ICC_SRE_WRITE` diagnostic without the
+stage-37 label. Direct QEMU displayed
+`SWEET EARLY 38: DUCHAMP ICC_SRE_WRITE=0x0000000000000007`; no panic,
+exception, or abort was found. The 8 GiB bootshim path passed its
+embedded-payload byte comparison and XNU-entry test (`white_pixels=87900`).
+Artifact ZIP SHA256 is
+`326d5b5bd79f909422e80c637bc001ebec3e760ff7fefcf2d7ccad0472dd097c`;
+kernel SHA256 is
+`5b913f6b5747edb58d87121d5d227afe3c0300b42e93abed1425fb546f21716b`;
+QEMU ADT SHA256 is
+`a7dbc7ec43a1c7d35e61b6e2e90af4bba062d3953ee9c31ebb44d813055f0ae8`;
+payload SHA256 is
+`52422a198714c0c4de9b9cb956d8d249577873ed74607bfda85f1583f5fd4ea2`;
+and bootshim Image SHA256 is
+`b1beaefdfd0ca1cea4239573a67a0de7f0bbcdb74881b9c95c96515c93a7207a`.
+No phone image was prepared or flashed for this checkpoint.
+
+ICC-SRE-local-update checkpoint (2026-10-27, offline/QEMU only): commit
+`20c3f31a3e09fba026b63b6ee79de2b37b671c05` moves the controlled stop past
+the local `icc_sre |= ICC_SRE_SRE` operation, while keeping the hardware
+`ICC_SRE_EL1` write after the stop. Both new patches passed strict
+`git apply --check`; GitHub Actions run `40416666146` succeeded, and the built
+kernel contains the dynamic `DUCHAMP ICC_SRE_LOCAL` diagnostic without the
+stage-36 label. Direct QEMU displayed
+`SWEET EARLY 37: DUCHAMP ICC_SRE_LOCAL=0x0000000000000007`, proving that
+setting the already-set SRE bit leaves the local value at `0x7`; no panic,
+exception, or abort was found. The source barrier remains immediately before
+the `ICC_SRE_EL1` write. The 8 GiB bootshim path passed its embedded-payload
+byte comparison and XNU-entry test (`white_pixels=87792`). Artifact ZIP
+SHA256 is
+`58ebefb927059b6b2be0b4fc7c4cb8ceef8aa5cfb5373dedaa93e178891c7a9b`;
+kernel SHA256 is
+`5ea3b4fe9af6d04842a833f33c52e5a0a9bd0e77dc2b76a92e38a9d995c966bd`;
+QEMU ADT SHA256 is
+`81c5d35fe9caf936c671b1f5e92b709322d0d6a9247a4c37e42f108cf6f4bb34`;
+payload SHA256 is
+`cbd72454eec903f3a2170a995cea344eb0a04a924c53d53518c68814dfa1ee7c`;
+and bootshim Image SHA256 is
+`08c287abe0c2574935f0a38389fdc6976c4dee39606dbd64a7d9d050f43e5f01`.
+No phone image was prepared or flashed for this checkpoint.
+
+ICC-SRE-read checkpoint (2026-10-27, offline/QEMU only): commits
+`c310861dd40dbdd009f7712603c18aced2e668dd` and diagnostic follow-up
+`5a20560669eac50870b68ad21d92653eec9e8dea` move the controlled stop past a
+single `ICC_SRE_EL1` read, but before setting `ICC_SRE_SRE` or writing the
+register. All new patches passed strict `git apply --check`. GitHub Actions
+runs `40412637682` and `40414220687` succeeded. The follow-up was required
+because the current QEMU `kprintf` path produces no serial/log output; it
+renders the captured value directly through the early framebuffer instead.
+Direct QEMU displayed
+`SWEET EARLY 36: DUCHAMP ICC_SRE_EL1=0x0000000000000007`, proving the read
+returned `0x7`; no panic, exception, or abort was found. The source barrier is
+before both `icc_sre |= ICC_SRE_SRE` and the `ICC_SRE_EL1` write. The 8 GiB
+bootshim path passed its embedded-payload byte comparison and XNU-entry test
+(`white_pixels=87508`). Final artifact ZIP SHA256 is
+`bffdee19887658d8b4f3feee9881fdcfc88407bf199b87f0ab44c55f21719b83`;
+kernel SHA256 is
+`4f317a9c56c5a17687dced0fd54bc6d677994bb6de3b334f870ffa21d741308a`;
+QEMU ADT SHA256 is
+`f64afcc63e6bc60f6b43a8cc5f22b5045f49fe024dd3eebc9276ec505df016c8`;
+payload SHA256 is
+`16add4d7f90de7c32157307594edb071f651fa7d95354ede156ff882b626aba2`;
+and bootshim Image SHA256 is
+`35293cf8c9fa6552620c06e53a1ea0356ecf6ff4c8301f9a3c441b1549d4111c`.
+No phone image was prepared or flashed for this checkpoint.
+
+GICR-enable-write checkpoint (2026-10-27, offline/QEMU only): commit
+`8d8b5d1fcff860ea723eb1b4b5d5db708ee892f8` moves the controlled stop past
+the single `GICR_ISENABLER0` write, but before the first read of `ICC_SRE_EL1`
+and all later GIC CPU-interface configuration. Both new patches passed strict
+`git apply --check`; GitHub Actions run `40410897889` succeeded, and the built
+kernel contains `DUCHAMP GICR ENABLE WRITE READY` without the stage-34 stop.
+Direct QEMU displayed `SWEET EARLY 35: DUCHAMP GICR ENABLE WRITE READY`; no
+panic, exception, or abort was found. A read-only monitor check reported
+`GICR_ISENABLER0=0x08000002`, exactly bits 27 (virtual timer from the QEMU ADT)
+and 1 (`SWEET_IPI_SGI`). The first and last priority words remained
+`0xA0A0A0A0`. The 8 GiB bootshim path passed its embedded-payload byte
+comparison and XNU-entry test (`white_pixels=86220`). Artifact ZIP SHA256 is
+`90258a9e32da99ebf4014e31e12d2cea8781631be57e28f91e643ddb725bd072`;
+kernel SHA256 is
+`4632f75bc095337a9b7892027a4ef9da82d96c28bc0b17fca956008054b51ecb`;
+QEMU ADT SHA256 is
+`11d950db4caf88fcaf57b6d1477bacfd0370f6d13227408e0a006f7785b03341`;
+payload SHA256 is
+`a8640790189aece3fa5457fd39ac3323bc9378a1bb5d8a7a22a8052b838dac22`;
+and bootshim Image SHA256 is
+`ad0ff766a78686792cd07d0ec1d0823289a7b3c103c367d91df66f897dbb3975`.
+No phone image was prepared or flashed for this checkpoint.
+
+GICR-all-priorities checkpoint (2026-10-27, offline/QEMU only): commit
+`7c2bafb97f44b439ea19a292cbf5a55646703811` moves the controlled stop past
+all eight 32-bit `GICR_IPRIORITYR0` writes (offsets 0 through 28), but before
+the first `GICR_ISENABLER0` write. Both new patches passed strict
+`git apply --check`; GitHub Actions run `40409236556` succeeded, and the built
+kernel contains `DUCHAMP GICR PRIORITIES READY` without the stage-33 stop.
+Direct QEMU displayed `SWEET EARLY 34: DUCHAMP GICR PRIORITIES READY`; no
+panic, exception, or abort was found. Eight separate read-only monitor checks
+reported `0xA0A0A0A0` for every priority word, while
+`GICR_ISENABLER0=0x00000000`, proving that priority setup completed without
+enabling an interrupt. A QEMU HMP bulk `xp /8wx` read misleadingly returned
+zeros, so the result was rechecked and confirmed with individual reads. The
+8 GiB bootshim path passed its embedded-payload byte comparison and XNU-entry
+test (`white_pixels=85900`). Artifact ZIP SHA256 is
+`2c637dafa31fc96644d5f05c8cfd7be617d78a5aa97259b2f6521f4d5999ab92`;
+kernel SHA256 is
+`5d71f6a9862aa9a9bdcc858769fae034cd8b02ac03ee9fe5b56d0706ec09da7c`;
+QEMU ADT SHA256 is
+`6c65e44a59f01c2a9e6ee353e1832c8d6a341a7c61505d536e25aab2db45c2aa`;
+payload SHA256 is
+`71799d8bbe63124d2401f212a3e1fb083995d91b5e366188ea5d8decc8217196`;
+and bootshim Image SHA256 is
+`7377fc3f403786578fda24c8c96fe7c05a08434e5638872f3bd55e0df255080c`.
+No phone image was prepared or flashed for this checkpoint.
+
+GICR-first-priority-write checkpoint (2026-10-27, offline/QEMU only): commit
+`9af35d7a96d6d3f100ba37fc7edc6d2fdc64fb90` separates the first
+`GICR_IPRIORITYR0` write at offset zero from the remaining priority writes,
+and stops before offsets 4 through 28 and before `GICR_ISENABLER0`. Both new
+patches passed strict `git apply --check`; GitHub Actions run `40407587527`
+succeeded, and the built kernel contains `DUCHAMP GICR PRIORITY0 WRITE READY`
+without the stage-32 stop. Direct QEMU displayed
+`SWEET EARLY 33: DUCHAMP GICR PRIORITY0 WRITE READY`; no panic, exception, or
+abort was found. Read-only monitor checks reported the first priority word as
+`0xA0A0A0A0`, the next priority word as `0x00000000`, and
+`GICR_ISENABLER0=0x00000000`, proving that only the intended priority write
+ran. The 8 GiB bootshim path passed its embedded-payload byte comparison and
+XNU-entry test (`white_pixels=86536`). Artifact ZIP SHA256 is
+`6e650ae2bbebeca019e5f136f9a1f9701e420bd91aed7c231062edd3edea3f11`;
+kernel SHA256 is
+`3d60ce9b2d22240c02daef774d2f0946bf2120e300e159a77a7c51985833007d`;
+QEMU ADT SHA256 is
+`817f554db9850b4d7fcd93af355ec3e95fbebe86e47becd75d02e7fb6efb1ea5`;
+payload SHA256 is
+`b48c4d9beb398cdb83692a2da3bc35facc3c46f19d38e372cfda743e2222dba2`;
+and bootshim Image SHA256 is
+`6da15cd276b957766d0e008b1cf0a9dce30dc7ba257a3b9e0828ac744597224f`.
+No phone image was prepared or flashed for this checkpoint.
+
+GICR-IGROUPR0-write checkpoint (2026-10-27, offline/QEMU only): commit
+`dca407e5a9a2747b17f6fcabd0bc5603fe1b1aab` moves the controlled stop past
+the first `GICR_IGROUPR0` write (`0xFFFFFFFF`), but before any
+`GICR_IPRIORITYR0` or `GICR_ISENABLER0` write. Both new patches passed strict
+`git apply --check`; GitHub Actions run `40405673875` succeeded, and the built
+kernel contains `DUCHAMP GICR IGROUPR0 WRITE READY` without the stage-31 stop.
+Direct QEMU displayed
+`SWEET EARLY 32: DUCHAMP GICR IGROUPR0 WRITE READY`; no panic, exception, or
+abort was found. Read-only monitor checks reported `GICR_WAKER=0x00000000`
+and `GICR_IGROUPR0=0xFFFFFFFF`, confirming the isolated group write. The
+8 GiB bootshim path passed its embedded-payload byte comparison and XNU-entry
+test (`white_pixels=86516`). Artifact ZIP SHA256 is
+`d13725fbe8d0173965d59e37530285d83f23ef6cc7f3f06ef7c115cc681b95b2`;
+kernel SHA256 is
+`ee1b152f93b467279e71f00792193582a9f2120bafa377d3d47b6b46e58f5f5e`;
+QEMU ADT SHA256 is
+`04d00515132d8283701edc7e8c99fb22a7d139e9931d9efa30405e7e16005f47`;
+payload SHA256 is
+`ac8ab4351dcfeb4e79b3447b5b6df6fc17642394cbfed145297557e5b6cdaefb`;
+and bootshim Image SHA256 is
+`0ed8c980f34f6212badc7b08439f8ebbf0c3c8c08a83bce1f76c46f153716159`.
+No phone image was prepared or flashed for this checkpoint.
+
+GICR-awake checkpoint (2026-10-27, offline/QEMU only): commit
+`638b0cbf5f2c4e07a95d68ab63a823b3cb05c930` moves the controlled stop past
+the complete `CHILDRENASLEEP` polling loop, but before the first write to
+`GICR_IGROUPR0`. Both patches passed strict `git apply --check`; GitHub Actions
+run `40401666217` succeeded, and the built kernel contains
+`DUCHAMP GICR AWAKE READY` without the stage-30 stop. Direct QEMU displayed
+`SWEET EARLY 31: DUCHAMP GICR AWAKE READY`; no panic, exception, or abort was
+found. A read-only monitor check reported `GICR_WAKER=0x00000000`, confirming
+that the polling condition had cleared before the checkpoint. The 8 GiB
+bootshim path passed its embedded-payload byte comparison and XNU-entry test
+(`white_pixels=85376`). Artifact ZIP SHA256 is
+`c90a852391a328d4dcbc5e911f3a9e90323951cec96651ad325ed3941a17c295`;
+kernel SHA256 is
+`8e92a4028e16188d663c41d332ebd244f39fb21eea2038a27ce990a8402f9f75`;
+QEMU ADT SHA256 is
+`d8041de5b7a13c9ac4599b1cc02334b5f0bae274a89f442afbbd61b84d85467c`;
+payload SHA256 is
+`393af77c3b31b15f091a1ec5b55df16af667ed32f860c8d09f58078dc8518f6c`;
+and bootshim Image SHA256 is
+`3f92670d8c3d2b407e6b1f38f7075437090a414ebc764c29d825931d0aa4f1de`.
+No phone image was prepared or flashed for this checkpoint.
+
+GICR-WAKER-write checkpoint (2026-10-27, offline/QEMU only): commits
+`4de128cb6792d01e0d551558a4ce5095fd4b45b5` and corrective
+`08aa0d995c404b206cf2cf9f65ddf3f2dcc956aa` move the controlled stop past
+clearing `PROCESSORSLEEP` and the single `GICR_WAKER` write, but before the
+first polling read of `CHILDRENASLEEP`. The first CI run exposed that dxb's
+strict `git apply` skipped patch 0103 despite the permissive local `patch`
+check; the hunk was corrected and verified with `git apply --check`. GitHub
+Actions run `40399036931` then succeeded, and its kernel contains the stage-30
+strings but not the old stage-29 stop. Direct QEMU displayed
+`SWEET EARLY 30: DUCHAMP GICR WAKER WRITE READY`; no panic, exception, or
+abort was found. A read-only monitor check after the write reported
+`GICR_WAKER=0x00000000` (stage 29 had read `0x00000006`), confirming that QEMU
+cleared both sleep bits before any kernel polling read. The 8 GiB bootshim path
+passed its embedded-payload byte comparison and XNU-entry test
+(`white_pixels=86156`). Artifact ZIP SHA256 is
+`1a4ea1a8e0342fa741273f7b6e43afde8843e6542c251e56ae0c8fd85d15b371`;
+kernel SHA256 is
+`2b064c6101ebd729acad9c23481139ecb2b3f4eda8f86b9705c9bb755a046f48`;
+QEMU ADT SHA256 is
+`b858362249fd07ac98755d51d2926877b04f1e0b37c230d5bbab0f9a38f33b0f`;
+payload SHA256 is
+`bc5eca9e8179ba9ea6cb55181f2db350530a0ed831c35d6d6cea072fe8b08fbc`;
+and bootshim Image SHA256 is
+`2b0f070251cbfda619cc3c1f95efbfe037b991aceed5e871fab82ee66721639e`.
+No phone image was prepared or flashed for this checkpoint.
+
+GICR-WAKER-read checkpoint (2026-10-26, offline/QEMU only): commit
+`2cc8e1084cc5c1a627bba76fdf6eddadd2e168b0` moves the controlled stop past
+the first `GICR_WAKER` read and before clearing `PROCESSORSLEEP`, changing the
+local value, or writing any GICR register. GitHub Actions run `40393220355`
+succeeded. Using the QEMU-only GICv3 ADT with the Duchamp diagnostic RAM
+window, direct QEMU displayed
+`SWEET EARLY 29: DUCHAMP GICR WAKER READ READY`; no panic, exception, or abort
+was found. A read-only QEMU monitor check reported `GICR_WAKER=0x00000006`, so
+both `PROCESSORSLEEP` and `CHILDRENASLEEP` were set. The 8 GiB bootshim path
+passed its embedded-payload byte comparison and XNU-entry test
+(`white_pixels=86076`). Artifact ZIP SHA256 is
+`60109cc7fd887809e128c131df4918ad413950a6ef932685a57dc52fcd506614`;
+kernel SHA256 is
+`08d8f164bfb5e3f58badb2d80ee33ff3a6dc3a0bcfa6175aab7cf63803ad63ee`;
+QEMU ADT SHA256 is
+`d97695cc5eece82a6247e1feb7053a9ba210c09b2c26dae04423774e776a85ed`;
+payload SHA256 is
+`e3f21cdf6d9124b9933c2e9d1110238de14a9808c841da2d71f28f1594ce655c`;
+and bootshim Image SHA256 is
+`5b2ffc5c463a7a96e57f7b2944a5d11baaa2d710e86c0451bc862045b81b6842`.
+No phone image was prepared or flashed for this checkpoint.
+
+GICR-TYPER checkpoint (2026-10-26, offline/QEMU only): commit
+`6c513023e54ed9e785fc3aa4e0ba63bab1acf882` moves the controlled stop past
+`find_gicr_pe_base()`, proving that `GICR_TYPER` was read and a redistributor
+matching the boot CPU was found, while stopping before the first
+`GICR_WAKER` read. GitHub Actions run `40387966765` eventually succeeded.
+The first direct test deliberately exposed an ADT/model mismatch: the phone
+GICR address caused a data abort at `pe_init_fiq+0x168` in QEMU. A separate
+QEMU-only ADT now combines QEMU virt GICv3 addresses (`GICD=0x08000000`,
+`GICR=0x080a0000`, virtual timer INTID 27) with the diagnostic bootshim's
+measured Duchamp RAM window (`0x1c0000000 + 0x20000000`). The phone/default
+ADT values are unchanged. With that ADT, direct QEMU displayed
+`SWEET EARLY 28: DUCHAMP GICR TYPER READY` with no panic, exception, or abort.
+The 8 GiB bootshim path passed its embedded-payload byte comparison and XNU
+entry test (`white_pixels=85304`). Kernel SHA256 is
+`3cb141c51eb598fbc07991678edd6b5f824b6b436ad7a7c11ac95367b0abee50`;
+QEMU ADT SHA256 is
+`fc7e51a61fe7712cac60e8dc26b22a2f564f60d63a302114b3e72cfc675327b4`;
+payload SHA256 is
+`1c8c8e30b4e7c41e07575f86a200c931f640fa6c820927d9815b4fe6811dd9cd`;
+and bootshim Image SHA256 is
+`dffcc0288188d09f98e648b3a1b2b9cfe634be5ee28ff0f37bf9a096e3e20e79`.
+No phone image was prepared or flashed for this checkpoint.
+
+GIC-map checkpoint (2026-10-26, offline/QEMU only): commit
+`689d674f3c320846c4b62ad0bc75a9f999375e5b` moves the controlled stop past
+successful `ml_io_map()` calls for both GICD and GICR, but before
+`find_gicr_pe_base()` and its first `GICR_TYPER` MMIO read. GitHub Actions run
+`40383300486` succeeded. The artifact ZIP SHA256 is
+`8c838b80c7177e95fe20df745923a406c2c94a647352b96a4fd33825adbb5460`;
+the kernel SHA256 is
+`851d471b03bddf24d06317a943ac5edd3fcec0c79eba49357899956ca8745287`;
+and the rebuilt payload SHA256 is
+`44228caf625e889c4ea91a87519b61d10c22cc098c01f960b5a748d8f9e7a96b`.
+Direct QEMU displayed `SWEET EARLY 27: DUCHAMP GIC MAP READY`; no panic,
+exception, or abort was found. The captured-phone-FDT, 8 GiB bootshim path
+passed its embedded-payload byte comparison and XNU-entry test
+(`white_pixels=76428`); its Image SHA256 is
+`0de62b9d9120abdf2bf9eb01031ff1e5da8432ed0d778cd5aae3c5fd43670783`.
+No phone image was prepared or flashed for this checkpoint.
+
+GIC-reg checkpoint (2026-10-26, offline/QEMU only): commit
+`416948811d49357667a0accd9b3f495da46fb1be` moves the controlled stop past
+the `/arm-io/gic` lookup and validation of its mandatory `reg` cells. It
+rejects zero-sized GICD/GICR regions and physical-address addition overflow,
+then stops before `ml_io_map()` and therefore before any GICD/GICR MMIO read
+or write. GitHub Actions run `40381045575` succeeded. The artifact ZIP SHA256
+is `d9d83496cc153e8df79250e196d104564628f677056f6d1879c7bf5f5464c957`;
+the kernel SHA256 is
+`2e52257a3a44e8c0b1aedea854a65785c6e4f804e1fe0e9d0292858ada9bbf0a`;
+and the rebuilt payload SHA256 is
+`79883ee6dee7350fded78210b5cdee83b2a25ece1b976d5aa9847efeebdf41e9`.
+Direct QEMU displayed `SWEET EARLY 26: DUCHAMP GIC REG READY`; no panic,
+exception, or abort was found. The three trailing unknown glyphs are the known
+framebuffer-decoder limitation. The captured-phone-FDT, 8 GiB bootshim path
+passed its embedded-payload byte comparison and XNU-entry test
+(`white_pixels=74924`); its Image SHA256 is
+`9327e1d0d2b72d2e01bafca2c4f9850fe40cabf917ecc9fcb037a07a1607e7b6`.
+No phone image was prepared or flashed for this checkpoint.
+
+GIC-entry checkpoint (2026-10-26, offline/QEMU only): commit
+`b4e35b1f89e82a0c2ff04d7b6afdf9dd0d84fb39` moves the controlled stop to the
+entry of `pe_init_fiq()`, before GICD/GICR discovery, mapping, or register
+access. This proves that `ml_map_cpu_pio()` and `cpu_timebase_init(TRUE)`
+returned and that `PE_init_cpu()` reached the GICv3 initialization boundary.
+GitHub Actions run `40378344512` succeeded. The artifact ZIP SHA256 is
+`b2708f022ed290772e943cb680671ed24da5e5706df3cd90429a7e27714d4d3a`; the
+kernel SHA256 is
+`187d189dc59a3b016f2738eaade58acf99f8a075e7327d6020b9e1c5ada96fec`; and the
+rebuilt payload SHA256 is
+`980f8c56c2a3a8845d974584792950213d34761f0f4254080e3da95ff0be5f38`.
+Direct QEMU displayed `SWEET EARLY 25: DUCHAMP GIC ENTRY READY`; no panic,
+exception, or abort was found. Its framebuffer decoder reported three unknown
+glyphs after the marker, so the wrapper returned nonzero despite the successful
+checkpoint. The complete captured-phone-FDT, 8 GiB bootshim path passed its
+embedded-payload byte comparison and XNU-entry test (`white_pixels=76680`); its
+Image SHA256 is
+`387dbba2c8eae3fda1f55c27f36405df9bd20cbd0b7c728187bcd17b90ae9ed6`.
+No phone image was prepared or flashed for this checkpoint.
+
+CPU-PIO checkpoint (2026-10-26, offline/QEMU only): commit
+`479a6081428f53d5d2f704ad7ef2297ce8b1b8f9` places the controlled stop after
+`ml_map_cpu_pio()` and before `cpu_timebase_init(TRUE)`. GitHub Actions run
+`40376523768` succeeded. Direct QEMU displayed
+`SWEET EARLY 24: DUCHAMP CPU PIO READY` without a visible panic, and the full
+captured-phone-FDT, 8 GiB bootshim path passed (`white_pixels=76412`). No phone
+image was prepared or flashed for this checkpoint.
+
+PLATFORM checkpoint (2026-10-26, offline/QEMU only): commit
+`c8eaa0fc58d8bce01a9e3ce4752b8d81061817ab` moves the controlled stop to
+immediately after `PE_init_platform(TRUE, &BootCpuData)` and before
+`ml_map_cpu_pio`, GIC, or `cpu_timebase_init`. GitHub Actions run
+`40374543035` succeeded. The kernel SHA256 is
+`8494ddce333f613aa55170a5c0cad8e860df36a9c6194b57abd4f0310607ebbc`;
+the rebuilt payload SHA256 is
+`425b7f5882f21174e216b371dcf2c662d05613876d806e7c344e4f9638ff558b`.
+Direct QEMU displayed `SWEET EARLY 23: DUCHAMP PLATFORM READY` with no visible
+panic. The complete captured-phone-FDT, 8 GiB bootshim/materialize/ready/jump
+path also passed (`white_pixels=76760`); its Image SHA256 is
+`8d8deef304ea4d33ae750e711411d185d269e915432cf7f7c0c9916206bdb7f9`.
+No phone image was prepared or flashed for this checkpoint.
+
+CPU-IDLE checkpoint (2026-10-26, offline/QEMU only): commit
+`310935877302bb2aa35a5cbd78293b918e3ef040` adds a controlled stop immediately
+after `cpu_machine_idle_init(TRUE)` and before `PE_init_platform(TRUE)`, GIC,
+or timer setup. GitHub Actions run `40274811327` succeeded. The kernel SHA256
+is `15f939d382fb4e35d4fce21b68124afc49c9182e648f456603e1ad255871f160`;
+the rebuilt payload SHA256 is
+`57d5380044152b28055181c7e73fb37f24168f922c5dc52deaa70821374729cb`.
+Direct QEMU displayed `SWEET EARLY 22: DUCHAMP CPU IDLE READY` with no visible
+panic. The full captured-FDT, 8 GiB bootshim/materialize/ready/jump path also
+passed (`white_pixels=76496`); its Image SHA256 is
+`5f5b8ad9af178812705007876dbf0eed8e0031de87b93ff85ea9a1cc246a409e`.
+No phone boot, partition write, or hardware claim was made for this checkpoint.
+
+The offline phone candidate is
+`work/duchamp-xnu-cpu-idle-stage22-avb-none-lz4.img`, exactly 64 MiB, SHA256
+`70426d5ba8f6f57c0531eef9870720e62163ec087d9af66ee79222a21efee3c7`.
+AOSP `avbtool verify_image` verified its NONE vbmeta footer and the SHA-256
+`boot` descriptor over the measured 16,318,464-byte payload region. Its LZ4
+legacy kernel was decompressed and byte-compared equal to the tested bootshim
+Image (`5f5b8ad9af178812705007876dbf0eed8e0031de87b93ff85ea9a1cc246a409e`).
+This image is prepared but has not been flashed.
+
+CPU-IDLE hardware checkpoint (2026-10-26): after explicit approval and guarded
+preflight, the AVB-NONE/LZ4 candidate was written to `boot_a` only. The POCO
+X6 Pro framebuffer showed the complete expected early trace and the controlled
+terminal line `SWEET EARLY 22: DUCHAMP CPU IDLE READY`, with no visible panic.
+Photo evidence is `work/duchamp-xnu-cpu-idle-hardware-pass.jpg`, SHA256
+`80c2d0d3a03ec25202f7d836ea01e8a2b6054426a9cb609088f82bb363e64266`.
+The guarded recovery then verified and restored the original 64 MiB `boot_a`
+SHA256 `1b972f4f1c98428f2fca1e7c1c8cf463e0122a70a290e482be3230c7838e3e12`.
+Android `V816.0.17.0.UNLMIXM` completed boot on slot `_a`; the device again
+reported `duchamp`, `mt6897`, and Magisk `uid=0`. No other partition was
+written during the test or restoration.
+
+CONSOLE hardware checkpoint (2026-10-25): XNU built from commit
+`ef86db3e2168c40992d5d80db265ede3425abf41` reached the controlled
+`DUCHAMP CONSOLE READY` stop on the POCO X6 Pro (`duchamp`, MT6897). The
+on-device framebuffer showed successful return from `arm_vm_init`,
+`serial_init`, kprintf startup, `PE_create_console`, and `PE_init_printf`,
+with no visible panic. The tested kernel SHA256 was
+`45fe3c67cdf4bb5ad93d76c69aef0761c046701ee3f9ef2cc86e4e0b8b74e9a4`;
+the tested boot image SHA256 was
+`bff9ddadf09855a9cdfba031c3a36ba481aa54144fead6b3cf0567f263d9848d`.
+Photo evidence is `work/duchamp-xnu-console-ready-hardware-pass.jpg` with
+SHA256 `4976cf986e56007d38eab7f1aacb94ef3fc8192824da1d2f8966a2b7e29e0705`.
+After the test, the verified 64 MiB stock `boot_a` image SHA256
+`1b972f4f1c98428f2fca1e7c1c8cf463e0122a70a290e482be3230c7838e3e12`
+was restored. Android `V816.0.17.0.UNLMIXM` completed boot on slot `_a`, and
+Magisk root returned `uid=0`. No partition other than `boot_a` was written.
+
+KPRINTF hardware checkpoint (2026-10-25): XNU built from commit
+`2db493c27f778c6d14b94366ceb198caf5289e62` reached the controlled
+`DUCHAMP KPRINTF READY` stop on the POCO X6 Pro (`duchamp`, MT6897). The
+framebuffer showed successful return from `arm_vm_init`, `serial_init`, and
+the kprintf startup level, with no visible panic. The tested boot image SHA256
+was `21db524362144ee062ae6bf4bc31f4e2c6cdef6a2132967e7ecf7df43477907f`;
+photo evidence is `work/duchamp-xnu-kprintf-hardware-pass.jpg` with SHA256
+`ef45c6391c621979a786e3950271e64e787ff6e94be18f108a1ef3e19ba7ed04`.
+After the test, the verified 64 MiB stock `boot_a` image SHA256
+`1b972f4f1c98428f2fca1e7c1c8cf463e0122a70a290e482be3230c7838e3e12`
+was restored. Android `V816.0.17.0.UNLMIXM` completed boot on slot `_a`, and
+Magisk root returned `uid=0`. No partition other than `boot_a` was written.
+
 Direct device read (2026-10-24): ADB/root reports Linux
 `6.1.57-android14-11` on aarch64 and the expected ARM feature set. Android's
 `dmesg` exposes no usable EL or PSCI diagnostic, so the current EL cannot be
@@ -3607,3 +5340,551 @@ reference with the Duchamp firmware evidence. The gate accepts only EL1
 pointer received in `x0` to a caller-provided live-memory range. EL2 and
 MMU/cache-on entry fail closed. This is host-tested metadata validation, not a
 phone boot or proof that LK supplies the same register contract.
+
+## 2026-10-25: Duchamp diagnostic bootshim host build
+
+Added `duchamp/bootshim`, a position-independent ARM64 Linux Image diagnostic.
+It preserves LK `x0` through `x3` and the old stack pointer, accepts only EL1,
+requires `SCTLR_EL1.M/C/I` clear, validates an aligned FDT header in the low
+RAM window, writes only a 12-row framebuffer marker, and stops in `WFE`. It has
+no XNU branch, storage access, PSCI call, GIC setup, watchdog change, boot-image
+wrapper, or flashing command. The local Clang/LLD build produced a 39,840-byte
+Image with no relocations and SHA256
+`42c23b9ffbc18dc8a9ece93591c6fa91ef613948608129853b8771b5010c71e1`.
+This is a host build and inspection result only; it has not run on the phone.
+
+The diagnostic was also wrapped offline as an unsigned Android boot-header-v4
+image using only the captured stock header metadata. Stock `boot_a` has kernel
+size `0xf8a6e1`, empty ramdisk, header size 1584, version 4, and empty boot
+signature. The wrapper replaces only the kernel size/payload and deliberately
+omits the invalidated AVB footer. Output size is 45,056 bytes and SHA256 is
+`3702cd16974ea42abf05a46cc00256cf1d4e6f4421896c44dea8139df981e824`.
+It is not approved for flashing and has not been passed to fastboot.
+
+## 2026-10-25: Duchamp RAM-only fastboot probe
+
+Windows detected the phone as `Android Bootloader Interface`; fastboot reported
+`product: duchamp`, `unlocked: yes`, `current-slot: a`, `slot-count: 2`, and
+`is-userspace: no`. After explicit approval, the 45,056-byte diagnostic wrapper
+was submitted with `fastboot boot` (RAM-only). USB transfer completed, but the
+device bootloader rejected the operation with `FAILED (remote: 'unknown command')`.
+The phone remained in fastboot on slot `a`; no partition was flashed or modified,
+and no bootshim code executed. Therefore this bootloader does not expose the
+standard RAM-only `boot` command, and the diagnostic image remains host-tested
+only. Do not substitute `fastboot flash` as a workaround.
+
+After rebooting normally, `/proc/config.gz` reported both
+`# CONFIG_KEXEC is not set` and `# CONFIG_KEXEC_FILE is not set`; the kexec
+sysfs state files were absent as well. Consequently the running Android kernel
+cannot provide a second RAM-only launch path for this diagnostic. Enabling that
+route would require building and booting a different Android kernel first, so it
+does not remove the same verified-boot/deployment boundary.
+
+## 2026-10-25: Duchamp framebuffer and early-XNU QEMU verification
+
+Fixed `tools/qemu-sweet.py` to place its transient QMP UNIX socket under
+`/tmp`; the Windows-mounted workspace path exceeded Linux's AF_UNIX path limit
+and previously made QEMU exit before starting. A fresh run with QEMU 10.2.1,
+`work/payload-duchamp-final.bin`, the matching unstripped kernel, and
+`--framebuffer duchamp` rendered the measured 1220x2712, 4992-byte-stride
+framebuffer correctly. The decoded screen progressed through all early markers,
+including `arm_vm_init returned`, and stopped at the intentional
+`DUCHAMP XNU MEMORY READY` milestone. QEMU logged no exceptions or guest errors.
+
+The result classifier now recognizes that explicit Duchamp milestone before
+reporting unknown glyphs caused by the diagnostic color band. The repeated
+five-second run returned `duchamp_memory_ready`; this verifies the QEMU memory
+and framebuffer bootstrap path only, not MT6897 hardware execution.
+
+## 2026-10-25: live A/B partition audit after restoring Magisk
+
+Magisk v30.7 was initially installed by patching a local image that was later
+found, through its AVB properties, to be Redmi `topaz` Android 13 rather than
+Duchamp. It happened to boot on the unlocked device but must not be treated as
+a stock backup. The installed `init_boot_a` was subsequently replaced with a
+Magisk-patched image carrying the correct Duchamp/MT6897 Android 14
+`V816.0.17.0.UNLMIXM` AVB properties; Android and uid-0 Magisk root were
+verified afterward. An exact factory `init_boot_a` is still unavailable.
+
+Root-assisted, read-only copies of the B-slot boot-chain partitions showed that
+`boot_b` and `vendor_boot_b` are each exactly 64 MiB of zeroes (SHA256
+`3b6a07d0d404fab4e23b6d34bc6696a6a312dd92821332385e5af7c01c421351`).
+`init_boot_b` contains an Android boot image and `vbmeta_b` contains AVB data,
+but that does not make the slot bootable without its boot and vendor_boot
+payloads. Therefore slot `b` must not be selected or treated as a safe isolated
+test slot. Populating or cloning the missing B-slot chain would be a separate,
+multi-partition operation and is not authorized by the diagnostic work.
+
+The diagnostic bootshim now also has a native host harness that maps stand-ins
+at the measured FDT and framebuffer addresses. It verified that EL2 and
+MMU-enabled entries leave the framebuffer untouched, invalid and oversized FDT
+headers produce only the failure band, a valid FDT produces the success band,
+and all stride padding remains unchanged. The complete harness passed, and the
+freestanding ARM64 image rebuilt with no relocations and the same 39,840-byte
+size.
+
+Added a versioned, checksummed RAM-only diagnostic record containing the entry
+gate result, marker decision, FDT magic/size, and preserved EL/SCTLR/x0-x3/SP.
+The host harness verifies the record for EL2, MMU-on, invalid, valid, and
+oversized-FDT cases. The first freestanding link correctly rejected an implicit
+`memcpy` generated by a structure assignment; replacing it with explicit field
+copies removed the runtime dependency. Final host tests pass, the ARM64 ELF has
+no relocations or unresolved runtime symbols, and its 40,768-byte Image SHA256
+is `e5d5802007eda109cc355b9fd2145d48106f6420914a641e12039c4e2c614ffc`.
+
+The marker is now a 12-row visual report: overall status, EL1, MMU/data-cache/
+instruction-cache state, FDT range, magic and size, followed by a four-row
+alternating build signature. The native harness still passes and verifies row
+padding. A second test boots the actual linked ARM64 Image under QEMU, captures
+the physical Duchamp framebuffer through QMP, and verifies all rows and padding;
+it reports `bootshim-qemu-test: PASS`. The resulting 40,400-byte Image SHA256 is
+`54edce9ab28cf389087b1902068529e5b5d7e67df71904df2f40467b293f83b3`.
+The offline boot-header-v4 wrapper is 45,056 bytes with SHA256
+`75eb610c1b0717f76f8996330017ba8da35f3330d8a8c10b6270ab5370efae60`.
+
+Added a recovery-only PowerShell guard for stock `boot_a` and `init_boot_a`.
+It requires explicit confirmation, exact captured size/SHA256, one fastboot
+device, product `duchamp`, an unlocked bootloader and active slot `a`, and it
+deliberately leaves the phone in fastboot after restoration. Negative tests
+confirmed that missing confirmation and a wrong image hash fail before any
+fastboot write. The helper's existence is not authorization to flash the
+diagnostic image.
+
+## 2026-10-25: first Duchamp diagnostic boot partition trial
+
+After explicit approval, preflight confirmed a charging 45% battery, product
+`duchamp`, active slot `a`, unlocked bootloader, a 64 MiB `boot_a` partition,
+the stock backup SHA256 `1b972f4f1c98428f2fca1e7c1c8cf463e0122a70a290e482be3230c7838e3e12`,
+and diagnostic wrapper SHA256
+`75eb610c1b0717f76f8996330017ba8da35f3330d8a8c10b6270ab5370efae60`.
+Fastboot successfully wrote the 45,056-byte diagnostic to `boot_a` and rebooted.
+Eight seconds later the device exposed neither ADB nor fastboot, which is
+consistent with either the intentional WFE stop or an earlier boot-chain stop;
+the visual marker result has not yet been reported and must not be inferred.
+
+The user re-entered fastboot with the hardware keys. The guarded recovery tool
+verified and restored the full stock `boot_a`, then Android rebooted on slot
+`a`. ADB identified `duchamp`, and `su -c id` again returned uid 0 in the Magisk
+context. Recovery is therefore verified for this exact trial. No other
+partition was changed by the diagnostic test or its recovery.
+
+The user reported that the bootloader stopped before any diagnostic marker.
+Offline AOSP `avbtool` inspection then identified the packaging defect: stock
+`boot_a` is a full 64 MiB AVB partition with a signed vbmeta block at offset
+`0xf90000` and an `AVBf` footer, while the tested 45,056-byte wrapper omitted
+that container. A new offline-only wrapper preserves the original partition
+size, signed vbmeta, and footer while replacing and zero-padding the payload
+region. `avbtool info_image` parses it successfully and verifies the signed
+vbmeta; as expected, the boot payload digest no longer matches Xiaomi's hash.
+Its SHA256 is
+`6bf740d74144d72b0d87fe3df7f55addb22c77f4bb6ce7c748ea773c62aa1716`.
+Unlocked-state tolerance of that digest mismatch is not yet proven, so this
+image has not been flashed.
+
+The AVB+LZ4 candidate was flashed after explicit approval, but the user again
+reported a bootloader stop with no visual marker. The verified stock `boot_a`
+was restored, and Android `V816.0.17.0.UNLMIXM`, slot `a`, and uid-0 Magisk root
+were verified. This eliminates missing AVB layout and missing LZ4 framing as
+sufficient explanations; the preserved Xiaomi vbmeta still carried the old
+payload digest and was therefore internally inconsistent.
+
+Built a fourth offline candidate using `avbtool add_hash_footer --algorithm
+NONE` so its hash descriptor matches the modified LZ4 payload. Its payload
+region, vbmeta offset, partition size, salt, properties, and footer placement
+match the stock layout: 16,318,464-byte payload region, vbmeta at `0xf90000`,
+and 64 MiB total. AOSP `avbtool verify_image` verifies both its unsigned vbmeta
+and boot hash successfully. SHA256 is
+`800ddfe8c0e3cba7c5bcbc17a96e95648d4ca082f5913a1ec60dc89dec3ee282`.
+Whether the unlocked MT6897 boot chain accepts algorithm `NONE` for `boot` is
+not yet known; this candidate has not been flashed.
+
+The AVB-NONE/LZ4 candidate was flashed after explicit approval, but the user
+again reported a black bootloader stop with no marker. Stock `boot_a` was
+restored and Android, slot `a`, and uid-0 root were verified. This does not yet
+prove rejection before execution: the diagnostic assembly itself immediately
+halted without drawing for any entry EL other than EL1, and MediaTek may enter
+the Linux payload at EL2.
+
+The next diagnostic therefore records `SCTLR_EL2`, installs `VBAR_EL2`, and
+draws a red-EL report when entered at EL2 with translation/caches off. EL2 with
+translation or caches active remains a no-write stop, and there is still no
+`eret` or EL2-to-EL1 transition. Native tests cover safe and MMU-on EL2, and the
+linked ARM64 QEMU framebuffer test passes. The 40,608-byte Image SHA256 is
+`0e7dd27297335081cc2ec28f6346ec2094b1f7a4bc0f0464bc8b16278a89711c`.
+Its fully verified stock-layout AVB-NONE/LZ4 wrapper SHA256 is
+`0fb8929162d56a91915b010d7c1cebc9f0a2f2da62204621e07cd698d5dd491e`;
+it has not been flashed.
+
+The opaque full-screen-band candidate was flashed after approval and produced
+an unambiguous hardware PASS photograph: the upper eight bands were green,
+followed by cyan/magenta/cyan/magenta signature bands. This means overall gate
+success, EL1 entry, `SCTLR_EL1.M/C/I` all clear, FDT pointer range/alignment
+valid, FDT magic valid, and FDT size valid. It also proves the measured
+1220x2712 framebuffer base/stride and the watchdog-stop sequence on MT6897.
+The local evidence copy is `work/duchamp-entry-contract-pass.jpg`, SHA256
+`41b7d9852bf4cfc4853c11abb19c7d4487c5c83ee16a85f25292ecee16bbed86`.
+
+After recording the result, the guarded recovery restored stock `boot_a` and
+Android `V816.0.17.0.UNLMIXM`, slot `a`, and uid-0 Magisk root were verified.
+This is the first hardware-verified Duchamp LK-to-payload entry contract. It
+does not yet prove XNU execution; the next stage is a bounded loader that
+materializes the already QEMU-tested payload and retains a fail-closed stop
+before any XNU jump until its memory layout is revalidated for hardware.
+
+## 2026-10-25: embedded payload preflight (offline only)
+
+Added a fail-closed payload preflight shared with the existing Duchamp loader
+guard. Against the captured live FDT and `payload-duchamp-final.bin`, host tests
+pass with 10 segments, physical window `0x1c0000000` + `0x20000000`, entry
+`0x1c1480488`, ADT `0x1c24d8000`, boot_args `0x1c24dc000`, and top
+`0x1c24e0000`. Negative tests confirm that corrupt payload and FDT headers are
+rejected.
+
+The bootshim can now embed the 16,674,432-byte payload and run the same check
+against LK's live FDT. It deliberately has no copy loop and no XNU branch. The
+linked Image is 16,723,584 bytes, has no relocations, and its embedded payload
+byte-compares equal to the source. Existing native entry tests and the previous
+non-embedded linked QEMU framebuffer test still pass.
+
+An offline stock-layout LZ4/AVB-NONE wrapper was generated at
+`duchamp/bootshim/out-preflight/duchamp-payload-preflight-avb-none-lz4.img`.
+It is 64 MiB, retains the measured 16,318,464-byte pre-vbmeta region and AVB
+offset, and `avbtool verify_image` verifies both its NONE vbmeta and boot hash.
+SHA256 is
+`78fe072bfb4f3b7ad555107a61e6b2565be18408ebe4e34947907947ee0e6ff7`.
+
+After explicit approval, preflight verified `duchamp`, MT6897, active slot
+`a`, unlocked/secure-no fastboot state, 47% charging battery, and the stock
+backup hash before writing this image to `boot_a`. The first photograph caught
+the already-drawn entry report while the uncached payload/FDT scan was still in
+progress. A later photograph showed rows 0-10 green and row 11 magenta. This is
+the defined payload-preflight PASS pattern: the live FDT passed the complete
+guard, the embedded payload reported 10 segments, and its physical base/size
+matched the required `0x1c0000000` + `0x20000000` window. The evidence copy is
+`work/duchamp-payload-preflight-pass.jpg`, SHA256
+`21279e680084c8f1f2eaa5a56ff7b04c05564f8ddd75064f41de21232f00c1ec`.
+No segment copy or XNU branch occurred.
+
+The user then re-entered fastboot. The guarded recovery tool verified SHA256
+`1b972f4f1c98428f2fca1e7c1c8cf463e0122a70a290e482be3230c7838e3e12`
+and restored the 64 MiB stock `boot_a`. Android booted successfully and ADB
+reconfirmed `duchamp`, `mt6897`, slot `_a`, build
+`V816.0.17.0.UNLMIXM`, and Magisk uid 0. No other partition was changed.
+
+The first full-screen-band candidate was flashed after approval. The user
+reported that the retained boot logo disappeared and the panel became black,
+while the watchdog remained stopped. This proves the bootshim executed and
+wrote the measured framebuffer region; the intended colors were hidden because
+their high alpha byte was zero. Stock `boot_a` was restored and Android/root
+were verified.
+
+All diagnostic colors now use alpha `0xff` (`0xff00ff00` pass,
+`0xffff0000` fail, and opaque cyan/magenta signature bands). Host and linked
+QEMU framebuffer tests pass. The 40,624-byte Image SHA256 is
+`e1829c0706818265d74815273081bf3069f43dbb92e746ada0e0af0036d6bab5`.
+Its fully verified stock-layout AVB-NONE/LZ4 wrapper SHA256 is
+`f9168444013865b862233e91049fc1fc95478f3307c95f3770ff7188a5a359e4`;
+it has not been flashed.
+
+The watchdog-stop candidate was flashed after approval. The user reported that
+the boot logo remained stable for more than 20 seconds instead of resetting.
+This confirms the documented TOPRGU write took effect and strongly supports
+actual bootshim execution with translation/caches off. No thin diagnostic rows
+were noticed. Stock `boot_a` was restored and Android/root were verified.
+
+The framebuffer base in the live `/chosen` data and reserved-memory node is
+still `0xfcc2f000`, with 0x33d0000 bytes reserved, so the next visual diagnostic
+keeps that address but replaces the nearly invisible one-pixel rows with twelve
+226-scanline bands filling the entire 1220x2712 framebuffer and adds a final
+`dsb sy; isb`. Native tests and the actual linked QEMU framebuffer test pass.
+The 40,656-byte phone Image SHA256 is
+`323568f62f52c3a78f4829b27f6458da45f07ebba60b57d685b9b10b24bc0eae`.
+Its fully verified AVB-NONE/LZ4 wrapper SHA256 is
+`18f1117596c8c10e11ed05bfd70598bbda31cfd7070053562f4298ca260a88fb`;
+it has not been flashed.
+
+The EL2-observable candidate produced a materially different hardware result:
+the phone reached its boot logo and then reset, instead of remaining at the
+earlier bootloader stop. No diagnostic rows were visible. Fastboot was recovered
+with the hardware keys, stock `boot_a` was restored, and Android/root were
+verified. This is consistent with the modified image being accepted and code
+either entering the safe no-framebuffer path or faulting before drawing, then
+the bootloader-started watchdog resetting the device; it is not yet proof of a
+specific entry EL.
+
+The live DT identifies TOPRGU watchdog MMIO at `0x1c00a000` with the
+`mediatek,mt6589-wdt` compatible. Following Linux's upstream `mtk_wdt_stop`
+sequence, the phone-only diagnostic now reads mode offset 0, clears enable bit
+0, writes key `0x22000000`, issues barriers, and records before/after values.
+This occurs only for EL1/EL2 with translation and caches off; otherwise no MMIO
+is touched. Host tests pass, a watchdog-disabled QEMU-linked image passes the
+actual framebuffer test, and disassembly confirms the intended MMIO sequence.
+The phone Image SHA256 is
+`60293489e3e60dd0e86a441548dbcf11ab6b1e2f3e6fead0b8bd9aee3bc3fedf`.
+Its fully verified stock-layout AVB-NONE/LZ4 wrapper SHA256 is
+`6bc5503cd2fa8afc330775deda2be78c5573541fe36d79b1e4fdd0aeb2104dc9`;
+it has not been flashed.
+
+The full-size AVB-container image was then flashed after separate approval.
+Fastboot accepted all 64 MiB, the device left USB during the attempted boot,
+and the user re-entered fastboot with hardware keys. The guarded tool restored
+the verified stock `boot_a`; Android, the correct build fingerprint, slot `a`,
+and Magisk uid-0 root were verified again. The visual result was not recorded
+in the chat, so this trial alone does not prove code execution.
+
+Further offline comparison found that the captured stock kernel payload begins
+with LZ4 legacy magic and is reported as LZ4-compressed, while both earlier
+diagnostic trials embedded a raw ARM64 Image. Added an `--lz4-legacy` packaging
+mode and produced a full-size AVB-container candidate with SHA256
+`6cf1159f94c2ead8d8ef8d6a4db8737a7d754d8bda6cb91a1cef8be734541465`.
+Its embedded kernel begins with legacy magic `02214c18`, decompresses to 40,400
+bytes, and byte-compares equal to the tested bootshim Image. AOSP `avbtool`
+parses its preserved footer/vbmeta; the changed payload hash remains the only
+expected AVB mismatch. This candidate has not been flashed.
+
+## 2026-10-25: bounded materializer build (offline only)
+
+The loader materializer is now covered by a 512 MiB sparse-window host test
+using the captured FDT and final payload. The test byte-compares all 10 copied
+segments, verifies every segment's zero-filled tail, verifies the ADT copy and
+complete boot_args v2 fields/page, checks an untouched sentinel near the end
+of the window, and proves that a rejected corrupt payload performs no
+destination write. It passes with physical entry `0x1c1480488` and top
+`0x1c24e0000`.
+
+Added an optional `MATERIALIZE=1` bootshim build. It embeds the payload, repeats
+the full guard, writes only into the validated `0x1c0000000` + `0x20000000`
+RAM window, reports completion visually, and stops. It contains no XNU branch.
+The linked ELF has no relocations; disassembly contains no `br`, `blr`, or
+`eret`; the embedded payload byte-compares equal to the source. Native loader,
+bootshim/preflight, and the non-materializing linked QEMU framebuffer tests all
+pass.
+
+The offline stock-layout candidate is
+`duchamp/bootshim/out-materialize/duchamp-materialize-nojump-avb-none-lz4.img`,
+64 MiB, SHA256
+`4febcf25b1fdb1ba4c85d2849cf1223180a5663476f8a7194c9f59657d09ca96`.
+AOSP `avbtool verify_image` verifies its NONE vbmeta and boot hash.
+
+After explicit approval, preflight reconfirmed the device, active slot, battery,
+root, stock backup hash, and candidate hash. Fastboot wrote only `boot_a`. The
+final hardware display showed rows 0-10 green and row 11 cyan, exactly the
+defined materializer PASS signature. This proves that the guarded materializer
+completed all segment, BSS, ADT, and boot_args writes into the chosen RAM
+window and returned without branching to XNU. The evidence copy is
+`work/duchamp-materialize-nojump-pass.jpg`, SHA256
+`ecc22de1ab37afd5df044dfb8e192e5e30998ec910b0d94862c4cef17ca4674a`.
+
+The user re-entered fastboot and the guarded recovery tool restored stock
+`boot_a` after verifying SHA256
+`1b972f4f1c98428f2fca1e7c1c8cf463e0122a70a290e482be3230c7838e3e12`.
+Android then completed boot; ADB reconfirmed `duchamp`, `mt6897`, slot `_a`,
+build `V816.0.17.0.UNLMIXM`, and Magisk uid 0. No other partition was changed.
+
+## 2026-10-25: no-jump handoff-ready gate (offline only)
+
+Compared the handoff contract with the local HackiOS `xnuloader` and the
+existing SWEETXNU loader. Both enter XNU at EL1 with interrupts masked,
+translation and caches off, `x0` set to the physical boot_args address, and a
+final `dsb sy; ic iallu; dsb sy; isb`. No Qualcomm translation-table setup was
+reused.
+
+Added a fail-closed handoff-ready check for the hardware-observed EL1/SCTLR
+state and the validated entry/boot_args bounds. The linked AArch64 barrier
+disassembles exactly as intended. The ready image has no relocations and no
+`br`, `blr`, or `eret`, so it still cannot enter XNU.
+
+Replaced the halt-only vector slots with EL1/EL2 exception capture that records
+exception class, ESR, ELR, FAR, and SP in RAM and produces a red visual report.
+Both the normal linked QEMU framebuffer test and a deliberate `brk` exception
+build pass. Host entry, preflight, materializer, and ready-gate tests also pass.
+
+The offline stock-layout image is
+`duchamp/bootshim/out-ready/duchamp-handoff-ready-nojump-avb-none-lz4.img`,
+64 MiB, SHA256
+`4af103cb18014d4ec15ac611fac98646cbe14f731a10a4d5a42658578a2c2508`.
+AOSP `avbtool verify_image` verifies its NONE vbmeta and boot hash.
+
+After explicit approval, the guarded trial reconfirmed `duchamp`, MT6897,
+active slot `a`, 49% charging battery, root, and both image hashes before
+writing only `boot_a`. The final hardware report showed rows 0-10 green and
+row 11 magenta, with no red exception report. This is the defined handoff-ready
+PASS signature and proves that materialization, the EL1/MMU/cache-off gate, and
+the final architectural barrier sequence all completed before the intentional
+no-jump stop. Evidence is
+`work/duchamp-handoff-ready-nojump-pass.jpg`, SHA256
+`ad238038f610d317639d8ed22c109ad2a6a41271af5f01a7f2f3833bbaf0d6e0`.
+
+The guarded recovery then verified and restored the stock 64 MiB `boot_a`.
+Android completed boot, and ADB reconfirmed `duchamp`, `mt6897`, slot `_a`,
+build `V816.0.17.0.UNLMIXM`, and Magisk uid 0. No other partition changed.
+
+## 2026-10-25: first XNU jump candidate (offline/QEMU only)
+
+`tools/verify-payload-source.py` rebuilt `payload-duchamp-final.bin` from
+`work/kernel-final/kernel.development.sweet`, the payload's embedded ADT, and
+its embedded command line. The result matched byte-for-byte at SHA256
+`8ab5762816be7f2f39357515ae25cdab5d50b8cd0271663440741948fe9239ac`.
+The Mach-O LC_UNIXTHREAD entry is `__start` at virtual
+`0xfffffe0007480488`, mapped by the validated plan to physical
+`0x1c1480488`. Patch 0082 already gives that path a pre-stack Stage 0
+framebuffer marker, so no speculative XNU patch was added.
+
+Added an opt-in `JUMP=1` build requiring the embedded payload, materializer,
+and ready gate. Its final assembly masks interrupts, repeats
+`dsb sy; ic iallu; dsb sy; isb`, moves the physical boot_args address to `x0`,
+and branches to the validated physical entry. Non-JUMP builds remain unchanged.
+
+The complete bootshim->materialize->ready->XNU path passed QEMU with 8 GiB RAM
+and the captured phone FDT. After 20 seconds the framebuffer contained 65,972
+white pixels; the bootshim never draws white, while the matching XNU has Stage
+0 and early-console white output. This is direct evidence that control reached
+XNU through the new jump path. The captured raw framebuffer is
+`work/qemu-bootshim-jump-fb.raw`.
+
+The phone candidate is
+`duchamp/bootshim/out-jump-phone/duchamp-xnu-first-jump-avb-none-lz4.img`,
+64 MiB, SHA256
+`a8eb491fee193a494581243d077c71a4f03e4ca12ef9a5d63cdf8251aa85d090`.
+Its embedded payload byte-compares equal to the verified source; the linked ELF
+has no relocations; AOSP `avbtool verify_image` verifies its NONE vbmeta and
+boot hash.
+
+After explicit approval, preflight reconfirmed `duchamp`, MT6897, slot `a`,
+49% charging battery, root, and the stock/candidate hashes. Fastboot wrote only
+`boot_a`. The hardware framebuffer then showed XNU's own early console through
+all intended Duchamp checkpoints: `arm_init entered (MMU on)`,
+`PE_init_platform done`, `ml_parse_cpu_topology`, `cpu_bootstrap done`,
+`kernel_startup_bootstrap done`, `cpu_init done`, entry to `arm_vm_init`,
+TTBR0 removal/TLB flush, live kernel framebuffer VA, rebound physmap pointers,
+`pmap_bootstrap done`, early I/O page tables, `arm_vm_init returned`, and the
+intentional terminal message `DUCHAMP XNU MEMORY READY`. No bootshim exception
+report appeared. This is verified XNU execution on POCO X6 Pro/MT6897 through
+the early virtual-memory bootstrap, not a claim that iOS userland is running.
+
+The evidence copy is `work/duchamp-xnu-arm-vm-init-pass.jpg`, SHA256
+`33696d19f391b8bb3ec49ef7e11242d796360b9e19a06b04b6a8a089637078fd`.
+The user re-entered fastboot; guarded recovery verified and restored stock
+`boot_a`. Android completed boot, and ADB reconfirmed `duchamp`, `mt6897`,
+slot `_a`, build `V816.0.17.0.UNLMIXM`, and Magisk uid 0. No other partition
+changed.
+
+## 2026-11-01: passive UFS PRDT observer (offline only)
+
+Pinned GKI and Xiaomi MT6897 sources prove that
+`android_vh_ufs_fill_prdt` runs after `scsi_dma_map()` and after the UFS core
+fills each PRDT entry. Added a passive observer that filters the exact
+`112b0000.ufshci` device and compares existing PRDT, DMA, translated physical,
+original physical and SWIOTLB state. It never starts I/O, maps DMA, accesses
+MMIO, invokes firmware, attaches an IOMMU domain or changes the hook error.
+
+The corrected AArch64 artifact is 407,280 bytes with SHA256
+`fb5b1a887bced8e4b0fbf498ebafc21d4856b4f57bbf2795f1d469bd8c9984c3`.
+Offline verification reproduces all 18 captured symbol CRCs, Android Clang
+17.0.2, the exact vermagic, `struct module` size `0x440`, and init/exit
+relocations `0x170`/`0x3d8`. Source, receipt and runner tests pass. The report
+is root-only (`0400`). Aggregate updates use a spinlock-backed coherent
+snapshot, the hook unload path waits for in-flight callbacks, and the module
+refuses to observe unless the measured dma-direct/no-IOMMU/36-bit contract is
+still present.
+
+Added a fail-closed live runner that verifies the exact target, source,
+artifact and receipt, rejects the known orphan tracefs instance, uses only a
+fixed regular-file read workload, and verifies unload, staged-file removal,
+boot ID, kernel taint and kernel logs. The module has not been loaded and no
+phone access occurred in this milestone. A normal Android reboot and the exact
+module load each require a separate explicit approval. This work does not yet
+prove physical firewall access, XNU cache ownership or safe XNU UFS use.
+
+## 2026-11-01: passive UFS PRDT observer (approved live result)
+
+The user separately approved a normal Android reboot and then one temporary
+load of the exact artifact with SHA256
+`fb5b1a887bced8e4b0fbf498ebafc21d4856b4f57bbf2795f1d469bd8c9984c3`.
+The reboot cleared the stale tracefs instance. The fail-closed live runner then
+passed with 371 read commands and 17,437 workload-delta segments: every PRDT
+entry matched, inverse `dma_to_phys()` translation returned the original
+scatterlist physical address, no SWIOTLB segment or 36-bit-limit violation
+occurred, and the pinned dma-direct/no-IOMMU contract stayed true. This does
+not prove raw DMA/CPU-physical numeric identity because the device has a
+`dma_range_map` whose live entries were not captured.
+
+Cleanup was complete: the module unloaded, the staged file and sysfs state
+disappeared, boot ID and taint stayed unchanged, and no new kernel fault line
+was found. The result SHA256 is
+`81f1210b67a659103d3c4c863dd6baafd85e39dfb77132b4382efab1a91de5d4`.
+This proves the observed Android UFS DMA route only; firmware/firewall access,
+XNU cache ownership and safe XNU controller ownership remain unproven.
+
+## 2026-11-06: LK/FDT handoff contract and blocked phone-layout path
+
+Commit `f3554a3` added an exact offline audit for the saved LK, boot,
+vendor-boot, live FDT and `/proc/iomem` captures. The saved LK binary verifies
+its own stage-1 mapping at physical `0x50700000` and high VA
+`0xffff000050700000`. Its Linux handoff uses SMC `0xc2000115`; LK computes the
+kernel and final-FDT targets at runtime rather than embedding fixed targets.
+
+The captured vendor-boot metadata declares `kernel_addr=0x40000000` and both
+`tags_addr`/`dtb_addr=0x47c80000`. The stock ARM64 Image has `text_offset=0`.
+The `0x76980`-byte live FDT matches the saved runtime page-rounded reservation
+`0x47c80000..0x47cf7000`. These are static/corroborating facts, not a captured
+runtime PC or incoming `x0`; the report explicitly keeps both runtime claims
+false. The FDT establishes 12 GiB RAM, 52 fixed reservations and four dynamic
+allocation requests.
+
+A separate `PHONE_LAYOUT=1` bootshim mode now requires the exact audit report,
+rejects every payload/transport/materialize/ready/return/jump option, and links
+at the static Android Image contract. Its assembly compares runtime `_head`
+and inherited `x0`, then always stops in `WFE` before BSS clearing, C, watchdog,
+framebuffer, MMIO, copying or an XNU branch. The post-link verifier checks the
+actual guard opcodes and branch targets, zero relocations, no undefined symbols,
+an empty capsule and absence of execution/transport symbols.
+
+Actual local results: 12 new Python negative/unit tests passed; existing
+bootshim host, handoff-ready and XNU-return tests passed; normal QEMU bootshim
+regression passed; the missing-contract negative gate passed. The phone-layout
+artifact is 40,848 bytes, SHA256
+`a8770869c5df2f95ed0bdf7f7337d14cdc8d3b579898c69fa10f9c9fce67f7ba`.
+The audit report SHA256 is
+`b62fe30e06cb0043d027ffed0dff0116528e40d202d91ae731b676ba7796ecb6`;
+the post-link report SHA256 is
+`cc2394bccf508e30831f52e39b1f5a2a45095694ffd4b0f3cc88e684fc5571e2`.
+No phone, ADB, fastboot, partition, firmware or MMIO access occurred.
+
+Next safe action: capture the numeric runtime Image PC and incoming FDT `x0`
+using a separately reviewed no-write diagnostic before considering any phone
+transport. UFS/DMA/IOMMU and firmware ownership remain separate blockers.
+
+## 2026-11-06: isolated runtime PC/x0 capture (local and QEMU only)
+
+Commit `62abe49` added a separate `PHONE_CAPTURE=1` bootshim mode. It links an
+isolated entry instead of the normal shim, records the runtime `_head` computed
+with `adr` plus inherited `x0` in a checksummed 64-byte RAM record, and renders
+both values as hexadecimal text on the already measured framebuffer. It does
+not link an FDT dereference, watchdog access, payload, transport, materializer,
+XNU jump, return channel or storage operation. Unsafe EL/MMU/cache state fails
+closed before framebuffer access.
+
+The post-link verifier checked the actual capture opcodes and targets, link base
+zero, ARM64 Image header, empty transport capsule, zero relocations, zero
+undefined symbols and absence of forbidden capabilities. Negative build gates,
+four new verifier tests, five existing phone-layout tests, all bootshim host
+tests and the unchanged normal QEMU regression passed.
+
+The actual freestanding capture Image ran in QEMU and measured runtime
+`PC=0x40200000`, inherited `x0=0x48000000`, `CurrentEL=0x4`. QMP independently
+validated the complete RAM record and representative framebuffer glyph pixels.
+Artifact: `work/phone-capture-qemu-v3/Image`, 40,912 bytes, SHA256
+`2a7dff64f5e28afa5e7eef74e99ea2d3a273df367f341047891ba3a4ea6d20ea`;
+ELF SHA256
+`675831def76bb4ee85f55d2b97272f490b7f08caf223d77390264db19e2b0a03`;
+verification JSON SHA256
+`0e6e10e58588e74c36dbcfbcdf4cc61f11d24b3dcf00642a3674507e801916f1`.
+
+These are QEMU values, not a physical Duchamp capture. No phone, ADB, fastboot,
+partition, firmware or phone MMIO access occurred. The saved 2026-10-25 probe
+already proves Duchamp LK rejects standard RAM-only `fastboot boot` as an
+unknown command, and the installed Android kernel has no kexec. Therefore the
+physical capture remains blocked on a documented RAM-only launch mechanism;
+do not substitute a boot-partition write. UFS/DMA/IOMMU and firmware ownership
+remain separate blockers.

@@ -11,12 +11,27 @@ import subprocess
 SYSLOGD = '86838d9149bb898e3d39266fea884c6c92eeac1e6486c072b135a879c9eeaabe'
 
 
+def healthy_heartbeats(trace, server):
+    # Console observation can miss the intended stop marker. A longer saved
+    # trace is healthy only if it still starts at 1 and is wholly contiguous.
+    values = re.findall(r'(?m)^heartbeat=(\d+) syslogd_running=1 server=' +
+                        str(server) + r' probes_stopped=1$', trace)
+    lines = [line for line in trace.splitlines() if line.startswith('heartbeat=')]
+    return len(values) >= 2 and len(values) == len(lines) and values == [str(i) for i in range(1, len(values) + 1)]
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('output', type=Path)
     ap.add_argument('--hfsplus', type=Path, required=True)
     ap.add_argument('--notifyd', action='store_true', help='also verify notify/cancel and ASL remote-filter integration')
+    ap.add_argument('--graphics', action='store_true', help='require the additional diagnostic graphics bootstrap command')
+    ap.add_argument('--compositor', action='store_true', help='require compositor bootstrap and lifecycle commands')
+    ap.add_argument('--gui', action='store_true', help='require the explicit GUI lifecycle command sequence')
+    ap.add_argument('--live-input', action='store_true', help='require live VirtIO input lifecycle, implies --gui')
+    ap.add_argument('--app-touch', action='store_true', help='require managed-app and multitouch command sequence')
     ap.add_argument('--report', type=Path, help='separate report for a saved-guest recheck')
+    ap.add_argument('--var-image', type=Path, help='guest /private/var dump when separate from the root dump')
     args = ap.parse_args()
     root = args.output
     manifest = json.loads((root / 'launchctl-root-manifest.json').read_text())
@@ -26,9 +41,13 @@ def main():
     guest.mkdir(exist_ok=True)
 
     def extract(path, name):
+        image = root / 'run/ramdisk-final.hfs'
+        if args.var_image and path.startswith('/private/var/'):
+            path = path.removeprefix('/private/var')
+            image = args.var_image
         target = guest / name
         target.unlink(missing_ok=True)
-        subprocess.run([str(args.hfsplus.resolve()), str((root / 'run/ramdisk-final.hfs').resolve()),
+        subprocess.run([str(args.hfsplus.resolve()), str(image.resolve()),
                         'extract', path, str(target.resolve())], check=True, capture_output=True)
         return target.read_bytes() if target.exists() else b''
 
@@ -51,7 +70,31 @@ def main():
         tags.insert(1, 'notifyd-before')
         tags.append('notifyd-after')
         names.append('notifyd-debug.log')
-    names += [f'launchctl-{tag}.txt' for tag in tags]
+    if args.graphics:
+        tags.insert(0, 'graphics-bootstrap')
+    if args.compositor:
+        if not args.graphics:
+            ap.error('compositor profile also requires graphics baseline')
+        tags[1:1] = ['compositor-bootstrap-compositor', 'compositor-bootstrap-red', 'compositor-bootstrap-overlay']
+        tags += ['compositor-running', 'compositor-red-exited', 'compositor-overlay-exited', 'compositor-bootout']
+        tags += ['compositor-bootstrap-compositor-normal', 'compositor-bootstrap-early-red',
+                 'compositor-bootstrap-early-overlay', 'compositor-normal-running', 'compositor-normal-bootout']
+    if args.gui:
+        tags += ['gui-bootstrap-' + name for name in ('gui-compositor', 'gui-wm', 'gui-red', 'gui-blue', 'gui-shell')]
+        if args.live_input:
+            tags += ['gui-bootstrap-gui-input']
+            tags += ['gui-bootstrap-gui-apps', 'gui-bootstrap-gui-touch', 'gui-bootstrap-app-observer'] if args.app_touch else ['gui-bootstrap-gui-live-observer']
+        tags += ['gui-manager-restarted']
+        if args.live_input:
+            tags += ['gui-touch-restarted' if args.app_touch else 'gui-input-restarted']
+        tags += ['gui-stop-' + name for name in
+                 ((('app-observer', 'gui-touch', 'gui-apps', 'gui-input', 'gui-blue') if args.app_touch else
+                   ('gui-live-observer', 'gui-input', 'gui-blue')) if args.live_input else ()) +
+                 ('gui-shell', 'gui-red', 'gui-wm', 'gui-compositor')]
+    names += [f'launchctl-{tag}.txt' for tag in tags
+              if tag != 'graphics-bootstrap' and not tag.startswith('compositor-bootstrap-') and
+                 not tag.startswith(('gui-bootstrap-', 'gui-stop-')) and
+                 tag not in ('compositor-bootout', 'compositor-normal-bootout')]
     raw = {name: extract('/private/var/tmp/' + name, name) for name in names}
     raw['output'] = extract('/private/var/log/sweet-asl.log', 'sweet-asl.log')
     raw['syslog.pid'] = extract('/private/var/run/syslog.pid', 'syslog.pid')
@@ -105,8 +148,7 @@ def main():
         'syslogd_pidfile': raw['syslog.pid'].strip() == str(server).encode(),
         'debug_reached_mach_server_and_work_queue': 'starting mach service' in debug and 'starting work queue' in debug,
         'begin_exit_gates': raw['asl-probes.begin'] == b'begin\n' and raw['asl-probes.exit'] == b'exit\n',
-        'two_server_heartbeats': re.findall(r'(?m)^heartbeat=(\d+) syslogd_running=1 server=' +
-            str(server) + r' probes_stopped=1$', trace) == ['1', '2'],
+        'two_server_heartbeats': healthy_heartbeats(trace, server),
         'no_diagnostic_failure': all(data[name] and 'FAIL' not in data[name] and 'TIMEOUT' not in data[name]
                                      and 'NOTIFY ERROR' not in data[name]
                                      for name in ('launchctl-control.log', 'ipc-asl1.log', 'ipc-asl2.log')),
@@ -204,6 +246,8 @@ def main():
                          ('sweet-launchd-service', 'sweet-ipc-client', 'sweet-launchctl-control',
                           'root.hfs', 'payload.bin', 'run/ramdisk-final.hfs')},
               'guest_file_sha256': {name: hashlib.sha256(content).hexdigest() for name, content in raw.items()}}
+    if args.var_image:
+        report['sha256']['var_image'] = hashlib.sha256(args.var_image.read_bytes()).hexdigest()
     (args.report or root / 'run/verification.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))
     return 0 if report['passed'] else 1

@@ -164,12 +164,30 @@ def monitor(endpoint, execute, arguments=None):
 
 
 def run_vm(kernel, base_adt, root, out, seconds, stop_markers, cmdline=None, debugger_script=None,
-           save_guest_root=True, display_hz=60):
+           save_guest_root=True, display_hz=60, kernel_manifest=None, passive_trace_config=None):
     kernel, base_adt, root, out = (Path(p).resolve() for p in (kernel, base_adt, root, out))
     require(os.name == 'posix' and not str(out).startswith('/mnt/'), 'guest RAM output must use the native Linux disk')
     require(not out.exists(), 'preserve existing run directory')
     require(10 <= seconds <= 900, 'bounded VM runtime required')
-    require(sha(kernel) == KERNEL_PIN, 'kernel pin changed')
+    if kernel_manifest is None:
+        require(sha(kernel) == KERNEL_PIN, 'kernel pin changed')
+        kernel_pin = KERNEL_PIN
+    else:
+        # Source-linked experiments use their complete link receipt. Never
+        # silently substitute the historical CI kernel or patch its instructions.
+        from duchamp_source_kernel import select
+        kernel_pin = select(kernel, Path(kernel_manifest).resolve())
+        require(display_hz == 60 and debugger_script is None,
+                'source-linked profile forbids instruction/debugger patches')
+    if passive_trace_config is not None:
+        require(kernel_manifest is not None and debugger_script is None,
+                'passive tracing requires an explicit source receipt and no legacy debugger')
+        passive_trace_config = Path(passive_trace_config).resolve()
+        passive_config = json.loads(passive_trace_config.read_text())
+        require(passive_config.get('passive_only') is True and
+                passive_config.get('kernel_sha256') == kernel_pin and
+                passive_config.get('source_trace_sha256') == sha(REPO / 'tools/duchamp-render-passive.gdb'),
+                'passive trace source/configuration mismatch')
     source_root_pin = sha(root)
     with root.open('rb') as source:
         source.seek(1024)
@@ -202,9 +220,13 @@ def run_vm(kernel, base_adt, root, out, seconds, stop_markers, cmdline=None, deb
         ram.seek(STUB - RAM_BASE)
         ram.write(struct.pack('<4I2Q', 0x58000080, 0x580000a1, 0xd61f0020, 0xd503201f, plan['boot_pa'], plan['entry_pa']))
     serializable = {k: v for k, v in plan.items() if k not in ('adt', 'cmdline')}
-    serializable.update(root_sha256=source_root_pin, source_adt_sha256=ADT_PIN, kernel_sha256=KERNEL_PIN,
+    serializable.update(root_sha256=source_root_pin, source_adt_sha256=ADT_PIN, kernel_sha256=kernel_pin,
         cmdline=cmdline, qemu_only=True, physical_storage=False, large_ram_not_phone_layout=True,
         display_hz=display_hz)
+    if kernel_manifest is not None:
+        serializable['source_link_receipt_sha256'] = sha(kernel_manifest)
+    if passive_trace_config is not None:
+        serializable['passive_trace_config_sha256'] = sha(passive_trace_config)
     (out / 'layout.json').write_text(json.dumps(serializable, indent=2) + '\n')
     spec = importlib.util.spec_from_file_location('service_ram_screen', REPO / 'tools/qemu-sweet.py')
     screen_tool = importlib.util.module_from_spec(spec); spec.loader.exec_module(screen_tool)
@@ -222,8 +244,9 @@ def run_vm(kernel, base_adt, root, out, seconds, stop_markers, cmdline=None, deb
         '-d', 'int,guest_errors,unimp', '-D', str(out / 'qemu.log'),
         '-device', 'loader,addr=%#x,cpu-num=0' % STUB]
     debug_endpoint = Path('/tmp') / ('duchamp-service-gdb-%d.sock' % os.getpid())
-    if debugger_script is not None:
-        require(not debug_endpoint.exists() and Path(debugger_script).is_file(), 'invalid debugger input/endpoint')
+    if debugger_script is not None or passive_trace_config is not None:
+        require(not debug_endpoint.exists() and
+                (passive_trace_config is not None or Path(debugger_script).is_file()), 'invalid debugger input/endpoint')
         command += ['-S', '-gdb', 'unix:%s,server=on,wait=off' % debug_endpoint]
     (out / 'command.json').write_text(json.dumps(command, indent=2) + '\n')
     process = None; result = dict(stop_marker=None, snapshots=0)
@@ -231,18 +254,22 @@ def run_vm(kernel, base_adt, root, out, seconds, stop_markers, cmdline=None, deb
     try:
         with (out / 'qemu-stderr.txt').open('w') as errors:
             process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=errors, stderr=errors)
-        if debugger_script is not None:
+        if debugger_script is not None or passive_trace_config is not None:
             deadline = time.monotonic() + 15
             while not debug_endpoint.exists() and process.poll() is None and time.monotonic() < deadline:
                 time.sleep(0.1)
             require(debug_endpoint.exists(), 'QEMU debugger endpoint did not start')
             script = out / 'debugger.gdb'
+            trace_source = REPO / 'tools/duchamp-render-passive.gdb' if passive_trace_config is not None else Path(debugger_script)
             script.write_text('set pagination off\nset confirm off\nset architecture aarch64\n'
-                'target remote %s\n' % debug_endpoint + Path(debugger_script).read_text())
+                'target remote %s\n' % debug_endpoint + trace_source.read_text())
+            environment = os.environ.copy()
+            if passive_trace_config is not None:
+                environment['DUCHAMP_PASSIVE_TRACE_CONFIG'] = str(passive_trace_config)
             with (out / 'debugger.log').open('w') as debug_log:
                 try:
                     debugger = subprocess.run(['gdb-multiarch', '-q', '-nx', '-batch', '-x', str(script)],
-                        cwd=out, stdout=debug_log, stderr=subprocess.STDOUT, timeout=seconds - 5)
+                        cwd=out, stdout=debug_log, stderr=subprocess.STDOUT, timeout=seconds - 5, env=environment)
                     result['debugger_exit_code'] = debugger.returncode
                 except subprocess.TimeoutExpired:
                     result['debugger_timed_out'] = True

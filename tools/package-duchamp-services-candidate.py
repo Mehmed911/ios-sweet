@@ -12,6 +12,8 @@ import struct
 import subprocess
 import sys
 
+import adt
+
 REPO = Path(__file__).resolve().parents[1]
 CMDLINE = ('debug=0xc serial=3 cpus=1 keepsyms=1 -enable_kprintf_spam '
            '-noprogress rd=md0 rootrw=1 sweet_console_fb=1 '
@@ -48,27 +50,52 @@ def symbols(elf):
 
 
 def inspect_payload(blob):
-    require(len(blob) >= 0x2a8, 'truncated payload')
+    segment_table_end = 0x2a8 + 11 * 32
+    require(len(blob) >= segment_table_end, 'truncated payload segment table')
     require(struct.unpack_from('<8sII', blob) == (b'SWEETXNU', 1, 11),
             'unexpected payload header')
     virt, entry, adt_offset, adt_size, end, physical, memory = struct.unpack_from('<7Q', blob, 0x10)
     require((physical, memory) == (0x1c0000000, 0x20000000), 'unexpected payload window')
-    require(blob[0x48:0x2a8].split(b'\0', 1)[0].decode() == CMDLINE, 'unexpected command line')
+    require(blob[0x48:0x2a8] == CMDLINE.encode().ljust(0x260, b'\0'), 'unexpected command line')
+    require(segment_table_end <= adt_offset <= len(blob) and
+            0 < adt_size <= len(blob) - adt_offset, 'invalid payload ADT range')
+    segments = list(struct.iter_unpack('<4Q', blob[0x2a8:segment_table_end]))
     slots = []
-    for index in range(11):
-        va, _size, offset, count = struct.unpack_from('<4Q', blob, 0x2a8 + index * 32)
-        require(offset <= len(blob) and count <= len(blob) - offset, 'invalid segment file range')
+    for va, _size, offset, count in segments:
+        require(segment_table_end <= offset <= adt_offset and count <= adt_offset - offset,
+                'invalid segment file range')
         at = blob.find(b'XNULDRST', offset, offset + count)
         while at != -1:
             slots.append(physical + va - virt + at - offset)
             at = blob.find(b'XNULDRST', at + 1, offset + count)
     require(len(slots) == 1 and slots[0] % 8 == 0, 'missing or ambiguous return slot')
-    ramdisk = struct.unpack_from('<4Q', blob, 0x2a8 + 10 * 32)
-    require(ramdisk[1] == ramdisk[3] == 32 * 1024 * 1024, 'RAM root size changed')
+    ram_va, ram_size, ram_offset, ram_bytes = segments[-1]
+    require(ram_size == ram_bytes == 32 * 1024 * 1024, 'RAM root size changed')
+    require(virt <= ram_va and ram_va + ram_size == end and
+            end - virt + adt_size <= memory, 'RAM root outside payload window')
+    for va, size, offset, count in segments[:-1]:
+        require(va + size <= ram_va and offset + count <= ram_offset,
+                'RAM root overlaps a kernel segment')
+    require(hashlib.sha256(memoryview(blob)[ram_offset:ram_offset + ram_bytes]).hexdigest()
+            == PINS['root.hfs'], 'embedded RAM root does not match guest proof')
+    ram_pa = physical + ram_va - virt
+    try:
+        node, consumed = adt.parse(blob[adt_offset:adt_offset + adt_size])
+        require(consumed == adt_size, 'invalid payload ADT size')
+        for name in ('chosen', 'memory-map'):
+            children = [child for child in node.children if child.name == name]
+            require(len(children) == 1, 'missing or ambiguous ADT ' + name)
+            node = children[0]
+    except (struct.error, UnicodeError, RecursionError) as error:
+        raise ValueError('invalid payload ADT') from error
+    ramdisk_props = [(flags, value) for name, flags, value in node.props if name == 'RAMDisk']
+    require(ramdisk_props == [(0, struct.pack('<2Q', ram_pa, ram_size))],
+            'ADT RAMDisk does not point to the verified RAM root')
     return {'entry': physical + entry - virt,
             'adt': physical + end - virt, 'adt_bytes': adt_size,
             'adt_offset': adt_offset, 'return_slot': slots[0],
-            'delta': (physical - virt) & ((1 << 64) - 1)}
+            'delta': (physical - virt) & ((1 << 64) - 1),
+            'ramdisk_pa': ram_pa, 'ramdisk_size': ram_size}
 
 
 def main():
@@ -108,7 +135,8 @@ def main():
     logs = out / 'logs'
     logs.mkdir()
     checks = {'pinned_inputs': True, 'full_guest_batch_74_checks': True,
-              'qemu_payload_reconstruction': True, 'ram_root_32_mib': True}
+              'qemu_payload_reconstruction': True, 'ram_root_32_mib': True,
+              'embedded_ram_root_matches_guest_and_adt': True}
 
     def run(name, command, env=None):
         result = subprocess.run([str(item) for item in command], cwd=REPO,
@@ -207,6 +235,8 @@ def main():
         'duchamp/loader/materialize.c', 'duchamp/loader/return_slot.c']
     report = {'passed': all(checks.values()), 'checks': checks,
         'kernel_sha256': PINS['kernel'], 'root_sha256': PINS['root.hfs'],
+        'ramdisk': {name: {'pa': plan['ramdisk_pa'], 'size': plan['ramdisk_size']}
+                    for name, plan in plans.items()},
         'guest_checks': 74, 'guest_elapsed_host_seconds': guest['elapsed_host_seconds'],
         'guest_verification_sha256': sha256(proof / 'run/verification.json'),
         'boot_image': str(final), 'boot_image_bytes': final.stat().st_size,

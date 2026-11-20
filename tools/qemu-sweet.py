@@ -23,6 +23,7 @@ An undecodable or blank screen returns 3 with --fail-on-panic.
 """
 import argparse, json, os, shutil, socket, struct, subprocess, sys, time, zlib
 import adt
+import qemu_frame_witness
 
 FRAMEBUFFERS = {
     'sweet': {'base': 0x9c000000, 'width': 1080, 'height': 2400, 'stride': 4320},
@@ -163,6 +164,13 @@ def decode_screen(raw, font, framebuffer):
 def screen_result(screen, unknown):
     if 'panic(cpu ' in screen or 'SWEET EARLY PANIC:' in screen:
         status = 'panic'
+    elif 'DUCHAMP XNU MEMORY READY' in screen:
+        # The diagnostic deliberately leaves a colored marker band at the
+        # bottom of the framebuffer.  Exact font decoding can count those
+        # non-text cells as unknown glyphs, but the explicit milestone is a
+        # stronger signal that arm_vm_init returned and the controlled stop
+        # was reached.
+        status = 'duchamp_memory_ready'
     elif unknown:
         status = 'incomplete_decode'
     elif screen.strip():
@@ -239,6 +247,14 @@ def main():
                     help='pause the VM clock and save decoded framebuffer samples every N seconds')
     ap.add_argument('--save-ramdisk', action='store_true',
                     help='save the stopped guest RAMDisk as ramdisk-final.hfs')
+    ap.add_argument('--save-var-ramdisk', action='store_true',
+                    help='save the separate QEMU md1 data volume as var-final.hfs')
+    ap.add_argument('--frame-witness', help='JSON rectangle/digest to observe in sampled QEMU framebuffer RAM')
+    ap.add_argument('--frame-sequence', help='JSON list of ordered bounded framebuffer observations')
+    ap.add_argument('--diagnostic-hid', action='store_true', help='Explicitly accept the QEMU virtual-button test profile')
+    ap.add_argument('--virtio-multitouch', action='store_true', help='opt-in second modern VirtIO device; no phone support')
+    ap.add_argument('--virtio-pointer', action='store_true', help='opt-in modern VirtIO-MMIO tablet, QEMU only')
+    ap.add_argument('--live-runtime', help='write local live-input QMP/read-only framebuffer connection details')
     ap.add_argument('--stop-on-text', action='append', default=[],
                     help='stop after a sampled framebuffer contains this text (repeatable)')
     ap.add_argument('--gdb', action='store_true', help='start halted, gdb stub on :1234, no timeout')
@@ -276,6 +292,14 @@ def main():
         ap.error('--stop-on-text requires --snapshot-interval')
     if a.ufs_var_ramdisk and not a.ufs_image:
         ap.error('--ufs-var-ramdisk requires --ufs-image')
+    if a.save_var_ramdisk and (a.ufs_image or not a.save_ramdisk):
+        ap.error('--save-var-ramdisk requires --save-ramdisk and no UFS image')
+    if a.virtio_pointer and (a.ufs_image or a.cpu != 'cortex-a76' or a.framebuffer != 'duchamp'):
+        ap.error('pointer profile requires cortex-a76, duchamp framebuffer and no UFS')
+    if a.virtio_multitouch and not a.virtio_pointer:
+        ap.error('multitouch requires the strict pointer profile')
+    if a.live_runtime and (not a.virtio_pointer or os.name == 'nt'):
+        ap.error('live runtime requires the isolated WSL/POSIX VirtIO pointer profile')
 
     if not check_qemu_dependency(a.cpu):
         return 1
@@ -284,6 +308,18 @@ def main():
         return 1
 
     payload = open(a.payload, 'rb').read()
+    var_ramdisk = None
+    if a.save_var_ramdisk:
+        import qemu_ramroot_var
+        try:
+            if a.virtio_pointer:
+                import qemu_pointer_profile, qemu_touch_profile
+                profile = qemu_touch_profile if a.virtio_multitouch else qemu_pointer_profile
+                var_ramdisk = profile.verify(payload, diagnostic_hid=a.diagnostic_hid)['var']
+            else:
+                var_ramdisk = qemu_ramroot_var.verify(payload, diagnostic_hid=a.diagnostic_hid)['var']
+        except (ValueError, struct.error) as error:
+            ap.error(str(error))
     ufs_options = []
     if a.ufs_image:
         import qemu_ufs
@@ -309,6 +345,19 @@ def main():
             json.dump(ufs_metadata, output, indent=2)
 
     framebuffer = FRAMEBUFFERS[a.framebuffer]
+    witness_spec = None
+    witness_matched = False
+    sequence, observations = [], []
+    if a.frame_sequence:
+        with open(a.frame_sequence) as stream:
+            sequence = qemu_frame_witness.validate_sequence(json.load(stream), framebuffer, max_observations=16 if a.virtio_multitouch else 8)
+        if not a.snapshot_interval:
+            ap.error('--frame-sequence requires --snapshot-interval')
+    if a.frame_witness:
+        with open(a.frame_witness) as stream:
+            witness_spec = qemu_frame_witness.validate(json.load(stream), framebuffer)
+        if not a.snapshot_interval:
+            ap.error('--frame-witness requires --snapshot-interval')
     phys_base, img, ba_pa, entry_pa = build_image(payload, framebuffer)
     ramdisk = None
     if a.save_ramdisk:
@@ -352,6 +401,20 @@ def main():
     if a.ufs_image:
         cmd[2] = 'virt,gic-version=3,highmem-ecam=off'
         cmd += ufs_options
+    live_memory = None
+    if a.virtio_pointer:
+        import qemu_pointer_profile, qemu_touch_profile
+        profile = qemu_touch_profile if a.virtio_multitouch else qemu_pointer_profile
+        profile.verify(payload, diagnostic_hid=a.diagnostic_hid)
+        cmd += ['-global', 'virtio-mmio.force-legacy=false', '-device', 'virtio-tablet-device,id=duchamp-pointer']
+        if a.virtio_multitouch:
+            cmd += ['-device', 'virtio-multitouch-device,id=duchamp-touch']
+    if a.live_runtime:
+        live_memory = os.path.join(out, 'live-ram.bin')
+        if os.path.exists(live_memory):
+            ap.error('refusing to replace an existing live RAM backing')
+        cmd[2] += ',memory-backend=live-input-ram'
+        cmd += ['-object', f'memory-backend-file,id=live-input-ram,size={ram_gib}G,mem-path={live_memory},share=on']
     execution = {'clock': 'default', 'hardware_timing_claimed': False}
     if a.icount_shift is not None:
         cmd += ['-accel', 'tcg,thread=single', '-icount',
@@ -362,6 +425,8 @@ def main():
         json.dump(execution, output, indent=2)
     if a.gdb:
         cmd += ['-S', '-gdb', 'tcp::1234']
+    with open(f'{out}/qemu-command.json', 'w') as output:
+        json.dump(cmd, output, indent=2)
 
     p = None
     serial_file = f'{out}/serial.txt'
@@ -369,6 +434,11 @@ def main():
 
     try:
         p = subprocess.Popen(cmd, stdin=subprocess.DEVNULL)
+        if a.live_runtime:
+            with open(a.live_runtime, 'w') as output:
+                json.dump(dict(qmp=mon, memory=live_memory, ram_base=0x40000000,
+                               ram_bytes=ram_gib << 30, framebuffer=framebuffer,
+                               canvas=dict(x=320, y=1664, width=160, height=96), pid=p.pid), output, indent=2)
         if a.gdb:
             print('gdb stub on :1234; QMP endpoint:', mon, file=sys.stderr)
             p.wait()
@@ -386,7 +456,33 @@ def main():
                 qmp(mon, 'stop', pmemsave=(framebuffer['base'],
                     framebuffer['stride'] * framebuffer['height'], raw_path), resume=True)
                 with open(raw_path, 'rb') as f:
-                    screen, _unknown = decode_screen(f.read(), font, framebuffer)
+                    raw_sample = f.read()
+                    screen, _unknown = decode_screen(raw_sample, font, framebuffer)
+                if witness_spec and not witness_matched:
+                    pixels, observation = qemu_frame_witness.observe(raw_sample, witness_spec, framebuffer)
+                    if observation['matched']:
+                        observation.update(sample=snapshot_count, elapsed_host_seconds=time.time()-t0)
+                        with open(os.path.join(out, 'framebuffer-witness.raw'), 'wb') as f:
+                            f.write(pixels)
+                        write_png(os.path.join(out, 'framebuffer-witness.png'), pixels,
+                                  {'width': witness_spec['width'], 'height': witness_spec['height'],
+                                   'stride': witness_spec['width']*4})
+                        with open(os.path.join(out, 'framebuffer-witness.json'), 'w') as f:
+                            json.dump(observation, f, indent=2)
+                        witness_matched = True
+                if len(observations) < len(sequence):
+                    entry = sequence[len(observations)]
+                    spec = {k: v for k, v in entry.items() if k != 'name'}
+                    pixels, observation = qemu_frame_witness.observe(raw_sample, spec, framebuffer)
+                    if observation['matched']:
+                        observation.update(name=entry['name'], sample=snapshot_count, elapsed_host_seconds=time.time()-t0)
+                        prefix = os.path.join(out, 'sequence-' + entry['name'])
+                        with open(prefix + '.raw', 'wb') as f:
+                            f.write(pixels)
+                        write_png(prefix + '.png', pixels, {'width': spec['width'], 'height': spec['height'], 'stride': spec['width']*4})
+                        observations.append(observation)
+                        with open(os.path.join(out, 'frame-sequence.json'), 'w') as f:
+                            json.dump(observations, f, indent=2)
                 os.unlink(raw_path)
                 with open(os.path.join(frames, f'{snapshot_count:04}.txt'), 'w') as f:
                     f.write(screen)
@@ -410,6 +506,8 @@ def main():
             open(f'{out}/regs.txt', 'w').write(regs + ''.join(f'\n(qemu) {c}\n{r}' for c, r in zip(a.hmp, extra)))
             if ramdisk:
                 qmp(mon, pmemsave=(*ramdisk, f'{out}/ramdisk-final.hfs'))
+            if var_ramdisk:
+                qmp(mon, pmemsave=(var_ramdisk['pa'], var_ramdisk['bytes'], f'{out}/var-final.hfs'))
             p.kill()
             p.wait()
             raw = open(f'{out}/fb.raw', 'rb').read()
@@ -425,6 +523,10 @@ def main():
 
         result.update(elapsed_host_seconds=round(time.time() - t0, 3), stop_marker=stop_marker,
                       execution=execution)
+        if witness_spec:
+            result['frame_witness_matched'] = witness_matched
+        if sequence:
+            result['frame_sequence_matched'] = len(observations) == len(sequence)
         open(f'{out}/result.json', 'w').write(json.dumps(result, indent=2) + '\n')
         print(json.dumps(result), file=sys.stderr)
         print(f'{out}/fb.png  {out}/regs.txt  {out}/qemu.log', file=sys.stderr)
@@ -447,6 +549,8 @@ def main():
         if p and p.poll() is None:
             p.kill()
             p.wait()
+        if live_memory and os.path.isfile(live_memory):
+            os.unlink(live_memory)
         if isinstance(mon, str) and os.path.exists(mon):
             try:
                 os.unlink(mon)

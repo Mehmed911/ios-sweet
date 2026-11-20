@@ -1,0 +1,41 @@
+test_address_addition_wrap (__main__.ConsumerTests.test_address_addition_wrap) ... ok
+test_available_capture_limit (__main__.ConsumerTests.test_available_capture_limit) ... ok
+test_exact_size (__main__.ConsumerTests.test_exact_size) ... ok
+test_four_byte_load_wrap (__main__.ConsumerTests.test_four_byte_load_wrap) ... ok
+test_invalid_counts (__main__.ConsumerTests.test_invalid_counts) ... ok
+test_last_nonwrapping_load (__main__.ConsumerTests.test_last_nonwrapping_load) ... ok
+test_noncontiguous_capture (__main__.ConsumerTests.test_noncontiguous_capture) ... ok
+test_one_uses_base_not_offset (__main__.ConsumerTests.test_one_uses_base_not_offset) ... ok
+test_opaque_fields_not_interpreted_as_pointers (__main__.ConsumerTests.test_opaque_fields_not_interpreted_as_pointers) ... ok
+test_random_bytes_no_address_access (__main__.ConsumerTests.test_random_bytes_no_address_access) ... ok
+test_short_and_long (__main__.ConsumerTests.test_short_and_long) ... ok
+test_symbol_consumer_is_dlsym (__main__.ConsumerTests.test_symbol_consumer_is_dlsym) ... ok
+test_two_offsets (__main__.ConsumerTests.test_two_offsets) ... ok
+test_unaligned_capture_uses_bytes (__main__.ConsumerTests.test_unaligned_capture_uses_bytes) ... ok
+test_unterminated_symbol_not_extended_into_offsets (__main__.ConsumerTests.test_unterminated_symbol_not_extended_into_offsets) ... ok
+test_zero_count_no_addresses (__main__.ConsumerTests.test_zero_count_no_addresses) ... ok
+test_zero_reply_never_proves_compatibility (__main__.ConsumerTests.test_zero_reply_never_proves_compatibility) ... ok
+test_empty_range (__main__.IsolationTests.test_empty_range) ... ok
+test_foreign_owner (__main__.IsolationTests.test_foreign_owner) ... ok
+test_integer_is_not_proof (__main__.IsolationTests.test_integer_is_not_proof) ... ok
+test_missing_mapping (__main__.IsolationTests.test_missing_mapping) ... ok
+test_missing_sync (__main__.IsolationTests.test_missing_sync) ... ok
+test_positive_assertions_do_not_become_proof (__main__.IsolationTests.test_positive_assertions_do_not_become_proof) ... ok
+test_range_overflow (__main__.IsolationTests.test_range_overflow) ... ok
+test_stale_handle (__main__.IsolationTests.test_stale_handle) ... ok
+test_zero_owner (__main__.IsolationTests.test_zero_owner) ... ok
+test_integer_contract (__main__.ShapeTests.test_integer_contract) ... ok
+test_known_shapes (__main__.ShapeTests.test_known_shapes) ... ok
+test_other_types (__main__.ShapeTests.test_other_types) ... ok
+test_queue_bad_sizes (__main__.ShapeTests.test_queue_bad_sizes) ... ok
+test_queue_no_output (__main__.ShapeTests.test_queue_no_output) ... ok
+test_queue_shapes (__main__.ShapeTests.test_queue_shapes) ... ok
+test_selector_seven_is_type_specific (__main__.ShapeTests.test_selector_seven_is_type_specific) ... ok
+test_unknown_methods_are_explicit (__main__.ShapeTests.test_unknown_methods_are_explicit) ... ok
+test_wrong_input_sizes (__main__.ShapeTests.test_wrong_input_sizes) ... ok
+test_wrong_output_sizes (__main__.ShapeTests.test_wrong_output_sizes) ... ok
+
+----------------------------------------------------------------------
+Ran 36 tests in 0.014s
+
+OK

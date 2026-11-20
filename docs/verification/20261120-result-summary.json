@@ -1,0 +1,27 @@
+{
+  "date": "2026-11-20",
+  "kernel_sha256": "4ae22e3d38d0be2372fc66703db6b5b957803c55b743ed4190c4725a0a17cedd",
+  "source_link_inputs": 1127,
+  "status": "BLOCKED_BY_UNKNOWN_ABI",
+  "physical_status": "BLOCKED_BY_MEMORY_EVIDENCE",
+  "fresh_qemu": {
+    "original_services": 22,
+    "iosurface": 24,
+    "iokit": 26,
+    "installed_files": 296
+  },
+  "offline": {
+    "abi": 36,
+    "static_intervals": 15,
+    "instruction_anchors": 29,
+    "negative_iokit_log": 8,
+    "discovery": 20,
+    "observer": 22,
+    "ram_bounds": 6
+  },
+  "first_springboard_frame_verified": false,
+  "no_gpu_provider_published": true,
+  "phone_operations": [],
+  "evidence_manifest_sha256": "404a89672f0be18d904c43a5ed85e23762d34da44f1b7725fd0e251ebe8d5979",
+  "prior_small_qemu_regressions_rerun_in_abi_revision": false
+}

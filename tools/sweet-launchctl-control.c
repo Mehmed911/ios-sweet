@@ -156,6 +156,12 @@ static int command(const char *tag, char *const *argv) {
 #include "sweet-xpc-batch-control.h"
 #endif
 #if defined(SWEET_SYSLOGD_TEST)
+#if defined(DUCHAMP_GUI_TEST)
+#include "duchamp-gui-control.h"
+#endif
+#if defined(DUCHAMP_COMPOSITOR_TEST)
+#include "duchamp-compositor-control.h"
+#endif
 #include "sweet-syslogd-control.h"
 #endif
 #if defined(SWEET_CFPREFS_TEST)
@@ -208,6 +214,13 @@ int main(void) {
         proc_pidpath(1, parent, sizeof(parent)) <= 0 || strcmp(parent, "/sbin/launchd"))
         return fail("controller identity");
     note("controller pid=%d ppid=1 uid=0 parent=/sbin/launchd", getpid());
+#if defined(DUCHAMP_DARWIN_GRAPHICS_TEST)
+    char *graphics[] = {"launchctl", "bootstrap", "system", "/sbin/duchamp-graphics.plist", 0};
+    if (command("graphics-bootstrap", graphics)) return fail("graphics bootstrap");
+#endif
+#if defined(DUCHAMP_COMPOSITOR_TEST)
+    if (compositor_start()) return 1;
+#endif
 #if defined(SWEET_CFPREFS_BATCH_TEST)
     return cfprefs_batch_lifecycle();
 #endif

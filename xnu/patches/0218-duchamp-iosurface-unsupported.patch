@@ -1,0 +1,21 @@
+--- a/iokit/Kernel/arm/SweetSurface.cpp
++++ b/iokit/Kernel/arm/SweetSurface.cpp
+@@ -773,15 +773,9 @@
+ 		return kIOReturnSuccess;
+ 	}
+ 	default:
+-		/* Values, notifications, ownership, timestamps...: accept and ignore. */
+-		for (uint32_t i = 0; i < args->scalarOutputCount; i++) {
+-			args->scalarOutput[i] = 0;
+-		}
+-		if (args->structureOutput != NULL) {
+-			bzero(args->structureOutput, args->structureOutputSize);
+-		}
+-		sweet_surf_log_once("sel", selector);
+-		return kIOReturnSuccess;
++		/* An unknown/unimplemented selector is not a completed operation.
++		 * Do not fabricate ownership, synchronization or GPU capabilities. */
++		return kIOReturnUnsupported;
+ 	}
+ }
+ 

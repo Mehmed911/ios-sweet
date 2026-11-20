@@ -24,6 +24,9 @@ No MediaTek UFS access should be inferred from a successful RAM-root test.
 
 The pinned HakiOS Metal source review and local host-test result are in
 [HAKIOS-METAL-REUSE.md](HAKIOS-METAL-REUSE.md).
+The 2026-10-30 HakiOS MT6768 update and the deliberately limited loader-return
+ABI reuse are recorded in
+[HAKIOS-MT6768-UPDATE-REUSE.md](HAKIOS-MT6768-UPDATE-REUSE.md).
 
 Portable UFS read transport, software framebuffer operations, captured-DTB
 dependency resolution and their actual test results are documented in
@@ -55,10 +58,17 @@ stamp, actual vendor UFS instruction fragments and local EL1/EL3 fixture is in
 direct mapping under explicit conditions; it does not
 verify the installed monitor's effects or enable a physical UFS backend.
 
+[MT6897-DMA-IOMMU-FIRMWARE-EVIDENCE.md](MT6897-DMA-IOMMU-FIRMWARE-EVIDENCE.md)
+adds the approved read-only phone probe: live streaming/coherent masks are 64
+bits, `bus_dma_limit` is 36 bits, Linux selects generic `dma-direct`, and no
+Linux IOMMU attachment was present at observation. Physical firewall behavior,
+cache ownership and safe XNU UFS remain unverified, so the backend stays off.
+
 [UFS-BOUNDS-POLICY.md](UFS-BOUNDS-POLICY.md) adds finite UFS polling even when
 the timer stalls, plus a pinned saved-boot-policy audit. The captured
 `swiotlb=noforce` request skips the matching source's default bounce-pool
-initialization; runtime DMA/firmware ownership is still unverified.
+initialization. The later live probe found a per-device pool pointer, but no
+transfer through it was observed; firmware ownership remains unverified.
 
 [FAST-SYSTEM-BOOT.md](FAST-SYSTEM-BOOT.md) records the new kernel running
 the original Apple-service fixture: 72/72 checks in 86.819 host seconds on

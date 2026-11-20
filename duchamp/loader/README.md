@@ -43,6 +43,14 @@ provide verified MMU, cache, translation, exception-level, and branch
 operations. Missing callbacks, unaligned addresses, out-of-window entry, and
 failed steps are rejected.
 
+This callback prototype is not linked into the verified bootshim path. In
+particular, its translation-install callback does not match the now measured
+Duchamp contract: LK enters at EL1 with translation and caches already off, and
+the current XNU payload expects the same state. The active no-jump gate is
+`bootshim/handoff_ready.c`; it validates that state and performs only the final
+architectural barriers and instruction-cache invalidation. Do not use the old
+callback prototype for a phone build.
+
 `mt6897_platform.c` contains only the verified profile captured from the live
 Duchamp FDT: GICv3 bases, ARM timer frequency, and the current framebuffer
 geometry. It is metadata for preflight and test harnesses, not a hardware

@@ -1,0 +1,28 @@
+diff --git a/osfmk/kern/kalloc.h b/osfmk/kern/kalloc.h
+--- a/osfmk/kern/kalloc.h
++++ b/osfmk/kern/kalloc.h
+@@ -821,12 +821,24 @@
+  * @param ptr           the pointer whose type needs to be checked.
+  * @param type          the type which the pointer will be checked against.
+  */
++#if defined(__cplusplus) && __has_builtin(__decay) && \
++    __has_builtin(__remove_pointer) && __has_builtin(__is_pointer)
++/* GNU typeof of a void-pointer dereference is rejected by newer Clang C++. */
++#define KALLOC_TYPE_IS_COMPATIBLE_CPP_PTR(ptr_type, type) \
++	(__is_pointer(ptr_type) && \
++	    (__builtin_xnu_types_compatible(__remove_pointer(ptr_type), type) || \
++	    __builtin_xnu_types_compatible(__remove_pointer(ptr_type), void)))
++
++#define KALLOC_TYPE_IS_COMPATIBLE_PTR(ptr, type) \
++	KALLOC_TYPE_IS_COMPATIBLE_CPP_PTR(__decay(__typeof__(ptr)), type)
++#else
+ #define KALLOC_TYPE_IS_COMPATIBLE_PTR(ptr, type)                   \
+ 	_Pragma("clang diagnostic push")                               \
+ 	_Pragma("clang diagnostic ignored \"-Wvoid-ptr-dereference\"") \
+ 	(__builtin_xnu_types_compatible(__typeof__(*(ptr)), type) ||   \
+ 	    __builtin_xnu_types_compatible(__typeof__(*(ptr)), void))  \
+ 	_Pragma("clang diagnostic pop")
++#endif
+ 
+ #define KALLOC_TYPE_ASSERT_COMPATIBLE_POINTER(ptr, type) \
+ 	_Static_assert(KALLOC_TYPE_IS_COMPATIBLE_PTR(ptr, type), \

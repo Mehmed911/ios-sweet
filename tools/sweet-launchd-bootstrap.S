@@ -1,4 +1,4 @@
-/* DEVELOPMENT init entry; exec the unchanged Apple binary without forking. */
+/* DEVELOPMENT init entry. Exec the unchanged Apple binary as PID 1. */
     .macro PRINT name
     adr x1, \name
     adr x2, \name\()_end
@@ -34,15 +34,45 @@ stdio:
     svc #0x80
     cmp x0, #1
     b.ne failed
+#ifdef DUCHAMP_WRITABLE_VAR
+    mov x16, #2
+    svc #0x80
+    b.cs failed
+    cbnz x1, var_child
+    mov x21, x0
+var_wait:
+    mov x0, x21
+    add x1, sp, #48
+    mov x2, #0
+    mov x3, #0
+    mov x16, #7
+    svc #0x80
+    b.cc var_reaped
+    cmp x0, #4
+    b.eq var_wait
+    b failed
+var_reaped:
+    cmp x0, x21
+    b.ne failed
+    ldr w0, [sp, #48]
+    cbnz w0, failed
+#endif
     PRINT starting
     adr x0, launchd
     str x0, [sp]
     str xzr, [sp, #8]
+#ifdef DUCHAMP_USE_SHARED_CACHE
+    /* Explicit isolated large-cache fixture; preserve the small-root default. */
+    adr x9, path
+    str x9, [sp, #16]
+    str xzr, [sp, #24]
+#else
     adr x9, no_cache
     str x9, [sp, #16]
     adr x9, path
     str x9, [sp, #24]
     str xzr, [sp, #32]
+#endif
     mov x1, sp
     add x2, sp, #16
     mov x16, #59
@@ -65,6 +95,25 @@ hex:
     add x1, sp, #64
     mov x2, #9
     bl output
+#ifdef DUCHAMP_WRITABLE_VAR
+    b failed
+var_child:
+    adr x0, var_program
+    str x0, [sp]
+    str xzr, [sp, #8]
+    adr x9, no_cache
+    str x9, [sp, #16]
+    str xzr, [sp, #24]
+    mov x1, sp
+    add x2, sp, #16
+    mov x16, #59
+    svc #0x80
+    PRINT var_exec_failed
+    mov x0, #127
+    mov x16, #1
+    svc #0x80
+    b hang
+#endif
 failed:
     PRINT failure
 hang:
@@ -82,6 +131,13 @@ no_cache:
     .asciz "DYLD_SHARED_REGION=avoid"
 path:
     .asciz "PATH=/usr/bin:/bin:/usr/sbin:/sbin"
+#ifdef DUCHAMP_WRITABLE_VAR
+var_program:
+    .asciz "/sbin/duchamp-var-prepare"
+var_exec_failed:
+    .ascii "VAR PREFLIGHT FAIL exec\n"
+var_exec_failed_end:
+#endif
 digits:
     .ascii "0123456789abcdef"
 starting:

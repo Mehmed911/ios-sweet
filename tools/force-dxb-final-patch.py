@@ -53,6 +53,8 @@ replacement = '''        done
         python3 "${WORK_DIR}/../tools/stage-duchamp-psci-boot.py" "${WORK_DIR}/xnu"
         running "Staging the opt-in Duchamp QEMU SPI2 touch replay"
         python3 "${WORK_DIR}/../tools/stage-duchamp-qemu-spi2.py" "${WORK_DIR}/xnu"
+        running "Staging source-built Duchamp dual RAMDisk registration"
+        python3 "${WORK_DIR}/../tools/stage-duchamp-dual-ramdisk.py" "${WORK_DIR}/xnu"
         cd "${WORK_DIR}"
     fi
 }

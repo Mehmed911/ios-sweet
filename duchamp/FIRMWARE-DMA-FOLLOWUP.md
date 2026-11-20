@@ -142,7 +142,9 @@ Use `research/mt6897-boot/ufs-profile-v4` with `-Backends`, or the locally
 generated `research/mt6897-routing/baseline-fixture-v1` without that switch;
 choose a fresh output. Neither launcher contacts the phone.
 
-The remaining physical evidence is a matched monitor/build configuration,
-per-service effects and secure ownership, runtime DMA ops/fwspec/domain and
-both effective masks, HCCAP, and cache ownership. Passing these fixtures
-does not supply that evidence or authorize a phone experiment.
+The later read-only probe now resolves HCCAP, both effective masks, the 36-bit
+bus limit, generic Linux `dma-direct`, and absence of a Linux IOMMU attachment
+at observation. The remaining physical evidence is a matched monitor/build
+configuration, per-service effects, secure/firewall ownership, actual bounce
+requirements and non-coherent cache ownership. Passing these fixtures does not
+supply that evidence or authorize a physical UFS experiment.

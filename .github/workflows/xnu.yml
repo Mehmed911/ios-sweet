@@ -21,6 +21,9 @@ on:
       - "xnu/patches/**"
       - "tools/apply-duchamp-pid1-heartbeat-console.py"
       - "tools/stage-duchamp-qemu-ufs.py"
+      - "tools/stage-duchamp-dual-ramdisk.py"
+      - "tools/prepare-duchamp-xnu-dxb.sh"
+      - "tools/duchamp_xnu_link.py"
       - "tools/stage-duchamp-qemu-spi2.py"
       - "tools/stage-duchamp-qemu-backends.py"
       - "tools/stage-duchamp-gic-boot.py"
@@ -68,23 +71,7 @@ jobs:
 
       - name: Fetch build script
         run: |
-          git init -q dxb
-          git -C dxb fetch -q --depth 1 "$DXB_REPO" "$DXB_SHA"
-          git -C dxb checkout -q FETCH_HEAD
-          # 12.5-14.3 use the top-level patches dir; ours go next to blacktop's
-          cp xnu/patches/*.patch xnu/patches/*.sh dxb/patches/
-          # bsd_init.c is changed by dxb's alphabetic compatibility patches.
-          # Apply the Duchamp pre-root checkpoint after those patches so its
-          # context matches the exact source that will be compiled.
-          mv dxb/patches/0208-duchamp-bsd-pre-root-stage.patch \
-            dxb/patches/zzzz-duchamp-bsd-pre-root-stage.patch
-          # Locale-dependent glob ordering can still visit zzzz before some
-          # mixed-case upstream patches. Make it a mandatory post-pass.
-          python3 tools/force-dxb-final-patch.py dxb/build.sh
-          # libfirehose_kernel is built arm64e-only; the SWEET kernel is plain arm64
-          sed -i '' 's/ARCHS="x86_64 arm64e" VALID_ARCHS="x86_64 arm64e"/ARCHS="x86_64 arm64e arm64" VALID_ARCHS="x86_64 arm64e arm64"/' dxb/build.sh
-          grep -c 'VALID_ARCHS="x86_64 arm64e arm64"' dxb/build.sh
-          ls dxb/patches
+          bash tools/prepare-duchamp-xnu-dxb.sh
 
       - name: Deps
         run: |
@@ -123,6 +110,16 @@ jobs:
           MAKEFLAGS: ${{ inputs.keep_going == 'false' && '' || '-k' }}
         run: |
           bash build.sh
+          cmp ../duchamp/xnu/dual_ramdisk_bounds.h xnu/bsd/dev/duchamp_dual_ramdisk_bounds.h
+          cmp ../duchamp/xnu/dual_ramdisk_init.inc xnu/bsd/dev/duchamp_dual_ramdisk_init.inc
+          grep -Fq 'dual_registered = duchamp_dual_ramdisk_init(rdBootVar);' xnu/iokit/bsddev/IOKitBSDInit.cpp
+          if [ "${MACHINE_CONFIG}" = SWEET ]; then
+            for kernel in fakeroot/System/Library/Kernels/kernel.*.sweet; do
+              test -f "$kernel"
+              mkdir -p ../out
+              python3 -B ../tools/duchamp_xnu_link.py "$kernel" > "../out/$(basename "$kernel").layout.json"
+            done
+          fi
           grep -Fq 'stage > 196' xnu/osfmk/arm64/sweet_early.c
           grep -Fq 'QEMU RAM BLOCK READY' xnu/iokit/bsddev/IOKitBSDInit.cpp
           grep -Fq 'MT6897 BACKEND STUB' xnu/iokit/bsddev/IOKitBSDInit.cpp

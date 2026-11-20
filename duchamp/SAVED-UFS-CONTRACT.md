@@ -69,15 +69,49 @@ is ignored on both paths. This matches the tested
 and
 [dma_set_mask_and_coherent](https://github.com/aosp-mirror/kernel_common/blob/cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6/include/linux/dma-mapping.h).
 An accepted streaming mask must not be treated as proof of the coherent mask.
-The live HCCAP, effective post-quirk capability and resulting masks are absent
-from this saved evidence.
+The version-2 live report records the missing runtime contract explicitly. The
+saved `dma_mask_bits` and `coherent_dma_mask_bits` probes both exited with the
+path unavailable. The captured sysfs capability directory contains only
+`clock_scaling` and `write_booster`, and its captured debugfs listing is empty.
+Consequently that sysfs/debugfs-only report records HCCAP as
+`not-exposed-in-capture`; at that capture stage, the effective post-quirk
+capability and both resulting masks remained unknown rather than inferred.
 
-The candidate is direct DMA, conditional on no inherited or overridden DMA
-ops/fwspec and on the required ownership contract. The follow-up
+The later allowlisted read-only capture recursively inventories 1200 bounded
+lines below the live UFS sysfs device and still finds no HCCAP- or
+DMA-mask-named entry. However, the loaded `ufs_mediatek_dbg` module exposes a
+read-only `/proc/ufs_debug` summary. A 20-line-bounded read reports effective
+host capabilities `0x55c7051f`, host/device UFSHCI version `0x400`, and MCQ
+  supported and enabled. The pinned UFSHCI definitions decode bit `0x01000000`
+  as 64-bit-addressing support and bit `0x40000000` as MCQ support. This closes
+  the HCCAP gap in that capture, but does not by itself reveal which streaming
+  or coherent DMA mask was accepted by the DMA layer. The Android SCSI host reports `can_queue=63`,
+`nr_hw_queues=8`, `sg_tablesize=128`, and `cmd_per_lun=31`. Those values prove
+that the installed Android driver uses a multiqueue host, but they do not
+encode the accepted streaming/coherent masks, `dma_ops`, an IOMMU fwspec/domain,
+or cache ownership. The bounded kernel-log capture contains only SELinux
+denials from the attempted read-only link traversal and adds no UFS fault or
+DMA-contract evidence. The machine-readable capture is
+  `research/mt6897-shell-runtime/live-20261101-v7/result.json`.
+
+A later, separately approved read-only kernel probe closes the live Linux-state
+gap: both masks are `0xffffffffffffffff` (64 bits), `bus_dma_limit` is
+`0x0000000fffffffff` (36 bits), both DMA-ops pointers are null, and no Linux
+IOMMU private object, group, fwspec or domain is attached at observation. The
+pinned DMA mapping source therefore selects generic `dma-direct`. The device is
+non-coherent, has a DMA range map and has a SWIOTLB pool pointer. The evidence
+and fail-closed aggregate are under
+`research/mt6897-dma-ownership/live-probe-20261101-v1/` and
+`research/mt6897-dma-ownership/live-20261101-v2/`.
+
+Linux selected generic direct DMA at the probe observation. That does not
+establish a physical identity address or bypass secure firmware/firewalls, and
+the required ownership contract remains open. The follow-up
 [boot-policy audit](UFS-BOUNDS-POLICY.md) finds `swiotlb=noforce` in the saved
 FDT. With the matching source this skips default SWIOTLB initialization;
-the default bounce pool must not be assumed available. Vendor/per-device
-overrides and runtime state remain unverified.
+the default bounce pool must not be assumed available from boot policy alone.
+The later probe proves that a device SWIOTLB pool pointer exists despite the
+saved `noforce` policy, but it does not prove that any transfer used it.
 The source's
 [direct-mapping path](https://github.com/aosp-mirror/kernel_common/blob/cf2c2dc91b9e9f016dc25cf095b1fe34cb5dfcb6/kernel/dma/direct.h)
 can bounce an unreachable address when SWIOTLB is active, or fail when it is
@@ -110,6 +144,54 @@ marker. Those strings identify loader behavior; they do not identify a matched
 monitor implementation, its build options, service completion semantics or
 secure ownership. A zero reply remains insufficient. Additional SiP selectors,
 crypto services and full firmware behavior are outside the tested subset.
+
+A later allowlisted, read-only ADB refresh captured only the first 256 KiB of
+`/proc/atf_log/atf_log`, bounded to two seconds. It identifies the running
+monitor as `BL31: lts-v2.8.6(release):2fbca47`, built at `07:19:18, Dec 18
+2024`, with software marker `common_2.6.1(6897-1.2)`. This closes the release
+string gap, not the source or effect-contract gap. The public upstream
+[lts-v2.8.6 release](https://github.com/ARM-software/arm-trusted-firmware/releases/tag/lts-v2.8.6)
+is commit `ff0bd5f`, while `2fbca47` is absent from the checked upstream and
+public MediaTek mirror. No physical SMC was issued, and no return/effect
+semantics, secure ownership, or UFS permission follows from the version text.
+
+A separate explicitly read-only capture of active `tee_a` produced a 5 MiB
+local file with SHA-256
+`37d7d5acbe02289465af9702cbcafb1986394332a3462badda398556d32e587d`.
+Its first package entry is named `atf`: the header declares 953,976 payload
+bytes at offset `0x200`, ending at `0xe9078`; eight zero padding bytes are
+followed by the next valid `cert1` header at `0xe9080`. The extracted payload
+SHA-256 is
+`716222a632e4a0623a2e467e17f1d36f38a37f79a1c026447fe724e75e90e07e`.
+It contains the same runtime release, build and software identity strings at
+unique offsets. This ties the captured active-slot binary identity to the
+bounded runtime log; it is still not a reproducible source match.
+
+Static inspection of that exact payload finds a service descriptor named
+`MTK_SIP_KERNEL_UFS_CONTROL`, with fast 64-bit function ID `0xc2000276` and
+handler address `0x48845008`. Pinned dispatcher and handler instructions route
+the saved client selectors as follows:
+
+| Selector | Captured handler path |
+| --- | --- |
+| REFCLK `8` | jump-table target `0x48845170`, with PRE/POST stage checks |
+| MTCMOS `512` | target `0x488451ec`; on/off helper-call bodies are present |
+| MCQ `1024` | target `0x48845098`; state load and result-store path is present |
+
+Known selector paths converge on a common exit that sets `x0` to zero. This is
+direct binary evidence that a zero reply alone cannot distinguish a completed
+physical transition from an internally logged failure. The existing firmware
+backend's independent `verify_reply` requirement therefore remains necessary.
+The two MTCMOS helper bodies also expose their exact firmware-side MMIO path:
+they write unlock value `0x0b160001` to `0x1c001000`, operate on control
+registers `0x1c001e10` and `0x1c001e14`, and poll bits 30 and 31. This identifies
+possible postcondition bits but also confirms that BL31 itself owns the path in
+the captured build. XNU direct readback remains prohibited until a documented
+handoff or non-invasive firmware query establishes ownership.
+The static audit executed no firmware, SMC or MMIO and does not prove runtime
+effects, secure ownership, or XNU UFS readiness. Machine-readable reports are
+`research/mt6897-firmware-live/20261101-v1/inspection.json` and
+`research/mt6897-firmware-live/20261101-v1/ufs-sip-audit-v2.json`.
 
 ## Actual local test results
 
@@ -169,8 +251,9 @@ operate offline on local files. Existing audit/test output directories are
 refused. Captured images stay outside the repository. Extracted modules,
 fragments and private logs remain under the Git-ignored research directory.
 
-To establish a physical contract later, evidence must resolve the installed
-monitor/build configuration and per-service effects, secure resource/PHY
-ownership, live DMA ops/fwspec/domain/SWIOTLB state, HCCAP and both effective
-masks. None can be inferred from passing this QEMU fixture, and no device
-capture is attempted as part of this milestone.
+To establish a physical contract later, evidence must still resolve the
+installed monitor/build configuration and per-service effects, secure
+resource/PHY/firewall ownership, actual bounce requirements, and non-coherent
+cache maintenance. The separate read-only probe now resolves both effective
+masks and the live Linux DMA-ops/IOMMU/SWIOTLB-pointer state. None of the
+remaining physical effects can be inferred from passing this QEMU fixture.

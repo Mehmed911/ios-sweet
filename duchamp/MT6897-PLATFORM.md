@@ -89,6 +89,9 @@ The saved DTB's /soc ancestor declares a zero-to-zero DMA window of 64 GiB;
 UFS and its inspected ancestors have no iommus/iommu-map/dma-coherent
 properties. These are configuration observations, not proof of active bypass,
 coherency, security ownership or the controller's effective DMA mask.
+A later read-only live probe measures 64-bit streaming/coherent masks and a
+36-bit bus limit, but still does not prove physical bypass or cache ownership;
+see [MT6897-DMA-IOMMU-FIRMWARE-EVIDENCE.md](MT6897-DMA-IOMMU-FIRMWARE-EVIDENCE.md).
 
 ## Actual local results
 

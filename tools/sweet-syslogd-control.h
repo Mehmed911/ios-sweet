@@ -133,6 +133,12 @@ static int syslogd_lifecycle(void) {
         !strstr(output, "state = running") || !strstr(output, "runs = 1\n")) return fail("notifyd final print");
     note("NOTIFYD CONTROL PASS server=%d syslogd=%d clients=%d,%d", notification_server, server, probes[0], probes[1]);
 #endif
+#if defined(DUCHAMP_COMPOSITOR_TEST)
+    if (compositor_finish()) return 1;
+#endif
+#if defined(DUCHAMP_GUI_TEST)
+    if (gui_test()) return 1;
+#endif
     note("SYSLOGD CONTROL PASS server=%d clients=%d,%d messages=6", server, probes[0], probes[1]);
     sync();
     for (unsigned int beat = 1;; ++beat) {
